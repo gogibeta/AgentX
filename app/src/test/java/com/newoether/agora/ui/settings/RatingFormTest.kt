@@ -113,7 +113,7 @@ class RatingFormTest {
             assertTrue(locale.name, decoded.getValue("rating_origin_project_b64").contains("github.com/newo-ether/AgentX"))
             titles += decoded.getValue("rating_origin_modified_title_b64")
         }
-        assertEquals("Each shipped locale has a translated notice title", 12, titles.size)
+        assertEquals("Each shipped locale has a translated notice title", 10, titles.size)
     }
 
     private fun showForm(

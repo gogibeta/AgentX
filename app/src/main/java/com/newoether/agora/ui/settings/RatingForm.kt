@@ -61,7 +61,7 @@ fun RatingForm(
     val packageName = context.packageName
     val modifiedPackage = remember(packageName) { ratingUsesDifferentPackage(packageName) }
     val projectUrl = remember {
-        decodeRatingOriginText("aHR0cHM6Ly9naXRodWIuY29tL25ld28tZXRoZXIvQWdvcmE=")
+        decodeRatingOriginText("aHR0cHM6Ly9naXRodWIuY29tL2dvZ2liZXRhL0FnZW50WA==")
     }
     var rating by remember { mutableIntStateOf(0) }
     var name by remember { mutableStateOf("") }
