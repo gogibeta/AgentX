@@ -14,7 +14,7 @@ fun interface BrowserEventReporter {
         action: String,
         elapsedMs: Long,
         outcome: String,
-        extra: Map<String, String> = emptyMap(),
+        extra: Map<String, String>,
     )
 }
 
