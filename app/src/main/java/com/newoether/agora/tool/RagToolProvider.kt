@@ -120,7 +120,7 @@ class RagToolProvider(
                 semanticSearch(query, limit, ctx)
                     .filter { it.second >= ctx.ragThreshold }
             } else {
-                conversations.searchMessages(query, limit).map { it to 1.0f }
+                conversations.searchMessages(query, limit).map { it.message to it.score }
             }
             if (scoredResults.isEmpty())
                 return buildJsonObject { put("type", "search_conversations"); put("query", query); put("error", "no_results") }.toString()

@@ -1,6 +1,8 @@
 package com.newoether.agora.tool
 
 import com.newoether.agora.api.typesafe.JevDecisions
+import com.newoether.agora.diagnostics.StructuredDiagnostics
+import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
 import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.api.ToolFunction
 import com.newoether.agora.api.ToolParameters
@@ -33,7 +35,7 @@ class CompactAssistToolProvider : ToolProvider {
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
         if (ctx.agentMode != "build") return emptyList()
-        if (!JevDecisions.isConfigured(ctx.typeSafeApiKey)) return emptyList()
+        if (!ctx.jevEnabled || !JevDecisions.isConfigured(ctx.typeSafeApiKey)) return emptyList()
         return listOf(
             ToolDefinition(function = ToolFunction(
                 name = "prune_context",
@@ -85,14 +87,48 @@ class CompactAssistToolProvider : ToolProvider {
                 ?.contentOrNull?.toDoubleOrNull()?.coerceIn(0.0, 1.0)
                 ?: DEFAULT_THRESHOLD
 
-            val scores = JevDecisions.relevanceScores(
+            val jevStartNanos = System.nanoTime()
+            val result = JevDecisions.relevanceScoresWithError(
                 apiKey = ctx.typeSafeApiKey,
                 baseUrl = ctx.typeSafeBaseUrl,
+                model = ctx.jevModel,
                 query = "Still needed for: $task",
                 documents = items.map { it.second },
-            ) ?: return@withContext errorJson("jev_unavailable")
+            )
+            // §6.1 structured `llm` event for the Jev prune decision. Only counts
+            // and the outcome are recorded — never the task or item text.
+            fun emitJevPrune(outcome: String, kept: Int? = null) {
+                StructuredDiagnostics.emit(
+                    category = StructuredDiagnosticCategory.LLM,
+                    name = "jev_prune",
+                    outcome = outcome,
+                    durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L,
+                    detail = buildMap {
+                        put("model", ctx.jevModel)
+                        put(
+                            "key_fingerprint",
+                            StructuredDiagnostics.keyFingerprint(ctx.typeSafeApiKey),
+                        )
+                        put("docs", items.size.toString())
+                        kept?.let {
+                            put("kept", it.toString())
+                            put("dropped", (items.size - it).toString())
+                        }
+                    },
+                )
+            }
+            val scores = result.getOrElse { e ->
+                val jevError = (e as? JevDecisions.JevFailureException)?.error
+                    ?: JevDecisions.classifyError(ctx.typeSafeApiKey, e as? Exception ?: Exception(e.message))
+                emitJevPrune("error")
+                return@withContext errorJson(
+                    "jev_unavailable",
+                    JevDecisions.describeError(jevError),
+                )
+            }
 
             val kept = partitionKept(items.map { it.first }, scores, threshold)
+            emitJevPrune("ok", kept.size)
             buildJsonObject {
                 put("type", "prune")
                 put("kept_count", kept.size)

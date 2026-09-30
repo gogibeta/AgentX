@@ -27,8 +27,68 @@ internal fun ProviderApiKeysSettings(
     onActivateKey: (String, String) -> Unit,
     onEditKey: (ApiKeyEntry) -> Unit,
     onDeleteKey: (ApiKeyEntry) -> Unit,
+    onBulkImport: (List<String>) -> Unit = {},
 ) {
     val providerKeys = apiKeys.filter { it.provider == currentName }
+    var showBulkDialog by remember { mutableStateOf(false) }
+    var bulkText by remember { mutableStateOf("") }
+
+    val addKeyItem: @Composable () -> Unit = {
+        SettingsAddItem(
+            label = stringResource(R.string.provider_add_key),
+            onClick = {
+                onEditKey(ApiKeyEntry(
+                    name = "",
+                    key = "",
+                    provider = currentName,
+                ))
+            },
+        )
+    }
+    val bulkImportItem: @Composable () -> Unit = {
+        SettingsAddItem(
+            label = stringResource(R.string.provider_bulk_import),
+            onClick = { bulkText = ""; showBulkDialog = true },
+        )
+    }
+
+    if (showBulkDialog) {
+        AlertDialog(
+            onDismissRequest = { showBulkDialog = false },
+            title = { Text(stringResource(R.string.provider_bulk_import_title, currentName)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(R.string.provider_bulk_import_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = bulkText,
+                        onValueChange = { bulkText = it },
+                        placeholder = { Text(stringResource(R.string.provider_bulk_import_hint)) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                        minLines = 3,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val keys = bulkText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+                        if (keys.isNotEmpty()) onBulkImport(keys)
+                        showBulkDialog = false
+                    },
+                    enabled = bulkText.isNotBlank(),
+                ) { Text(stringResource(R.string.provider_bulk_import_add)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBulkDialog = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+
     if (providerKeys.isEmpty()) {
         SettingsGroup(
             title = stringResource(R.string.provider_api_keys),
@@ -52,6 +112,7 @@ internal fun ProviderApiKeysSettings(
                         },
                     )
                 }
+                add { bulkImportItem() }
             }
         )
     } else {
@@ -92,6 +153,7 @@ internal fun ProviderApiKeysSettings(
                         },
                     )
                 }
+                add { bulkImportItem() }
             }
         )
     }

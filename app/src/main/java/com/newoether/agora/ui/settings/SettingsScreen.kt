@@ -260,6 +260,10 @@ internal val baseSettingsGroups = listOf(
     )),
     SettingsGroupData(titleRes = R.string.settings_group_tools, items = listOf(
         SettingsCategory("websearch", R.string.settings_web_search, R.string.settings_web_search_desc, Icons.Default.Language),
+        SettingsCategory("jev", R.string.settings_jev, R.string.settings_jev_desc, Icons.Default.Psychology),
+        SettingsCategory("browser", R.string.settings_browser, R.string.settings_browser_desc, Icons.Default.Web),
+        SettingsCategory("credentials", R.string.settings_credentials, R.string.settings_credentials_desc, Icons.Default.Key),
+        SettingsCategory("social", R.string.settings_social, R.string.settings_social_desc, Icons.Default.Share),
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
         SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
         SettingsCategory(
@@ -280,6 +284,9 @@ internal val baseSettingsGroups = listOf(
         SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
         SettingsCategory("skills", R.string.settings_skills, R.string.settings_skills_desc, Icons.Default.Extension),
         SettingsCategory("datacontrol", R.string.settings_data_control, R.string.settings_data_control_desc, Icons.Default.Storage),
+    )),
+    SettingsGroupData(titleRes = R.string.settings_group_diagnostics, items = listOf(
+        SettingsCategory("diagnostics", R.string.diagnostics_title, R.string.diagnostics_desc, Icons.Default.Assessment),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_appearance_language, items = listOf(
         SettingsCategory("appearance", R.string.settings_appearance, R.string.settings_appearance_desc, Icons.Default.Palette),

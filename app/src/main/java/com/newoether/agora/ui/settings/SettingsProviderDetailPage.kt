@@ -492,6 +492,14 @@ fun SettingsProviderDetailPage(
                     onActivateKey = viewModel.settings::setActiveApiKey,
                     onEditKey = { showKeyDialog = it },
                     onDeleteKey = { showDeleteKeyConfirm = it },
+                    onBulkImport = { keys ->
+                        // Bulk import: one atomic write; rotation spreads load automatically.
+                        val base = apiKeys.count { it.provider == currentName }
+                        viewModel.settings.addApiKeysBulk(
+                            keys.mapIndexed { index, key -> "Key ${base + index + 1}" to key },
+                            currentName,
+                        )
+                    },
                 )
                 if (isAnthropicProtocolProvider(currentName, customProviders)) {
                     val providerId = customConfig?.providerId ?: currentName

@@ -134,6 +134,14 @@ internal suspend fun SandboxPathResolver.fileGlob(
         (matches.size >= SHELL_FILE_GLOB_MAX_MATCHES)
 }
 
+/** Relative virtual path for one sandbox file (e.g. `/sub/file.txt`), matching walkVirtualFiles output. */
+private fun relativeVirtualPath(file: File, physicalRootAbsPath: String, virtualRoot: String): String {
+    val path = try { file.canonicalPath } catch (_: Exception) { file.absolutePath }
+    val rel = path.removePrefix(physicalRootAbsPath).removePrefix(File.separator).replace(File.separatorChar, '/')
+    val prefix = if (virtualRoot == "/") "" else virtualRoot.trimEnd('/')
+    return "$prefix/$rel"
+}
+
 internal suspend fun SandboxPathResolver.fileGrep(
     pattern: String,
     basePath: String,
@@ -144,12 +152,20 @@ internal suspend fun SandboxPathResolver.fileGrep(
         val regex = Regex(pattern)
         val base = resolveSandboxPath(basePath.ifBlank { homeMountPath })
         val allFiles = mutableListOf<String>()
-        walkVirtualFiles(
-            base.file,
-            allFiles,
-            base.physicalRoot.canonicalPath,
-            base.virtualRoot,
-        )
+        val physicalRootAbs = base.physicalRoot.canonicalPath
+        if (base.file.isFile) {
+            // Single-file target: search it directly (walking a file path would
+            // silently return zero matches).
+            val rel = relativeVirtualPath(base.file, physicalRootAbs, base.virtualRoot)
+            allFiles.add(rel)
+        } else {
+            walkVirtualFiles(
+                base.file,
+                allFiles,
+                physicalRootAbs,
+                base.virtualRoot,
+            )
+        }
         currentCoroutineContext().ensureActive()
         val files = if (fileGlob.isBlank()) allFiles else globMatch(allFiles, fileGlob)
         val matches = mutableListOf<SandboxManager.GrepMatch>()

@@ -109,6 +109,18 @@ data class GenerationContext(
     /** TypeSafe key for Jev decisions (routing/re-rank/guardrails). Empty = Jev disabled. */
     val typeSafeApiKey: String = "",
     val typeSafeBaseUrl: String? = null,
+    /** Jev model name (e.g. "jev-latest"). Set from Jev settings; no provider picker. */
+    val jevModel: String = "jev-latest",
+    /** Master Jev toggle from Settings → Jev. Jev features only run when true. */
+    val jevEnabled: Boolean = false,
+    /** Master Social toggle from Settings → Social. Tools only run when true AND a worker URL is set. */
+    val socialEnabled: Boolean = false,
+    /** User-owned FxEmbed worker base URL (no default shipped). Empty = not configured. */
+    val socialWorkerBaseUrl: String = "",
+    /** True when the validated worker is on a custom domain (realm prefixes dropped). */
+    val socialUseBareRealm: Boolean = false,
+    /** App version string, used for the mandatory `AgentX/<version>` User-Agent. */
+    val appVersion: String = "?",
     /** Agent environment variables (name -> secret), exported into shell commands. */
     val agentEnv: Map<String, String> = emptyMap(),
 )
