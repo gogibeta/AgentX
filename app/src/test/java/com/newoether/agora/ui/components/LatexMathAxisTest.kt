@@ -33,8 +33,22 @@ class LatexMathAxisTest {
     }
 
     @Test
-    fun paddingGoesOnTheShortSide() {
-        assertEquals(AxisPadding(top = 4, bottom = 0), axisCenteringPadding(axisY = 8f, height = 20))
+    fun chemistryRendersAsMathNotRawText() {
+        // \ce{...} has no JLaTeXMath support; the normalizer must rewrite it into
+        // renderable math so the bitmap fallback never paints raw "$\ce{...}$" source.
+        listOf("\\ce{2H2 + O2 -> 2H2O}", "\\ce{A <=> B}").forEach { latex ->
+            val bitmap = requireNotNull(
+                renderLatexToBitmap(latex, textSize = 60f, color = 0xFF000000.toInt()),
+            ) { "$latex should render after normalization" }
+            val ink = (0 until bitmap.height).sumOf { y ->
+                (0 until bitmap.width).count { x -> (bitmap.getPixel(x, y) ushr 24) > 128 }
+            }
+            assertTrue("$latex: rendered bitmap has no ink", ink > 0)
+        }
+    }
+
+    @Test
+    fun paddingGoesOnTheShortSide() {        assertEquals(AxisPadding(top = 4, bottom = 0), axisCenteringPadding(axisY = 8f, height = 20))
         assertEquals(AxisPadding(top = 0, bottom = 6), axisCenteringPadding(axisY = 13f, height = 20))
         assertEquals(AxisPadding(top = 0, bottom = 0), axisCenteringPadding(axisY = 10f, height = 20))
     }

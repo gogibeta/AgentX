@@ -269,6 +269,7 @@ internal val baseSettingsGroups = listOf(
             iconRes = R.drawable.ic_mcp,
         ),
         SettingsCategory("automation", R.string.settings_automation, R.string.settings_automation_desc, Icons.Default.Repeat),
+        SettingsCategory("agent", R.string.settings_agent, R.string.settings_agent_desc, Icons.Default.SmartToy),
         SettingsCategory("interaction", R.string.settings_interaction, R.string.settings_interaction_desc, Icons.Default.QuestionAnswer),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(

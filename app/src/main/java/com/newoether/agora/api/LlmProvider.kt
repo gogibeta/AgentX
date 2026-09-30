@@ -140,6 +140,12 @@ data class ProviderConfig(
     val sessionId: String? = null,
     /** Resolves ordinary-generation prompt variables and rollout immediately before dispatch. */
     val requestResolver: ProviderRequestResolver? = null,
+    /**
+     * Failover keys for [apiKey] (same provider, active key excluded). The
+     * OpenAI-protocol transport rotates one per retry attempt, so a dead or
+     * rate-limited key auto-moves to the next without user action.
+     */
+    val alternateApiKeys: List<String> = emptyList(),
 )
 
 @Serializable

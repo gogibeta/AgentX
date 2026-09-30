@@ -11,9 +11,11 @@ import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.SettingsRepository
+import com.newoether.agora.model.apiModelName
 import com.newoether.agora.sandbox.SandboxManagerFactory
 import com.newoether.agora.tool.AskUserToolProvider
 import com.newoether.agora.tool.AutomationToolProvider
+import com.newoether.agora.tool.EnsembleToolProvider
 import com.newoether.agora.tool.McpToolProvider
 import com.newoether.agora.util.SnackbarEvent
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +92,34 @@ class ChatRuntime(
                 automationToolProvider,
                 mcpToolProvider,
                 AskUserToolProvider(askUser),
+                EnsembleToolProvider(
+                    providerForModel = providerRegistry::providerForModel,
+                    getProvider = providerRegistry::getInstanceOrNull,
+                    activeKey = { settings.resolveActiveKey(it) ?: "" },
+                    baseUrl = providerRegistry::getEffectiveBaseUrl,
+                    apiModelName = {
+                        com.newoether.agora.model.ModelId.parse(
+                            providerRegistry.canonicalModelId(it),
+                        ).apiModelName
+                    },
+                    // The Agent dialog once stored "Display:stored-id" triples;
+                    // strip one leading display-name segment back to stored form.
+                    storedModelId = { raw ->
+                        settings.customProviders.value.map { it.name }
+                            .firstOrNull { name ->
+                                raw.startsWith("$name:") &&
+                                    raw.removePrefix("$name:").contains(":")
+                            }?.let { raw.removePrefix("$it:") } ?: raw
+                    },
+                    alternateKeys = { providerName ->
+                        com.newoether.agora.api.ApiKeyRotation.alternatesFor(
+                            settings.apiKeys.value,
+                            settings.activeApiKeyIds.value,
+                            providerName,
+                            settings.resolveActiveKey(providerName),
+                        )
+                    },
+                ),
             ),
             customProviders = { settings.customProviders.value },
         ).also { gm ->

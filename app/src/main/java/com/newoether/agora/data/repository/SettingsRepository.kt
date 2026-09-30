@@ -180,6 +180,8 @@ class SettingsRepository(
     val webSearchApiKeys: StateFlow<Map<String, String>> = hot(settingsManager.webSearchApiKeys, emptyMap())
     val webSearchNumResults: StateFlow<Int> = hot(settingsManager.webSearchNumResults, 5)
     val webSearchBaseUrl: StateFlow<String> = hot(settingsManager.webSearchBaseUrl, "")
+    /** Agent-mode store (mode, workspace folder, ensemble models). */
+    val agentSettings = settingsManager.agentPreferenceStore
     val imageGenEnabled: StateFlow<Boolean> = hot(settingsManager.imageGenEnabled, false)
     val imageGenModel: StateFlow<String?> = hot(settingsManager.imageGenModel, null)
     val imageGenSize: StateFlow<String> = hot(settingsManager.imageGenSize, "1024x1024")
@@ -220,7 +222,7 @@ class SettingsRepository(
     val blurEffectsEnabled: StateFlow<Boolean> = hot(settingsManager.blurEffectsEnabled, true)
     val reduceMotion: StateFlow<Boolean> = hot(settingsManager.reduceMotion, false)
     val stickToBottom: StateFlow<Boolean> = hot(settingsManager.stickToBottom, true)
-    val parseInlineDollarMath: StateFlow<Boolean> = hot(settingsManager.parseInlineDollarMath, false)
+    val parseInlineDollarMath: StateFlow<Boolean> = hot(settingsManager.parseInlineDollarMath, true)
     val autoWrapCodeBlocks: StateFlow<Boolean> = hot(settingsManager.autoWrapCodeBlocks, true)
     val hapticsEnabled: StateFlow<Boolean> = hot(settingsManager.hapticsEnabled, true)
     val detailedTokenUsage: StateFlow<Boolean> = hot(settingsManager.detailedTokenUsage, false)

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Agora</string>
+    <string name="app_name">AgentX</string>
     <string name="agora_responded">Agora responded</string>
 
     <!-- Chat Bottom Bar -->
@@ -610,7 +610,8 @@
     <string name="shell_confirm_setting">Confirm Remote Shell Actions</string>
     <string name="shell_confirm_setting_desc">Ask before the assistant runs commands or writes files on remote SSH/Conch servers</string>
     <string name="shell_confirm_notification_channel">Command approval</string>
-    <string name="shell_confirm_notification_desc">Asks you to allow or deny a remote command while Agora is in the background</string>
+    <string name="shell_confirm_notification_desc">Asks you to allow or deny a remote command while Agora is in the background</string>
+
     <string name="ask_user_title">The assistant is asking</string>
     <string name="ask_user_send">Send</string>
     <string name="ask_user_next">Next</string>
@@ -651,7 +652,8 @@
     <string name="context_compact_select_available_model">Select an available model</string>
     <string name="context_compact_prompt_empty">Prompt cannot be empty</string>
     <string name="context_compact_retain_invalid">Enter a valid retained message count</string>
-    <string name="context_usage_messages">~%1$s / %2$s tokens</string>
+    <string name="context_usage_messages">~%1$s / %2$s tokens</string>
+
     <string name="context_part_system">System prompt</string>
     <string name="context_part_tools">Tools</string>
     <string name="context_part_messages">Messages</string>

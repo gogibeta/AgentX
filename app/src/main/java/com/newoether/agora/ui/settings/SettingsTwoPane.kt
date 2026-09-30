@@ -368,6 +368,7 @@ internal fun SettingsDestination(
         "interaction" -> SettingsInteractionPage(viewModel, onBack)
         "mcp" -> SettingsMcpPage(viewModel, onBack)
         "automation" -> SettingsAutomationPage(viewModel, onBack)
+        "agent" -> SettingsAgentPage(viewModel, onBack)
         "proxy" -> SettingsProxyPage(viewModel, onBack)
         "webui" -> SettingsWebUiPage(viewModel, onBack)
         "language" -> SettingsLanguagePage(viewModel, onBack)

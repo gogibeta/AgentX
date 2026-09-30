@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><resources>
-    <string name="app_name">Agora</string>
+    <string name="app_name">AgentX</string>
     <string name="agora_responded">Agora ответила</string>
 
     <!-- Chat Bottom Bar -->
@@ -563,7 +563,8 @@
     <string name="shell_confirm_setting">Подтверждать действия удалённой оболочки</string>
     <string name="shell_confirm_setting_desc">Спрашивать перед тем, как ассистент выполнит команды или запишет файлы на удалённых серверах SSH/Conch</string>
     <string name="shell_confirm_notification_channel">Подтверждение команд</string>
-    <string name="shell_confirm_notification_desc">Запрашивает разрешение или запрет удалённой команды, пока Agora в фоновом режиме</string>
+    <string name="shell_confirm_notification_desc">Запрашивает разрешение или запрет удалённой команды, пока Agora в фоновом режиме</string>
+
     <string name="ask_user_title">Ассистент спрашивает</string>
     <string name="ask_user_send">Отправить</string>
     <string name="ask_user_next">Далее</string>
@@ -666,7 +667,8 @@
     <string name="thinking_segment_display_card">Карточка</string>
     <string name="thinking_segment_display_bottom_sheet">Нижняя панель</string>
     <string name="thinking_segments_title">Сегменты рассуждений</string>
-    <string name="context_usage_messages">~%1$s / %2$s токенов</string>
+    <string name="context_usage_messages">~%1$s / %2$s токенов</string>
+
     <string name="context_part_system">Системный промпт</string>
     <string name="context_part_tools">Инструменты</string>
     <string name="context_part_messages">Сообщения</string>

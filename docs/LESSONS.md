@@ -1,0 +1,54 @@
+# LESSONS.md — hard-won rules for this repo (append-only, never rewrite)
+
+## Build / test
+- Gradle builds take 1.5–9 min; full unit suite ~35 min on this machine. Long
+  `bash` calls get killed by the tool wrapper → launch detached via a `.ps1`
+  script (`Start-Process powershell -File ...`) and poll the output file.
+- `verifyKotlinFileSize`: handwritten files modified-vs-HEAD must stay ≤ 800
+  lines. New features go in NEW files; giant prefs surfaces get the
+  `*PreferenceStore` slice pattern (see `SettingsAgentPreferenceStore`).
+- NEVER edit `SettingsManager.kt` / `SettingsRepository.kt` beyond the cap:
+  they sit at ~800 lines; any addition trips `new_oversized_source`.
+- Robolectric 4.16 CANNOT construct `android.graphics.pdf.PdfDocument`
+  (`startPage` throws "document is closed" even on a fresh instance) → keep
+  PDF tests to pure layout/parse functions; verify real PDFs on device with
+  PyMuPDF rendering.
+- Editing `res/values-*/` mid-test-run can deadlock the test worker; batch
+  locale edits when Gradle is idle. New strings MUST go in ALL locales —
+  `SettingsResourceContractTest` enforces key parity.
+- PowerShell mangles `adb exec-out` binary screenshots and nested quoting →
+  `screencap -p /sdcard/x.png` + `adb pull`, and drive device text via a
+  Python subprocess script (single argv, sh single-quotes need no escapes).
+
+## Kotlin gotchas that actually bit
+- `Regex.replace` interprets `\r` in the REPLACEMENT (`\rightarrow` loses its
+  backslash) → use literal `String.replace` or `Regex.escapeReplacement`.
+- `$` inside Kotlin strings needs `\$` (tests too: `"\$x"`).
+- `companion object` is illegal inside `object` (use private top-level vals).
+- `ModelId.apiModelName` is an EXTENSION (`import ...apiModelName`), not a member.
+- `requireNotNull(x, msg)` needs a lambda message; `buildJsonArray` needs
+  explicit `add` import; `Paints`-style private types can't leak via internals.
+
+## Architecture truths (device-proven 29–30 Sep 2026)
+- The LIVE shell path is `executeShellCommandEvents`, not `executeShellCommand`
+  (which only serves background jobs). Any shell behavior change needs BOTH.
+- `GenerationRequestBuilder.resolveProviderKey` + `agentSnapshot()` must be
+  mock-safe (`runCatching` → defaults): strict mockk tests stub
+  `resolveActiveKey()` only, never the StateFlows.
+- `DebugLog.init` must not touch `context.applicationContext`: strict Context
+  mocks stub `applicationInfo` only.
+- Custom-model IDs are `providerId:model`; the Agent dialog must store values
+  as-is, never re-prefix with the display name (router 404s on triples).
+- `TypeSafeClient.canonicalBaseUrl` strips one trailing `/v1`: official base
+  `api.typesafe.ai` and router bases `.../v1` both resolve correctly.
+- `PdfDocument` pages go stale after `finishPage`: draw helpers must take a
+  `pageProvider: () -> Page` lambda, never a captured page.
+- Local Sandbox needs `libproot_exec.so` + loader + talloc from CI
+  (`build-proot.sh` runs on Linux only). No WSL/make here → recover prebuilts
+  from the upstream release APK into gitignored `app/src/main/jniLibs/`.
+- `adb install -r` preserves all user data (same debug signature). Never
+  `uninstall` a user's phone to reinstall.
+- `uiautomator dump` beats screenshots for navigation (text+coords); screenshots
+  only for VISUAL verification (rendering, PDF pages via PyMuPDF).
+- Dismiss the keyguard (`wm dismiss-keyguard`) after reinstall; enable Stay
+  Awake in dev options to stop the phone locking mid-test.

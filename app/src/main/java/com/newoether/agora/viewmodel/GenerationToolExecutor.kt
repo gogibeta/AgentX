@@ -12,6 +12,8 @@ import com.newoether.agora.model.RunEffectIdentity
 import com.newoether.agora.model.ToolCallData
 import com.newoether.agora.model.ToolExecutionStates
 import com.newoether.agora.sandbox.SandboxManagerFactory
+import com.newoether.agora.tool.ArtifactToolProvider
+import com.newoether.agora.tool.CompactAssistToolProvider
 import com.newoether.agora.tool.ImageGenToolProvider
 import com.newoether.agora.tool.MemoryToolProvider
 import com.newoether.agora.tool.SkillToolProvider
@@ -103,6 +105,8 @@ internal class GenerationToolExecutor private constructor(
                     RagToolProvider(conversations),
                     imageGenProvider,
                     shellProvider,
+                    ArtifactToolProvider(app),
+                    CompactAssistToolProvider(),
                 ) + additionalProviders,
                 imageGenProvider = imageGenProvider,
             )
@@ -198,6 +202,11 @@ internal class GenerationToolExecutor private constructor(
             toolName = call.name,
             defaultTimeoutMs = call.context.toolTimeoutMs,
         )
+        com.newoether.agora.util.DebugLog.event(
+            "ToolCall",
+            mapOf("tool" to call.name, "argsChars" to completeArguments.length.toString()),
+            "tool invoked",
+        )
         val result = try {
             val provider = providers.firstOrNull { it.handles(call.name) }
                 ?: return call.result(
@@ -239,6 +248,15 @@ internal class GenerationToolExecutor private constructor(
                 isError = true,
             )
         }
+        com.newoether.agora.util.DebugLog.event(
+            "ToolResult",
+            mapOf(
+                "tool" to call.name,
+                "isError" to result.isError.toString(),
+                "resultChars" to result.text.length.toString(),
+            ),
+            if (result.isError) result.text.take(400) else "ok",
+        )
         return call.result(result)
     }
 

@@ -55,6 +55,18 @@ object CrashReporter {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             runCatching { writeReport(appContext, throwable) }
+            // Persist the crash into the on-device diagnostics log too, so it is
+            // recoverable without USB even if the crash-report upload never runs.
+            runCatching {
+                FileLog.event(
+                    "FATAL", "UncaughtException",
+                    mapOf(
+                        "thread" to thread.name,
+                        "exception" to throwable.javaClass.name,
+                    ),
+                    DebugLog.safeThrowableSummary(throwable),
+                )
+            }
             // Always chain to the platform handler so the process dies as it normally would.
             previous?.uncaughtException(thread, throwable)
         }

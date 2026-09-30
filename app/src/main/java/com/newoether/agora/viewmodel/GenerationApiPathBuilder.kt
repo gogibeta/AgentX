@@ -129,6 +129,7 @@ internal class GenerationApiPathBuilder(
                         config.providerName == Constants.PROVIDER_OPENCODE_GO
                     },
                     requestResolver = config.requestResolver,
+                    alternateApiKeys = config.alternateApiKeys,
                 ),
             )
         }

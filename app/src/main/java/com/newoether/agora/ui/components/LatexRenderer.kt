@@ -411,8 +411,11 @@ fun renderLatexToBitmap(
     fallbackH: Int = 200,
     minW: Int = 0,
 ): Bitmap? {
+    // Chemistry + physics macros have no JLaTeXMath support — normalize first so they
+    // render as math instead of throwing into the text fallback.
+    val normalized = normalizeLatexForRender(latex)
     return try {
-        val drawable = JLatexMathDrawable.builder(latex)
+        val drawable = JLatexMathDrawable.builder(normalized)
             .textSize(textSize)
             .color(color)
             .build()
@@ -460,7 +463,7 @@ internal fun axisCenteringPadding(axisY: Float, height: Int): AxisPadding {
 
 fun canRenderLatex(latex: String): Boolean {
     return try {
-        JLatexMathDrawable.builder(latex).textSize(48f).color(0).build()
+        JLatexMathDrawable.builder(normalizeLatexForRender(latex)).textSize(48f).color(0).build()
         true
     } catch (_: Exception) { false }
 }
@@ -617,7 +620,7 @@ private object LatexBitmapCache {
             fallbackW = fw,
             fallbackH = fh,
             minW = 0,
-        ) ?: renderTextToBitmap("$${key.latex}$", key.textSize, key.color)
+        ) ?: renderTextToBitmap(plainTextFallback(key.latex), key.textSize, key.color)
     }
 }
 

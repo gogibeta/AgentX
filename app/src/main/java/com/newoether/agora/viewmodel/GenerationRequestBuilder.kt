@@ -77,7 +77,14 @@ class GenerationRequestBuilder(
      *  Reports the problem through [report] and returns null when the provider is not configured. */
     internal fun resolveProviderKey(modelId: String, report: (String) -> Unit): ProviderKey? {
         val providerName = providerRegistry.providerForModel(modelId)
-        val activeKey = settings.resolveActiveKey(providerName) ?: ""
+        // Round-robin across the provider's keys so parallel work spreads over
+        // rate limits; retries fail over via GenerationConfig.alternateApiKeys.
+        // Strict test mocks stub resolveActiveKey() only, so fall back to it.
+        val activeKey = runCatching {
+            com.newoether.agora.api.ApiKeyRotation.pickForRequest(
+                settings.apiKeys.value, settings.activeApiKeyIds.value, providerName,
+            )
+        }.getOrNull() ?: settings.resolveActiveKey(providerName) ?: ""
         if (!providerRegistry.isConfigured(providerName, activeKey)) {
             val displayProviderName = providerDisplayName(
                 providerName,
@@ -198,6 +205,26 @@ class GenerationRequestBuilder(
         model ?: return null
         return providerRegistry.getEffectiveBaseUrl(providerRegistry.providerForModel(model))
     }
+
+    private data class AgentSnapshot(
+        val mode: String = "off",
+        val workspaceUri: String = "",
+        val models: List<String> = emptyList(),
+        val env: Map<String, String> = emptyMap(),
+    )
+
+    /**
+     * Agent prefs live in a separate store read through one accessor; strict mocks
+     * of SettingsRepository in tests don't stub it, so fail closed to chat ("off").
+     */
+    private fun agentSnapshot(): AgentSnapshot = runCatching {
+        AgentSnapshot(
+            mode = settings.agentSettings.agentMode.value,
+            workspaceUri = settings.agentSettings.agentWorkspaceUri.value,
+            models = settings.agentSettings.agentModels.value,
+            env = settings.agentSettings.agentEnv.value,
+        )
+    }.getOrDefault(AgentSnapshot())
 
     // Image generation reuses the selected model's provider credentials (mirrors transcription).
     private fun resolveImageGenModelId(model: String?): String =
@@ -510,6 +537,11 @@ class GenerationRequestBuilder(
             providerName = providerName,
             modelId = ModelId.parse(providerRegistry.canonicalModelId(modelId)).modelName,
             apiKey = activeKey,
+            alternateApiKeys = runCatching {
+                com.newoether.agora.api.ApiKeyRotation.alternatesFor(
+                    settings.apiKeys.value, settings.activeApiKeyIds.value, providerName, activeKey,
+                )
+            }.getOrDefault(emptyList()),
             effectiveSystemPrompt = resolvedSystemPrompt,
             maxContextWindow = ContextBudget.normalize(
                 effectiveSettings.contextWindow ?: settings.maxContextWindow.value
@@ -588,7 +620,13 @@ class GenerationRequestBuilder(
             ),
             transcriptionModelId = resolveTranscriptionModelId(transcriptionModel),
             transcriptionApiKey = resolveTranscriptionApiKey(transcriptionModel),
-            transcriptionBaseUrl = resolveTranscriptionBaseUrl(transcriptionModel)
+            transcriptionBaseUrl = resolveTranscriptionBaseUrl(transcriptionModel),
+            agentMode = agentSnapshot().mode,
+            agentWorkspaceUri = agentSnapshot().workspaceUri,
+            agentModels = agentSnapshot().models,
+            agentEnv = agentSnapshot().env,
+            typeSafeApiKey = settings.resolveActiveKey(Constants.PROVIDER_TYPESAFE) ?: "",
+            typeSafeBaseUrl = providerRegistry.getEffectiveBaseUrl(Constants.PROVIDER_TYPESAFE),
         )
         return Pair(config, genCtx)
     }

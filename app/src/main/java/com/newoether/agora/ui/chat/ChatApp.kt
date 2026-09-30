@@ -733,6 +733,8 @@ fun ChatApp(
                         // The model row owns its selection tick. Repeating it here produced the
                         // previous double buzz for one physical tap.
                         onModelSelect = { viewModel.setActiveModel(it) },
+                        agentMode = viewModel.settings.agentSettings.agentMode.collectAsState().value,
+                        onAgentModeChange = { viewModel.settings.agentSettings.setAgentMode(it) },
                         onAllMediaClick = { urls, idx -> onMediaClick(urls, idx) },
                         onFileContentClick = { name, content -> viewModel.mediaPreview.showFile(name, content) },
                         modifier = Modifier,

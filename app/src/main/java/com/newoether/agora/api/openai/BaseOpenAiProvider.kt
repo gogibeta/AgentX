@@ -176,7 +176,6 @@ abstract class BaseOpenAiProvider : LlmProvider {
             }
 
             val headers = mutableMapOf("Content-Type" to "application/json")
-            if (config.apiKey.isNotBlank()) headers["Authorization"] = "Bearer ${config.apiKey}"
             for ((key, value) in getExtraHeaders(config)) headers[key] = value
 
             val maxAttempts = ProviderRetryPolicy.MAX_ATTEMPTS
@@ -185,6 +184,14 @@ abstract class BaseOpenAiProvider : LlmProvider {
 
             while (attempt < maxAttempts && !finished) {
                 attempt++
+                // Key rotation: attempt 1 uses the picked key, retries rotate
+                // through alternates — a dead/rate-limited key auto-fails over.
+                val attemptKey =
+                    com.newoether.agora.api.ApiKeyRotation.keyForAttempt(
+                        config.apiKey, config.alternateApiKeys, attempt,
+                    )
+                if (attemptKey.isNotBlank()) headers["Authorization"] = "Bearer $attemptKey"
+                else headers.remove("Authorization")
                 var endpointIndex = 0
                 var retryScheduled = false
 

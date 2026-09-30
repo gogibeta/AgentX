@@ -21,6 +21,8 @@ data class GenerationConfig(
     val providerName: String,
     val modelId: String,
     val apiKey: String,
+    /** Failover keys for [apiKey] (same provider). Transport rotates per retry. */
+    val alternateApiKeys: List<String> = emptyList(),
     val effectiveSystemPrompt: String?,
     /** Optional API-only USER invocation appended to the initial Provider request. */
     val initialUserPrompt: String? = null,
@@ -97,7 +99,18 @@ data class GenerationContext(
     val transcriptionAnthropicCacheTtl: String = "1h",
     /** Wall-clock budget for a single tool execution; downgrades a blocking tool from a
      *  permanent generation hang to a recoverable tool error (#49). */
-    val toolTimeoutMs: Long = Constants.TOOL_EXECUTION_TIMEOUT_MS
+    val toolTimeoutMs: Long = Constants.TOOL_EXECUTION_TIMEOUT_MS,
+    /** Agent mode: "off" (chat as today), "plan" (read-only tools), "build" (all + artifacts). */
+    val agentMode: String = "off",
+    /** Persisted SAF tree URI for agent artifact output. Empty = unset (cacheDir fallback). */
+    val agentWorkspaceUri: String = "",
+    /** Ensemble models "Provider:modelId" in preference order (max 5). Empty = single model. */
+    val agentModels: List<String> = emptyList(),
+    /** TypeSafe key for Jev decisions (routing/re-rank/guardrails). Empty = Jev disabled. */
+    val typeSafeApiKey: String = "",
+    val typeSafeBaseUrl: String? = null,
+    /** Agent environment variables (name -> secret), exported into shell commands. */
+    val agentEnv: Map<String, String> = emptyMap(),
 )
 
 /** Frozen automatic-Compact policy and provider access captured with one generation. */

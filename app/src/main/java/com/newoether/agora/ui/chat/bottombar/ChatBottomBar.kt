@@ -120,6 +120,8 @@ internal fun ChatBottomBar(
     onShellToggle: (Boolean) -> Unit = {},
     onLowContextModeToggle: (Boolean) -> Unit = {},
     onModelSelect: (String) -> Unit,
+    agentMode: String = "off",
+    onAgentModeChange: (String) -> Unit = {},
     onAllMediaClick: ((urls: List<String>, index: Int) -> Unit)? = null,
     onFileContentClick: ((fileName: String, content: String) -> Unit)? = null,
     onPdfPagesClick: ((pages: List<String>, startIndex: Int) -> Unit)? = null,
@@ -365,11 +367,18 @@ internal fun ChatBottomBar(
         inputModifier = Modifier.contentReceiver(clipboardImageReceiver),
         scrollState = scrollState,
         statusContent = {
-            ComposerStatusColumn(
-                queuedSends = queuedSends,
-                onRemoveQueuedSend = onRemoveQueuedSend,
-                modifier = Modifier.zIndex(0f),
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                ComposerModeChip(
+                    agentMode = agentMode,
+                    onAgentModeChange = onAgentModeChange,
+                    modifier = Modifier.zIndex(1f),
+                )
+                ComposerStatusColumn(
+                    queuedSends = queuedSends,
+                    onRemoveQueuedSend = onRemoveQueuedSend,
+                    modifier = Modifier.zIndex(0f),
+                )
+            }
         },
         attachmentContent = {
         if (composerSnapshot.attachments.isNotEmpty()) {

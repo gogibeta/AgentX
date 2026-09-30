@@ -6,6 +6,7 @@ import com.newoether.agora.util.DebugLog
 import com.newoether.agora.util.SecretCrypto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -89,11 +90,53 @@ data class SystemPromptEntry(
 }
 
 internal val WEB_SEARCH_PROVIDERS = setOf(
-    "duckduckgo", "brave", "kagi", "serper", "tavily", "searxng",
+    "duckduckgo", "brave", "kagi", "serper", "tavily", "searxng", "tinyfish", "fusion",
 )
 
 internal fun normalizeWebSearchProvider(provider: String?): String =
     provider?.trim()?.lowercase()?.takeIf(WEB_SEARCH_PROVIDERS::contains) ?: "duckduckgo"
+
+/** Agent modes: "off" (chat as today), "plan" (read-only tools), "build" (all tools + artifacts). */
+internal val AGENT_MODES = setOf("off", "plan", "build")
+
+internal fun normalizeAgentMode(mode: String?): String =
+    mode?.trim()?.lowercase()?.takeIf(AGENT_MODES::contains) ?: "off"
+
+internal fun decodeAgentModels(raw: String?): List<String> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return try {
+        Json.decodeFromString<List<String>>(raw).map { it.trim() }
+            .filter { it.isNotBlank() }.distinct().take(5)
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+/** Agent environment variables: name -> secret value. Encrypted at rest. */
+internal val AGENT_ENV_NAME = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
+internal const val AGENT_ENV_MAX_VARS = 50
+internal const val AGENT_ENV_MAX_VALUE_BYTES = 4096
+
+internal fun isValidAgentEnvName(name: String): Boolean =
+    name.length <= 64 && AGENT_ENV_NAME.matches(name)
+
+internal fun decodeAgentEnv(raw: String?, json: Json): Map<String, String> {
+    if (raw.isNullOrBlank()) return emptyMap()
+    return try {
+        val decrypted = SecretCrypto.decrypt(raw)
+        json.decodeFromString<Map<String, String>>(decrypted)
+            .filterKeys { isValidAgentEnvName(it) }
+    } catch (_: Exception) {
+        emptyMap()
+    }
+}
+
+internal fun encodeAgentEnv(env: Map<String, String>, json: Json): String {
+    val cleaned = env.filterKeys { isValidAgentEnvName(it) }
+        .mapValues { it.value.take(AGENT_ENV_MAX_VALUE_BYTES) }
+        .toList().take(AGENT_ENV_MAX_VARS).toMap()
+    return SecretCrypto.encrypt(json.encodeToString(cleaned))
+}
 
 internal fun decodeWebSearchApiKeys(preferences: Preferences, json: Json): Map<String, String> {
     val raw = SecretCrypto.decrypt(preferences[WEB_SEARCH_API_KEYS_JSON] ?: "{}")

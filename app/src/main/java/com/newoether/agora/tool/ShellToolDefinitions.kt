@@ -39,9 +39,19 @@ internal object ShellToolDefinitions {
                 description = "List configured shell servers including the local sandbox (if enabled).",
                 parameters = ToolParameters(properties = emptyMap(), required = emptyList())
             )))
+            if (ctx.agentEnv.isNotEmpty()) {
+                add(ToolDefinition(function = ToolFunction(
+                    name = "list_env",
+                    description = "List the names of the user's agent environment variables " +
+                        "(values stay secret). They are already exported into every shell " +
+                        "command, so use them as \$NAME in curl headers and API calls, e.g. " +
+                        "curl -H \"Authorization: Bearer \$MY_API_KEY\" https://....",
+                    parameters = ToolParameters(properties = emptyMap(), required = emptyList())
+                )))
+            }
             add(ToolDefinition(function = ToolFunction(
                 name = "execute_shell_command",
-                description = "Execute a shell command with a 64KB UTF-8 command limit, a 32KB UTF-8 workdir limit, and at most 1MB of retained foreground output. Set background=true for a durable Conch job that survives client disconnects.",
+                description = "Execute a shell command with a 64KB UTF-8 command limit, a 32KB UTF-8 workdir limit, and at most 1MB of retained foreground output. Set background=true for a durable Conch job that survives client disconnects. The user's agent environment variables (see list_env) are exported first, so reference them for authenticated API calls.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "command" to ToolProperty("string", "The shell command to execute (64KB UTF-8 maximum)."),
@@ -220,6 +230,35 @@ internal object ShellToolDefinitions {
             )
         }
 
-        return shellTools + fileTools + imageTools
+        return if (ctx.agentMode == "plan") {
+            // Plan mode (ZCode-style): read-only tools. Mutations (shell exec, job stop,
+            // file write/edit) are hidden so the model can only research, never change state.
+            (shellTools + fileTools + imageTools).filter {
+                it.function.name !in PLAN_MODE_BLOCKED_TOOLS
+            }
+        } else {
+            shellTools + fileTools + imageTools
+        }
     }
+}
+
+/** Mutating tools hidden in agent plan mode (read-only research). */
+private val PLAN_MODE_BLOCKED_TOOLS = setOf(
+    "execute_shell_command",
+    "stop_shell_job",
+    "file_write",
+    "file_edit",
+)
+
+/**
+ * Exports agent environment variables ahead of a shell command. Single-quote
+ * escaping (`'\''`) keeps arbitrary secret values intact in sh/bash/dash.
+ * Pure — unit-tested.
+ */
+internal fun withAgentEnv(command: String, env: Map<String, String>): String {
+    if (env.isEmpty()) return command
+    val exports = env.entries.joinToString(" ; ") { (name, value) ->
+        "export $name='" + value.replace("'", "'\\''") + "'"
+    }
+    return exports + " ; " + command
 }

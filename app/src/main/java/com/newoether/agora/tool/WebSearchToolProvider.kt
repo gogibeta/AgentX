@@ -7,10 +7,15 @@ import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.api.ToolFunction
 import com.newoether.agora.api.ToolParameters
 import com.newoether.agora.api.ToolProperty
+import com.newoether.agora.api.monid.MonidClient
+import com.newoether.agora.api.typesafe.AnswerGuard
+import com.newoether.agora.api.typesafe.JevDecisions
 import com.newoether.agora.util.Constants
 import com.newoether.agora.data.normalizeWebSearchProvider
 import com.newoether.agora.viewmodel.GenerationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -91,6 +96,8 @@ internal fun webSearchProviderDisplayName(provider: String): String = when (prov
     "tavily" -> "Tavily"
     "searxng" -> "SearXNG"
     "duckduckgo" -> "DuckDuckGo"
+    "tinyfish" -> "Monid TinyFish"
+    "fusion" -> "Fusion (DuckDuckGo + TinyFish)"
     else -> "Brave Search"
 }
 
@@ -124,6 +131,24 @@ class WebSearchToolProvider : ToolProvider {
                     ),
                     required = listOf("url")
                 )
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "browse_page",
+                description = "Open a web page in a fast browser view: JavaScript-rendered, " +
+                    "distilled to readable Markdown with links kept. Prefer over web_fetch " +
+                    "for JS-heavy pages, docs and articles. Returns title, url and markdown.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "url" to ToolProperty("string", "The page URL to open."),
+                        "goal" to ToolProperty(
+                            "string",
+                            "What to look for on the page (one line). Guides extraction " +
+                                "and the relevance score.",
+                        ),
+                        "maxChars" to ToolProperty("integer", "Maximum characters of markdown to return (default 8000, max 30000)."),
+                    ),
+                    required = listOf("url")
+                )
             ))
         )
     }
@@ -136,13 +161,99 @@ class WebSearchToolProvider : ToolProvider {
         when (name) {
             "web_search" -> executeWebSearch(arguments, ctx)
             "web_fetch" -> executeWebFetch(arguments, ctx)
+            "browse_page" -> executeBrowsePage(arguments, ctx)
             else -> "Unknown tool: $name"
         }
     }
 
-    override fun handles(name: String): Boolean = name in setOf("web_search", "web_fetch")
+    override fun handles(name: String): Boolean = name in setOf("web_search", "web_fetch", "browse_page")
 
-    private fun executeWebSearch(arguments: String, ctx: GenerationContext): String {
+    /**
+     * Fast in-app browser: TinyFish browser-rendered Markdown when its key is
+     * set (JS pages work), plain scraper otherwise; optional Jev Noul relevance
+     * score against [goal] when the TypeSafe key is set. Fail-open throughout.
+     */
+    private suspend fun executeBrowsePage(arguments: String, ctx: GenerationContext): String {
+        val argsStr = arguments.ifBlank { "{}" }
+        val args = try {
+            Json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(argsStr)
+        } catch (_: Exception) {
+            return buildJsonObject { put("type", "browse"); put("error", "bad_arguments") }.toString()
+        }
+        val url = (args["url"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+            ?: return buildJsonObject { put("type", "browse"); put("error", "no_url") }.toString()
+        val goal = (args["goal"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
+        val maxChars = ((args["maxChars"] as? JsonPrimitive)?.content?.toIntOrNull() ?: 8000)
+            .coerceIn(500, 30000)
+        return try {
+            // Browser-rendered Markdown first (TinyFish), scraper fallback.
+            var markdown: String? = null
+            var renderedBy = "scraper"
+            val monidKey = ctx.webSearchApiKeys["tinyfish"].orEmpty()
+            if (monidKey.isNotBlank()) {
+                markdown = try {
+                    MonidClient.fetch(monidKey, listOf(url), purpose = goal).values.firstOrNull()
+                } catch (_: Exception) {
+                    null
+                }
+                if (!markdown.isNullOrBlank()) renderedBy = "tinyfish"
+            }
+            if (markdown.isNullOrBlank()) {
+                markdown = try {
+                    val html = HttpClient.fetchModels(
+                        url,
+                        mapOf(
+                            "User-Agent" to Constants.WEB_FETCH_USER_AGENT,
+                            "Accept" to "text/html,application/xhtml+xml,*/*",
+                        ),
+                        callTimeoutMillis = Constants.NETWORK_TOOL_TIMEOUT_MS,
+                    )
+                    html?.let { htmlToReadableText(it) }
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            if (markdown.isNullOrBlank()) {
+                return buildJsonObject {
+                    put("type", "browse")
+                    put("url", url)
+                    put("error", "fetch_failed")
+                }.toString()
+            }
+            val clipped = AnswerGuard.cleanForSynthesis(markdown, maxChars)
+            // Jev relevance vs goal (one batched Noul, fail-open).
+            var relevance: Double? = null
+            if (!goal.isNullOrBlank() && JevDecisions.isConfigured(ctx.typeSafeApiKey)) {
+                relevance = try {
+                    JevDecisions.relevanceScores(
+                        apiKey = ctx.typeSafeApiKey,
+                        baseUrl = ctx.typeSafeBaseUrl,
+                        query = goal,
+                        documents = listOf(clipped.take(1500)),
+                    )?.firstOrNull()
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            buildJsonObject {
+                put("type", "browse")
+                put("url", url)
+                put("rendered_by", renderedBy)
+                if (relevance != null) put("relevance", relevance)
+                put("markdown", clipped)
+                put("truncated", markdown.length > clipped.length)
+            }.toString()
+        } catch (e: Exception) {
+            buildJsonObject {
+                put("type", "browse")
+                put("url", url)
+                put("error", "browse_error")
+                put("message", e.message ?: "")
+            }.toString()
+        }
+    }
+
+    private suspend fun executeWebSearch(arguments: String, ctx: GenerationContext): String {
         val argsStr = arguments.ifBlank { "{}" }
         val args = Json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(argsStr)
         val query = (args["query"] as? JsonPrimitive)?.content
@@ -153,33 +264,12 @@ class WebSearchToolProvider : ToolProvider {
         return try {
             // DuckDuckGo is a scraper, not an API — handle it separately.
             if (provider == "duckduckgo") {
-                val scraper = DuckDuckGoScraper(webClient)
-                return when (val r = scraper.search(query, numResults)) {
-                    is DuckDuckGoScraper.SearchResponse.Success -> {
-                        val rawResults = buildJsonArray {
-                            r.results.forEach { result ->
-                                add(buildJsonObject {
-                                    put("title", result.title)
-                                    put("url", result.url)
-                                    put("description", result.snippet)
-                                })
-                            }
-                        }
-                        buildJsonObject {
-                            put("type", "web_search")
-                            put("query", query)
-                            put("results", rawResults)
-                        }.toString()
-                    }
-                    is DuckDuckGoScraper.SearchResponse.Error -> {
-                        buildJsonObject {
-                            put("type", "web_search")
-                            put("query", query)
-                            put("error", r.type.name.lowercase())
-                            put("message", r.message)
-                        }.toString()
-                    }
-                }
+                return duckDuckGoSearch(query, numResults)
+            }
+
+            // Monid TinyFish (free live search) and Fusion (DDG + TinyFish).
+            if (provider == "tinyfish" || provider == "fusion") {
+                return tinyFishSearch(query, numResults, ctx, fuseWithDuckDuckGo = provider == "fusion")
             }
 
             val apiKey = ctx.webSearchApiKeys[provider].orEmpty()
@@ -308,6 +398,149 @@ class WebSearchToolProvider : ToolProvider {
         }
     }
 
+    private fun duckDuckGoSearch(query: String, numResults: Int): String {
+        val scraper = DuckDuckGoScraper(webClient)
+        return when (val r = scraper.search(query, numResults)) {
+            is DuckDuckGoScraper.SearchResponse.Success -> {
+                hitsToJson(
+                    query,
+                    r.results.map {
+                        MonidClient.WebHit(it.title, it.url, it.snippet, "duckduckgo")
+                    },
+                )
+            }
+            is DuckDuckGoScraper.SearchResponse.Error -> {
+                buildJsonObject {
+                    put("type", "web_search")
+                    put("query", query)
+                    put("error", r.type.name.lowercase())
+                    put("message", r.message)
+                }.toString()
+            }
+        }
+    }
+
+    /** DuckDuckGo hits for fusion; null when the scraper fails (fusion tolerates it). */
+    private fun duckDuckGoHitsOrNull(query: String, numResults: Int): List<MonidClient.WebHit>? {
+        return try {
+            val scraper = DuckDuckGoScraper(webClient)
+            when (val r = scraper.search(query, numResults)) {
+                is DuckDuckGoScraper.SearchResponse.Success ->
+                    r.results.map { MonidClient.WebHit(it.title, it.url, it.snippet, "duckduckgo") }
+                is DuckDuckGoScraper.SearchResponse.Error -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private suspend fun tinyFishSearch(
+        query: String,
+        numResults: Int,
+        ctx: GenerationContext,
+        fuseWithDuckDuckGo: Boolean,
+    ): String {
+        val apiKey = ctx.webSearchApiKeys["tinyfish"].orEmpty()
+        if (apiKey.isBlank()) {
+            // Fusion without a key degrades to plain DuckDuckGo instead of erroring.
+            if (fuseWithDuckDuckGo) return duckDuckGoSearch(query, numResults)
+            return buildJsonObject {
+                put("type", "web_search")
+                put("query", query)
+                put("error", "no_api_key")
+                put("provider", webSearchProviderDisplayName("tinyfish"))
+            }.toString()
+        }
+        return try {
+            val hits = if (!fuseWithDuckDuckGo) {
+                MonidClient.search(apiKey, query, numResults)
+            } else {
+                // Fan out in parallel; TinyFish-first interleave with URL dedupe.
+                coroutineScope {
+                    val tiny = async {
+                        runCatching { MonidClient.search(apiKey, query, numResults) }
+                            .getOrNull().orEmpty()
+                    }
+                    val ddg = async { duckDuckGoHitsOrNull(query, numResults).orEmpty() }
+                    val fused = MonidClient.fuseDedupe(tiny.await(), ddg.await(), numResults)
+                    // Jev re-rank (one batched Noul call, fail-open): sort by answer
+                    // probability, never drop — a Jev miss must not lose results.
+                    if (JevDecisions.isConfigured(ctx.typeSafeApiKey)) {
+                        rerankWithJev(query, fused, ctx) ?: fused
+                    } else {
+                        fused
+                    }
+                }
+            }
+            if (hits.isEmpty()) {
+                return buildJsonObject {
+                    put("type", "web_search")
+                    put("query", query)
+                    put("error", "no_results")
+                }.toString()
+            }
+            hitsToJson(query, hits)
+        } catch (e: MonidClient.MonidAuthException) {
+            buildJsonObject {
+                put("type", "web_search")
+                put("query", query)
+                put("error", "invalid_api_key")
+                put("provider", webSearchProviderDisplayName("tinyfish"))
+            }.toString()
+        } catch (e: Exception) {
+            buildJsonObject {
+                put("type", "web_search")
+                put("query", query)
+                put("error", "search_error")
+                put("message", e.message ?: "")
+            }.toString()
+        }
+    }
+
+    /**
+     * Jev re-rank of fused hits: one batched Noul call ("does this answer the
+     * query?"), stable sort by probability. Returns null on any Jev failure so
+     * the caller keeps fusion order. Never drops hits.
+     */
+    private suspend fun rerankWithJev(
+        query: String,
+        hits: List<MonidClient.WebHit>,
+        ctx: GenerationContext,
+    ): List<MonidClient.WebHit>? {
+        if (hits.size < 2) return hits
+        return try {
+            val scores = JevDecisions.relevanceScores(
+                apiKey = ctx.typeSafeApiKey,
+                baseUrl = ctx.typeSafeBaseUrl,
+                query = query,
+                documents = hits.map { "${it.title}\n${it.snippet}" },
+            ) ?: return null
+            if (scores.size != hits.size) return null
+            hits.mapIndexed { index, hit -> hit to scores[index] }
+                .sortedByDescending { (_, score) -> score }
+                .map { (hit, _) -> hit }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun hitsToJson(query: String, hits: List<MonidClient.WebHit>): String {        val rawResults = buildJsonArray {
+            hits.forEach { result ->
+                add(buildJsonObject {
+                    put("title", result.title)
+                    put("url", result.url)
+                    put("description", result.snippet)
+                    put("source", result.source)
+                })
+            }
+        }
+        return buildJsonObject {
+            put("type", "web_search")
+            put("query", query)
+            put("results", rawResults)
+        }.toString()
+    }
+
     private suspend fun executeWebFetch(arguments: String, ctx: GenerationContext): String {
         val argsStr = arguments.ifBlank { "{}" }
         val args = Json.decodeFromString<Map<String, kotlinx.serialization.json.JsonElement>>(argsStr)
@@ -318,6 +551,30 @@ class WebSearchToolProvider : ToolProvider {
         } catch (_: Exception) { null } ?: 8000).coerceIn(1, 100_000)
 
         return try {
+            // TinyFish browser-rendered fetch first (handles JS pages the scraper
+            // cannot); any failure falls through to the plain scraper below.
+            val fetchProvider = normalizeWebSearchProvider(ctx.webSearchProvider)
+            if (fetchProvider == "tinyfish" || fetchProvider == "fusion") {
+                val monidKey = ctx.webSearchApiKeys["tinyfish"].orEmpty()
+                if (monidKey.isNotBlank()) {
+                    try {
+                        val fetched = MonidClient.fetch(monidKey, listOf(url))
+                        val text = fetched.values.firstOrNull()
+                        if (!text.isNullOrBlank()) {
+                            val clipped = text.take(maxChars)
+                            return buildJsonObject {
+                                put("type", "web_fetch")
+                                put("url", url)
+                                put("text", clipped)
+                                put("truncated", text.length > clipped.length)
+                                put("totalChars", text.length)
+                            }.toString()
+                        }
+                    } catch (_: Exception) {
+                        // Fall through to the scraper.
+                    }
+                }
+            }
             val html = HttpClient.fetchModels(url, mapOf(
                 "User-Agent" to Constants.WEB_FETCH_USER_AGENT,
                 "Accept" to "text/html,application/xhtml+xml,*/*"

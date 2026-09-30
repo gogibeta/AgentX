@@ -35,9 +35,10 @@ class WebSearchToolProviderTest {
     @Test
     fun definitions_whenEnabled_returnsTwoTools() {
         val defs = provider.definitions(enabledCtx)
-        assertEquals(2, defs.size)
+        assertEquals(3, defs.size)
         assertEquals("web_search", defs[0].function.name)
         assertEquals("web_fetch", defs[1].function.name)
+        assertEquals("browse_page", defs[2].function.name)
     }
 
     @Test

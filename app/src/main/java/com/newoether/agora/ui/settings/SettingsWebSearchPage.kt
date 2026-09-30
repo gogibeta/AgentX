@@ -83,6 +83,8 @@ fun SettingsWebSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             "kagi" -> stringResource(R.string.web_search_kagi)
                                             "serper" -> stringResource(R.string.web_search_serper)
                                             "tavily" -> stringResource(R.string.web_search_tavily)
+                                            "tinyfish" -> stringResource(R.string.web_search_tinyfish)
+                                            "fusion" -> stringResource(R.string.web_search_fusion)
                                             "duckduckgo" -> stringResource(R.string.web_search_duckduckgo)
                                             else -> stringResource(R.string.web_search_brave)
                                         }
@@ -111,6 +113,8 @@ fun SettingsWebSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                         "kagi" -> R.string.web_search_kagi_key
                                                         "serper" -> R.string.web_search_serper_key
                                                         "tavily" -> R.string.web_search_tavily_key
+                                                        "tinyfish" -> R.string.web_search_tinyfish_key
+                                                        "fusion" -> R.string.web_search_fusion_key
                                                         else -> R.string.web_search_brave_key
                                                     }
                                                 ),
@@ -123,14 +127,16 @@ fun SettingsWebSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                     onValueChange = { apiKeyText = it; viewModel.settings.setWebSearchApiKey(webSearchProvider, it) },
                                                     placeholder = {
                                                         Text(
-                                                            stringResource(
-                                                                when (webSearchProvider) {
-                                                                    "kagi" -> R.string.web_search_kagi_key_hint
-                                                                    "serper" -> R.string.web_search_serper_key_hint
-                                                                    "tavily" -> R.string.web_search_tavily_key_hint
-                                                                    else -> R.string.web_search_brave_key_hint
-                                                                }
-                                                            )
+                                                        stringResource(
+                                                            when (webSearchProvider) {
+                                                                "kagi" -> R.string.web_search_kagi_key_hint
+                                                                "serper" -> R.string.web_search_serper_key_hint
+                                                                "tavily" -> R.string.web_search_tavily_key_hint
+                                                                "tinyfish" -> R.string.web_search_tinyfish_key_hint
+                                                                "fusion" -> R.string.web_search_fusion_key_hint
+                                                                else -> R.string.web_search_brave_key_hint
+                                                            }
+                                                        )
                                                         )
                                                     },
                                                     visualTransformation = secretVisualTransformation(keyVisible),
@@ -276,7 +282,9 @@ fun SettingsWebSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         "kagi" to R.string.web_search_kagi,
                         "serper" to R.string.web_search_serper,
                         "tavily" to R.string.web_search_tavily,
-                        "searxng" to R.string.web_search_searxng
+                        "searxng" to R.string.web_search_searxng,
+                        "tinyfish" to R.string.web_search_tinyfish,
+                        "fusion" to R.string.web_search_fusion
                     )
                     providers.forEach { (key, labelRes) ->
                         SettingsItem(
@@ -290,6 +298,8 @@ fun SettingsWebSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             "serper" -> R.string.web_search_serper_desc
                                             "tavily" -> R.string.web_search_tavily_desc
                                             "searxng" -> R.string.web_search_searxng_desc
+                                            "tinyfish" -> R.string.web_search_tinyfish_desc
+                                            "fusion" -> R.string.web_search_fusion_desc
                                             "duckduckgo" -> R.string.web_search_duckduckgo_desc
                                             else -> R.string.web_search_brave_desc
                                         }

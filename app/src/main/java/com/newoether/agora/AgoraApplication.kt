@@ -59,6 +59,9 @@ class AgoraApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Start the persistent on-device diagnostics log first so every later
+        // step (crash install, DB gate, requests) is captured from t=0.
+        com.newoether.agora.util.FileLog.start(this)
         CrashReporter.install(this)
         // The context indicator counts remote models' text with a real vocabulary once it is in
         // memory. Loading it in its own job keeps the first estimate off the heuristic without

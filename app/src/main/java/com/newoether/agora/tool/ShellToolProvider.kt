@@ -20,6 +20,8 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -144,6 +146,7 @@ class ShellToolProvider(
     override suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String {
         return when (name) {
             "list_shells" -> listShells(ctx)
+            "list_env" -> listEnv(ctx)
             "execute_shell_command" -> executeShellCommand(arguments, ctx)
             "list_shell_jobs" -> durableJobs.listShellJobs(arguments, ctx)
             "get_shell_job" -> durableJobs.getShellJob(arguments, ctx)
@@ -175,13 +178,19 @@ class ShellToolProvider(
     }
 
     override fun handles(name: String): Boolean = name in setOf(
-        "list_shells", "execute_shell_command",
+        "list_shells", "list_env", "execute_shell_command",
         "list_shell_jobs", "get_shell_job", "wait_for_job", "stop_shell_job",
         "file_read", "file_write", "file_edit", "file_glob", "file_grep", "view_image"
     )
 
-    // ── list_shells ────────────────────────────────────────
+    /** Names only — values are secret but already exported into shell commands. */
+    private fun listEnv(ctx: GenerationContext): String = buildJsonObject {
+        put("type", "env")
+        put("names", buildJsonArray { ctx.agentEnv.keys.sorted().forEach { add(it) } })
+        put("count", ctx.agentEnv.size)
+    }.toString()
 
+    // ── list_shells ────────────────────────────────────────
     private suspend fun listShells(ctx: GenerationContext): String {
         val items = buildList {
             val sandboxOk = ctx.sandboxEnabled && sandbox?.isAvailable() == true
@@ -239,9 +248,18 @@ class ShellToolProvider(
                 server = serverName,
                 command = command,
             )).coerceIn(1000, timeoutMax)
+        // Agent environment variables are exported ahead of the command so API
+        // keys the user stored in Settings -> Agent -> Env vars work in
+        // curl/headers (sandbox sh, Conch and SSH shells alike). Confirmation
+        // previews keep showing the original command for readability.
+        val effectiveCommand = withAgentEnv(command, ctx.agentEnv)
+        com.newoether.agora.util.DebugLog.event(
+            "ShellEnv",
+            mapOf("envCount" to ctx.agentEnv.size.toString(), "server" to serverName),
+            "shell dispatch",
+        )
         if (background) {
-            val backend = getConchBackend(serverName, ctx)
-                ?: return jsonError(
+            val backend = getConchBackend(serverName, ctx)                ?: return jsonError(
                     "execute_shell_command",
                     conchServerNotFoundMessage(serverName, ctx),
                     server = serverName,
@@ -256,7 +274,7 @@ class ShellToolProvider(
                         command = command,
                     )
                 }
-                backend.startJob(command, workdir, timeoutMs)
+                backend.startJob(effectiveCommand, workdir, timeoutMs)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
@@ -289,12 +307,12 @@ class ShellToolProvider(
             if (backend is ConchBackend) {
                 durableJobs.executeDurableForeground(
                     backend = backend,
-                    command = command,
+                    command = effectiveCommand,
                     workdir = workdir,
                     waitMs = timeoutMs.coerceAtMost(maxWaitMs(ctx)),
                 )
             } else {
-                backend.executeCommand(command, workdir, timeoutMs)
+                backend.executeCommand(effectiveCommand, workdir, timeoutMs)
             }
         } finally {
             backend.close()
@@ -375,6 +393,9 @@ class ShellToolProvider(
                 )
                 return@flow
             }).coerceIn(1000, foregroundMaxMs)
+        // Same agent-env export as executeShellCommand: the streaming path is
+        // the live one (GenerationToolExecutor uses executeEvents).
+        val effectiveCommand = withAgentEnv(command, ctx.agentEnv)
         val backend = getBackend(serverName, ctx)
         if (backend == null) {
             emit(
@@ -416,7 +437,7 @@ class ShellToolProvider(
                     ToolExecutionEvent.Completed(
                         durableJobs.executeDurableForeground(
                             backend = backend,
-                            command = command,
+                            command = effectiveCommand,
                             workdir = workdir,
                             waitMs = timeoutMs.coerceAtMost(maxWaitMs(ctx)),
                             onOutput = { delta ->
@@ -427,7 +448,7 @@ class ShellToolProvider(
                 )
             } else {
                 emit(ToolExecutionEvent.Progress("Running command"))
-                backend.executeCommandEvents(command, workdir, timeoutMs).collect { emit(it) }
+                backend.executeCommandEvents(effectiveCommand, workdir, timeoutMs).collect { emit(it) }
             }
         } finally {
             backend.close()

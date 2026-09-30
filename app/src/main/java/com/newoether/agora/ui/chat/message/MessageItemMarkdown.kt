@@ -404,7 +404,12 @@ private fun LazyMarkdownSuccessWithSpacing(
 }
 
 internal fun String.toRenderableMarkdownText(parseInlineDollarMath: Boolean = false): String {
-    val spans = parseLatexSpans(this, parseInlineDollarMath)
+    // Auto-enable single-$ parsing when the message already carries explicit LaTeX or
+    // chemistry markers (\ce, \frac, \begin...). The per-$ isLikelyLatex() gate still
+    // rejects prose/dollar amounts, so this only rescues real formulas when the user
+    // left the "parse $ math" toggle off (its default).
+    val parseDollar = parseInlineDollarMath || looksLikeLatexDocument(this)
+    val spans = parseLatexSpans(this, parseDollar)
     val markdown = if (spans.all { !it.isLatex }) {
         this
     } else {

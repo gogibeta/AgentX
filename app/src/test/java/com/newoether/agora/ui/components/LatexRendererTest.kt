@@ -307,8 +307,7 @@ class LatexRendererTest {
         return children.firstNotNullOfOrNull { child -> child.findDescendant(type) }
     }
 
-    private fun locateMainSourceRoot(): File {
-        var directory = File(requireNotNull(System.getProperty("user.dir"))).absoluteFile
+    private fun locateMainSourceRoot(): File {        var directory = File(requireNotNull(System.getProperty("user.dir"))).absoluteFile
         repeat(8) {
             listOf(
                 File(directory, "app/src/main/java"),
@@ -317,6 +316,36 @@ class LatexRendererTest {
             directory = directory.parentFile ?: error("Reached filesystem root")
         }
         error("Unable to locate the main Java source directory")
+    }
+
+    @Test
+    fun testNormalizeChemistry() {
+        val out = normalizeChemistry("\\ce{2H2 + O2 -> 2H2O}")
+        assertFalse(out.contains("\\ce{"))
+        assertTrue(out.contains("\\mathrm{"))
+        assertTrue(out.contains("\\rightarrow"))
+    }
+
+    @Test
+    fun testNormalizeChemistryStripsRequire() {
+        val out = normalizeChemistry("\\require{mhchem}\\ce{A <=> B}")
+        assertFalse(out.contains("\\require"))
+        assertTrue(out.contains("\\leftrightarrow"))
+    }
+
+    @Test
+    fun testPlainTextFallbackNeverRaw() {
+        val fallback = plainTextFallback("A*\\text{abc}")
+        assertFalse(fallback.contains("$"))
+        assertFalse(fallback.contains("\\"))
+        assertTrue(fallback.isNotBlank())
+    }
+
+    @Test
+    fun testLooksLikeLatexDocument() {
+        assertTrue(looksLikeLatexDocument("Balance \\ce{H2 + O2 -> H2O} please"))
+        assertTrue(looksLikeLatexDocument("Solve \$x^2\$ with \\frac{a}{b}"))
+        assertFalse(looksLikeLatexDocument("The price is \$5 and \$10 today"))
     }
 
 }
