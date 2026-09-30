@@ -189,6 +189,11 @@ object StructuredDiagnostics {
         }
     }
 
+    /** Test-only: clears the in-memory ring. Does not touch the JSONL file. */
+    internal fun resetForTest() {
+        mutableEvents.value = emptyList()
+    }
+
     /** Path of the JSONL event file, or null before [initialize]. */
     internal fun eventsFilePath(): File? = eventsFile.get()
 

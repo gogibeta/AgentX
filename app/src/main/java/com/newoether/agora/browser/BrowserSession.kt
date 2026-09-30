@@ -370,7 +370,7 @@ class BrowserSession(
         // Health check before connect (§1.3.0): GET /json/version → 200.
         val version = httpGetJson("$rawUrl/json/version", HEALTH_CHECK_TIMEOUT_MS)
         if (version == null) {
-            DebugLog.w(TAG, "connectTunnel: $host unreachable (/json/version)")
+            DebugLog.w(TAG, "connectTunnel: tunnel endpoint unreachable (/json/version)")
             return false
         }
         // Derive the debugger WS path from the version payload, then pin it to
@@ -381,7 +381,7 @@ class BrowserSession(
         val wsUrl = "wss://$host$path$separator" + "token=" +
             URLEncoder.encode(token, Charsets.UTF_8.name())
         if (!cdp.connect(wsUrl)) {
-            DebugLog.w(TAG, "connectTunnel: CDP websocket to $host failed")
+            DebugLog.w(TAG, "connectTunnel: CDP websocket to tunnel endpoint failed")
             return false
         }
         cdp.openPage("about:blank")
@@ -392,7 +392,7 @@ class BrowserSession(
             params = buildJsonObject { put("behavior", "allow") },
             sessionId = null,
         )
-        DebugLog.d(TAG, "connectTunnel: connected via $host")
+        DebugLog.d(TAG, "connectTunnel: connected via tunnel endpoint")
         return true
     }
 

@@ -12,6 +12,7 @@ import org.junit.AfterClass
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import java.io.File
@@ -37,6 +38,11 @@ class StructuredDiagnosticsTest {
             scope.cancel()
             tempDir.deleteRecursively()
         }
+    }
+
+    @Before
+    fun clearEvents() {
+        StructuredDiagnostics.resetForTest()
     }
 
     @Test

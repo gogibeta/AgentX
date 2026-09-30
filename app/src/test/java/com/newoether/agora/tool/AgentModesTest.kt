@@ -121,7 +121,7 @@ class AgentModesTest {
             provider.definitions(GenerationContext(agentMode = "off", typeSafeApiKey = "k")).isEmpty(),
         )
         val defs = provider.definitions(
-            GenerationContext(agentMode = "build", typeSafeApiKey = "k"),
+            GenerationContext(agentMode = "build", typeSafeApiKey = "k", jevEnabled = true),
         )
         assertEquals(1, defs.size)
         assertEquals("prune_context", defs[0].function.name)
