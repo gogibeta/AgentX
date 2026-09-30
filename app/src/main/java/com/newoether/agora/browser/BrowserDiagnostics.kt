@@ -9,7 +9,7 @@ import com.newoether.agora.viewmodel.GenerationContext
  * failures, backend switches). Tool-level actions report through
  * [BrowserDiagnostics.record] directly.
  */
-interface BrowserEventReporter {
+fun interface BrowserEventReporter {
     fun report(
         action: String,
         elapsedMs: Long,

@@ -263,20 +263,19 @@ object StructuredDiagnostics {
         data class Flush(val done: CompletableDeferred<Unit>) : WriteCommand
     }
 
-    internal companion object {
-        const val LOG_DIRECTORY = "agentx-logs"
-        const val EVENTS_FILE_NAME = "diagnostic-events.jsonl"
-        const val MAX_FILE_EVENTS = 2_000
-        const val MAX_MEMORY_EVENTS = 300
-        private const val COMPACT_RETAINED_EVENTS = 1_000
-        private const val WRITE_QUEUE_CAPACITY = 512
-        private const val MAX_NAME_CHARS = 96
-        private const val MAX_OUTCOME_CHARS = 48
-        private const val MAX_SESSION_ID_CHARS = 64
-        private const val MAX_DETAIL_ENTRIES = 32
-        private const val MAX_DETAIL_KEY_CHARS = 64
-        private const val MAX_DETAIL_VALUE_CHARS = 512
-        private const val MIN_KEY_LENGTH_FOR_FINGERPRINT = 8
-        private const val FINGERPRINT_BYTES = 3
-    }
+    // Log-file constants (object members; no companion allowed in an object).
+    const val LOG_DIRECTORY = "agentx-logs"
+    const val EVENTS_FILE_NAME = "diagnostic-events.jsonl"
+    const val MAX_FILE_EVENTS = 2_000
+    const val MAX_MEMORY_EVENTS = 300
+    private const val COMPACT_RETAINED_EVENTS = 1_000
+    private const val WRITE_QUEUE_CAPACITY = 512
+    private const val MAX_NAME_CHARS = 96
+    private const val MAX_OUTCOME_CHARS = 48
+    private const val MAX_SESSION_ID_CHARS = 64
+    private const val MAX_DETAIL_ENTRIES = 32
+    private const val MAX_DETAIL_KEY_CHARS = 64
+    private const val MAX_DETAIL_VALUE_CHARS = 512
+    private const val MIN_KEY_LENGTH_FOR_FINGERPRINT = 8
+    private const val FINGERPRINT_BYTES = 3
 }

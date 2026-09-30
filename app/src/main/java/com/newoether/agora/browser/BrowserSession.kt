@@ -459,7 +459,7 @@ class BrowserSession(
 
     private fun buildJsonArray(values: List<String>): kotlinx.serialization.json.JsonArray =
         kotlinx.serialization.json.buildJsonArray {
-            values.forEach { add(it) }
+            values.forEach { add(kotlinx.serialization.json.JsonPrimitive(it)) }
         }
 
     companion object {

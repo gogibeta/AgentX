@@ -81,7 +81,7 @@ fun SettingsDiagnosticsPage(
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedEvent by remember { mutableStateOf<StructuredDiagnosticEvent?>(null) }
     var sharing by remember { mutableStateOf(false) }
-    val overlayEnabled by viewModel.settings.diagnosticsPreferenceStore
+    val overlayEnabled by viewModel.settings.diagnosticsSettings
         .debugOverlayEnabled.collectAsState()
     val chooserTitle = stringResource(R.string.developer_options_export_share_title)
     val exportFailedMessage = stringResource(R.string.developer_options_export_failed)
@@ -110,6 +110,11 @@ fun SettingsDiagnosticsPage(
                 }
             },
         )
+    }
+
+    val visibleEvents = remember(events, selectedCategory) {
+        events.filter { selectedCategory == null || it.category == selectedCategory }
+            .asReversed()
     }
 
     CollapsingSettingsLazyScaffold(
@@ -185,7 +190,7 @@ fun SettingsDiagnosticsPage(
             ) {
                 SettingsItem(
                     modifier = Modifier.clickable {
-                        viewModel.settings.diagnosticsPreferenceStore
+                        viewModel.settings.diagnosticsSettings
                             .setDebugOverlayEnabled(!overlayEnabled)
                     },
                     headlineContent = {
@@ -201,7 +206,7 @@ fun SettingsDiagnosticsPage(
                         Switch(
                             checked = overlayEnabled,
                             onCheckedChange = {
-                                viewModel.settings.diagnosticsPreferenceStore
+                                viewModel.settings.diagnosticsSettings
                                     .setDebugOverlayEnabled(it)
                             },
                         )
@@ -238,10 +243,6 @@ fun SettingsDiagnosticsPage(
             Spacer(Modifier.height(8.dp))
         }
 
-        val visibleEvents = remember(events, selectedCategory) {
-            events.filter { selectedCategory == null || it.category == selectedCategory }
-                .asReversed()
-        }
         if (visibleEvents.isEmpty()) {
             item(key = "diagnostics-empty") {
                 Text(

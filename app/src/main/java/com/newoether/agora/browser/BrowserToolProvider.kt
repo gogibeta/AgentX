@@ -163,7 +163,7 @@ class BrowserToolProvider(
                 "browser_fill" -> fill(arguments, ctx)
                 "browser_key" -> pressKey(arguments, ctx)
                 "browser_scroll" -> scroll(arguments, ctx)
-                "browser_screenshot" -> screenshot(ctx).text
+                "browser_screenshot" -> screenshot(ctx).json
                 "browser_takeover" -> takeover(arguments)
                 "browser_download_status" -> downloadStatus()
                 else -> return@withContext errorJson(name, "unknown_tool", "Unknown tool: $name")
