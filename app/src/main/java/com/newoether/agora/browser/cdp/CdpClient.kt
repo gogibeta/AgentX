@@ -286,7 +286,7 @@ class CdpClient(
             openPageDirect(pageUrl ?: "about:blank")
             true
         } catch (e: Exception) {
-            DebugLog.w(TAG, "CDP reattach failed: ${e.message}")
+            DebugLog.w(TAG, "CDP reattach failed: ${e.javaClass.simpleName}")
             false
         }
     }

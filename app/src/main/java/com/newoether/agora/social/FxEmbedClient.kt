@@ -154,7 +154,7 @@ class FxEmbedClient(
             outcome
         } catch (e: Exception) {
             val elapsedMs = (System.nanoTime() - started) / 1_000_000L
-            DebugLog.w(TAG, "realm=$realm status=network_error ms=$elapsedMs msg=${e.message}")
+            DebugLog.w(TAG, "realm=$realm status=network_error ms=$elapsedMs kind=${e.javaClass.simpleName}")
             ResolveResult.Failure("network_error", hint = classifyNetworkError(e))
         }
     }
