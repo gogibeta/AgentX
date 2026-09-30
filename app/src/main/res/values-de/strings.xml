@@ -802,10 +802,10 @@
     <string name="thought_for_a_while_called_tools">Eine Weile nachgedacht, %1$d Werkzeuge aufgerufen</string>
     <string name="remote_device">Gerät</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcgRW50d2lja2VsdCB2b24gbmV3by1ldGhlcg==</string>
-    <string name="rating_origin_project_b64">T3JpZ2luYWxwcm9qZWt0OiBnaXRodWIuY29tL25ld28tZXRoZXIvQWdvcmE=</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3IEVudHdpY2tlbHQgdm9uIG5ld28tZXRoZXI=</string>
+    <string name="rating_origin_project_b64">T3JpZ2luYWxwcm9qZWt0OiBnaXRodWIuY29tL25ld28tZXRoZXIvQWdlbnRY</string>
     <string name="rating_origin_modified_title_b64">R2XDpG5kZXJ0ZSBWZXJzaW9u</string>
-    <string name="rating_origin_modified_body_b64">RGllc2UgQXBwIHZlcndlbmRldCBlaW5lbiBhbmRlcmVuIFBha2V0bmFtZW4gYWxzIGRhcyBPcmlnaW5hbHByb2pla3QgdW5kIHd1cmRlIG5ldSBnZXBhY2t0IG9kZXIgZ2XDpG5kZXJ0LiBEYXMgT3JpZ2luYWxwcm9qZWt0IGlzdCBBZ29yYSwgZW50d2lja2VsdCB2b24gbmV3by1ldGhlci4gRsO8ciBkaWUgw4RuZGVydW5nZW4gZGllc2VyIFZlcnNpb24gaXN0IGRlcmVuIEhlcmF1c2dlYmVyIHZlcmFudHdvcnRsaWNoOyBzaWUgcmVwcsOkc2VudGllcmVuIG5pY2h0IGRlbiB1cnNwcsO8bmdsaWNoZW4gQXV0b3Iu</string>
+    <string name="rating_origin_modified_body_b64">RGllc2UgQXBwIHZlcndlbmRldCBlaW5lbiBhbmRlcmVuIFBha2V0bmFtZW4gYWxzIGRhcyBPcmlnaW5hbHByb2pla3QgdW5kIHd1cmRlIG5ldSBnZXBhY2t0IG9kZXIgZ2XDpG5kZXJ0LiBEYXMgT3JpZ2luYWxwcm9qZWt0IGlzdCBBZ2VudFgsIGVudHdpY2tlbHQgdm9uIG5ld28tZXRoZXIuIEbDvHIgZGllIMOEbmRlcnVuZ2VuIGRpZXNlciBWZXJzaW9uIGlzdCBkZXJlbiBIZXJhdXNnZWJlciB2ZXJhbnR3b3J0bGljaDsgc2llIHJlcHLDpHNlbnRpZXJlbiBuaWNodCBkZW4gdXJzcHLDvG5nbGljaGVuIEF1dG9yLg==</string>
     <string name="rating_origin_view_project_b64">T3JpZ2luYWxwcm9qZWt0IGFuc2VoZW4=</string>
     <string name="message_source_task">Aufgabe</string>
     <string name="message_source_loop">Schleife</string>

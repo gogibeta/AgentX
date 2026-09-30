@@ -786,10 +786,10 @@
     <string name="thought_for_a_while_called_tools">Thought for a while, called %1$d tools</string>
     <string name="remote_device">Device</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcgRGV2ZWxvcGVkIGJ5IG5ld28tZXRoZXI=</string>
-    <string name="rating_origin_project_b64">T3JpZ2luYWwgcHJvamVjdDogZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0Fnb3Jh</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3IERldmVsb3BlZCBieSBuZXdvLWV0aGVy</string>
+    <string name="rating_origin_project_b64">T3JpZ2luYWwgcHJvamVjdDogZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0FnZW50WA==</string>
     <string name="rating_origin_modified_title_b64">TW9kaWZpZWQgVmVyc2lvbg==</string>
-    <string name="rating_origin_modified_body_b64">VGhpcyBhcHAgdXNlcyBhIGRpZmZlcmVudCBwYWNrYWdlIG5hbWUgZnJvbSB0aGUgb3JpZ2luYWwgcHJvamVjdCBhbmQgaGFzIGJlZW4gcmVwYWNrYWdlZCBvciBtb2RpZmllZC4gVGhlIG9yaWdpbmFsIHByb2plY3QgaXMgQWdvcmEsIGRldmVsb3BlZCBieSBuZXdvLWV0aGVyLiBDaGFuZ2VzIGluIHRoaXMgdmVyc2lvbiBhcmUgdGhlIHJlc3BvbnNpYmlsaXR5IG9mIGl0cyBkaXN0cmlidXRvciBhbmQgZG8gbm90IHJlcHJlc2VudCB0aGUgb3JpZ2luYWwgYXV0aG9yLg==</string>
+    <string name="rating_origin_modified_body_b64">VGhpcyBhcHAgdXNlcyBhIGRpZmZlcmVudCBwYWNrYWdlIG5hbWUgZnJvbSB0aGUgb3JpZ2luYWwgcHJvamVjdCBhbmQgaGFzIGJlZW4gcmVwYWNrYWdlZCBvciBtb2RpZmllZC4gVGhlIG9yaWdpbmFsIHByb2plY3QgaXMgQWdlbnRYLCBkZXZlbG9wZWQgYnkgbmV3by1ldGhlci4gQ2hhbmdlcyBpbiB0aGlzIHZlcnNpb24gYXJlIHRoZSByZXNwb25zaWJpbGl0eSBvZiBpdHMgZGlzdHJpYnV0b3IgYW5kIGRvIG5vdCByZXByZXNlbnQgdGhlIG9yaWdpbmFsIGF1dGhvci4=</string>
     <string name="rating_origin_view_project_b64">VmlldyBPcmlnaW5hbCBQcm9qZWN0</string>
     <string name="message_source_task">Task</string>
     <string name="message_source_loop">Loop</string>

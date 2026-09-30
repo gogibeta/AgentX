@@ -802,10 +802,10 @@
     <string name="thought_for_a_while_called_tools">فكّر لبعض الوقت، واستدعى %1$d أداة</string>
     <string name="remote_device">جهاز</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcg2YXZhiDYqti32YjZitixIG5ld28tZXRoZXI=</string>
-    <string name="rating_origin_project_b64">2KfZhNmF2LTYsdmI2Lkg2KfZhNij2LXZhNmKOiBnaXRodWIuY29tL25ld28tZXRoZXIvQWdvcmE=</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3INmF2YYg2KrYt9mI2YrYsSBuZXdvLWV0aGVy</string>
+    <string name="rating_origin_project_b64">2KfZhNmF2LTYsdmI2Lkg2KfZhNij2LXZhNmKOiBnaXRodWIuY29tL25ld28tZXRoZXIvQWdlbnRY</string>
     <string name="rating_origin_modified_title_b64">2YbYs9iu2Kkg2YXYudiv2ZHZhNip</string>
-    <string name="rating_origin_modified_body_b64">2YrYs9iq2K7Yr9mFINmH2LDYpyDYp9mE2KrYt9io2YrZgiDYp9iz2YUg2K3YstmF2Kkg2YXYrtiq2YTZgdmL2Kcg2LnZhiDYp9mE2YXYtNix2YjYuSDYp9mE2KPYtdmE2YrYjCDZiNmC2K8g2KPZj9i52YrYryDYqtit2LLZitmF2Ycg2KPZiCDYqti52K/ZitmE2YcuINin2YTZhdi02LHZiNi5INin2YTYo9i12YTZiiDZh9mIIEFnb3Jh2Iwg2YXZhiDYqti32YjZitixIG5ld28tZXRoZXIuINmK2KrYrdmF2YQg2YXZiNiy2ZHYuSDZh9iw2Ycg2KfZhNmG2LPYrtipINmF2LPYpNmI2YTZitipINin2YTYqti52K/ZitmE2KfYqtiMINmI2YfZiiDZhNinINiq2YXYq9mEINin2YTZhdik2YTZgSDYp9mE2KPYtdmE2You</string>
+    <string name="rating_origin_modified_body_b64">2YrYs9iq2K7Yr9mFINmH2LDYpyDYp9mE2KrYt9io2YrZgiDYp9iz2YUg2K3YstmF2Kkg2YXYrtiq2YTZgdmL2Kcg2LnZhiDYp9mE2YXYtNix2YjYuSDYp9mE2KPYtdmE2YrYjCDZiNmC2K8g2KPZj9i52YrYryDYqtit2LLZitmF2Ycg2KPZiCDYqti52K/ZitmE2YcuINin2YTZhdi02LHZiNi5INin2YTYo9i12YTZiiDZh9mIIEFnZW50WNiMINmF2YYg2KrYt9mI2YrYsSBuZXdvLWV0aGVyLiDZitiq2K3ZhdmEINmF2YjYstmR2Lkg2YfYsNmHINin2YTZhtiz2K7YqSDZhdiz2KTZiNmE2YrYqSDYp9mE2KrYudiv2YrZhNin2KrYjCDZiNmH2Yog2YTYpyDYqtmF2KvZhCDYp9mE2YXYpNmE2YEg2KfZhNij2LXZhNmKLg==</string>
     <string name="rating_origin_view_project_b64">2LnYsdi2INin2YTZhdi02LHZiNi5INin2YTYo9i12YTZig==</string>
     <string name="message_source_task">مهمة</string>
     <string name="message_source_loop">حلقة</string>

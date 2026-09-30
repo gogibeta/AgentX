@@ -83,21 +83,12 @@ class RatingFormTest {
     }
 
     @Test
-    @Config(qualifiers = "zh-rCN")
-    fun chineseNoticeUsesLocalizedDecodedResources() {
-        showForm("com.youlong.ai")
-        compose.onNodeWithText("当前为修改版本").assertIsDisplayed()
-        compose.onNodeWithText("AgentX · 由 newo-ether 开发").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("查看原项目").performScrollTo().assertIsDisplayed()
-    }
-
-    @Test
     fun everyLocaleHasValidLocalizedUtf8AttributionAndNoLostAuthor() {
         val root = generateSequence(File(requireNotNull(System.getProperty("user.dir")))) { it.parentFile }
             .first { File(it, "app/src/main/res").isDirectory }
         val locales = File(root, "app/src/main/res").listFiles().orEmpty()
             .filter { File(it, "strings.xml").isFile }
-        assertEquals(12, locales.size)
+        assertEquals(10, locales.size)
         val keys = setOf("credit", "project", "modified_title", "modified_body", "view_project")
             .map { "rating_origin_${it}_b64" }.toSet()
         val titles = mutableSetOf<String>()

@@ -802,10 +802,10 @@
     <string name="thought_for_a_while_called_tools">しばらく思考し、%1$d 個のツールを呼び出しました</string>
     <string name="remote_device">デバイス</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcg6ZaL55m66ICF77yabmV3by1ldGhlcg==</string>
-    <string name="rating_origin_project_b64">5YWD44Gu44OX44Ot44K444Kn44Kv44OI77yaZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0Fnb3Jh</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3IOmWi+eZuuiAhe+8mm5ld28tZXRoZXI=</string>
+    <string name="rating_origin_project_b64">5YWD44Gu44OX44Ot44K444Kn44Kv44OI77yaZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0FnZW50WA==</string>
     <string name="rating_origin_modified_title_b64">5aSJ5pu044GV44KM44Gf44OQ44O844K444On44Oz</string>
-    <string name="rating_origin_modified_body_b64">44GT44Gu44Ki44OX44Oq44Gv5YWD44Gu44OX44Ot44K444Kn44Kv44OI44Go44Gv55Ww44Gq44KL44OR44OD44Kx44O844K45ZCN44KS5L2/55So44GX44Gm44GK44KK44CB5YaN44OR44OD44Kx44O844K45YyW44G+44Gf44Gv5aSJ5pu044GV44KM44Gm44GE44G+44GZ44CC5YWD44Gu44OX44Ot44K444Kn44Kv44OI44GvIG5ld28tZXRoZXIg44GM6ZaL55m644GX44GfIEFnb3JhIOOBp+OBmeOAguOBk+OBruODkOODvOOCuOODp+ODs+OBruWkieabtOOBr+mFjeW4g+iAheOBruiyrOS7u+OBp+OBguOCiuOAgeWFg+OBruS9nOiAheOCkuS7o+ihqOOBmeOCi+OCguOBruOBp+OBr+OBguOCiuOBvuOBm+OCk+OAgg==</string>
+    <string name="rating_origin_modified_body_b64">44GT44Gu44Ki44OX44Oq44Gv5YWD44Gu44OX44Ot44K444Kn44Kv44OI44Go44Gv55Ww44Gq44KL44OR44OD44Kx44O844K45ZCN44KS5L2/55So44GX44Gm44GK44KK44CB5YaN44OR44OD44Kx44O844K45YyW44G+44Gf44Gv5aSJ5pu044GV44KM44Gm44GE44G+44GZ44CC5YWD44Gu44OX44Ot44K444Kn44Kv44OI44GvIG5ld28tZXRoZXIg44GM6ZaL55m644GX44GfIEFnZW50WCDjgafjgZnjgILjgZPjga7jg5Djg7zjgrjjg6fjg7Pjga7lpInmm7Tjga/phY3luIPogIXjga7osqzku7vjgafjgYLjgorjgIHlhYPjga7kvZzogIXjgpLku6PooajjgZnjgovjgoLjga7jgafjga/jgYLjgorjgb7jgZvjgpPjgII=</string>
     <string name="rating_origin_view_project_b64">5YWD44Gu44OX44Ot44K444Kn44Kv44OI44KS6KaL44KL</string>
     <string name="message_source_task">タスク</string>
     <string name="message_source_loop">ループ</string>

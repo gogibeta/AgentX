@@ -515,7 +515,7 @@ internal class ApprovedFeatureSourceContractTest : UiSourceContractFixture() {
         )
         val developerKey = Regex("""<string name="(developer_options_[^"]+)"""")
 
-        assertEquals(12, localeFiles.size)
+        assertEquals(10, localeFiles.size)
         localeFiles.forEach { file ->
             val keys = developerKey.findAll(file.readLocaleStringResourceSources())
                 .map { match -> match.groupValues[1] }

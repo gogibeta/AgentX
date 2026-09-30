@@ -802,10 +802,10 @@
     <string name="thought_for_a_while_called_tools">Pensou por um tempo, chamou %1$d ferramentas</string>
     <string name="remote_device">Dispositivo</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcgRGVzZW52b2x2aWRvIHBvciBuZXdvLWV0aGVy</string>
-    <string name="rating_origin_project_b64">UHJvamV0byBvcmlnaW5hbDogZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0Fnb3Jh</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3IERlc2Vudm9sdmlkbyBwb3IgbmV3by1ldGhlcg==</string>
+    <string name="rating_origin_project_b64">UHJvamV0byBvcmlnaW5hbDogZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0FnZW50WA==</string>
     <string name="rating_origin_modified_title_b64">VmVyc8OjbyBtb2RpZmljYWRh</string>
-    <string name="rating_origin_modified_body_b64">RXN0ZSBhcGxpY2F0aXZvIHVzYSB1bSBub21lIGRlIHBhY290ZSBkaWZlcmVudGUgZG8gcHJvamV0byBvcmlnaW5hbCBlIGZvaSByZWVtcGFjb3RhZG8gb3UgbW9kaWZpY2Fkby4gTyBwcm9qZXRvIG9yaWdpbmFsIMOpIG8gQWdvcmEsIGRlc2Vudm9sdmlkbyBwb3IgbmV3by1ldGhlci4gQXMgYWx0ZXJhw6fDtWVzIGRlc3RhIHZlcnPDo28gc8OjbyBkZSByZXNwb25zYWJpbGlkYWRlIGRlIHNldSBkaXN0cmlidWlkb3IgZSBuw6NvIHJlcHJlc2VudGFtIG8gYXV0b3Igb3JpZ2luYWwu</string>
+    <string name="rating_origin_modified_body_b64">RXN0ZSBhcGxpY2F0aXZvIHVzYSB1bSBub21lIGRlIHBhY290ZSBkaWZlcmVudGUgZG8gcHJvamV0byBvcmlnaW5hbCBlIGZvaSByZWVtcGFjb3RhZG8gb3UgbW9kaWZpY2Fkby4gTyBwcm9qZXRvIG9yaWdpbmFsIMOpIG8gQWdlbnRYLCBkZXNlbnZvbHZpZG8gcG9yIG5ld28tZXRoZXIuIEFzIGFsdGVyYcOnw7VlcyBkZXN0YSB2ZXJzw6NvIHPDo28gZGUgcmVzcG9uc2FiaWxpZGFkZSBkZSBzZXUgZGlzdHJpYnVpZG9yIGUgbsOjbyByZXByZXNlbnRhbSBvIGF1dG9yIG9yaWdpbmFsLg==</string>
     <string name="rating_origin_view_project_b64">VmVyIHByb2pldG8gb3JpZ2luYWw=</string>
     <string name="message_source_task">Tarefa</string>
     <string name="message_source_loop">Loop</string>

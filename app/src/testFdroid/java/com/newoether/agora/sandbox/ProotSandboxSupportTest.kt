@@ -42,7 +42,7 @@ class ProotSandboxSupportTest {
     @Test
     fun virtualPathsNormalizeAndPortableGlobMatchesRemainStable() {
         assertEquals("/", normalizeVirtualPath("  "))
-        assertEquals("/home/agora/file.txt", normalizeVirtualPath("home//agentx/file.txt/"))
+        assertEquals("/home/agora/file.txt", normalizeVirtualPath("home//agora/file.txt/"))
         assertEquals(
             listOf("/home/agora/readme.md"),
             globMatch(

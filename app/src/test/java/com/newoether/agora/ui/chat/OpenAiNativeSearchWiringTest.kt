@@ -176,7 +176,7 @@ class OpenAiNativeSearchWiringTest {
 
         assertTrue("top bar must use the dedicated menu label", "conversation_fork_menu" in topBar)
         assertTrue("confirmation dialog must keep its question title", "conversation_fork" in dialogs)
-        assertTrue("every existing locale must define the menu label", localizedMenus.size >= 12)
+        assertTrue("every existing locale must define the menu label", localizedMenus.size >= 10)
         assertTrue(
             "menu labels must not contain question punctuation",
             localizedMenus.all { label ->

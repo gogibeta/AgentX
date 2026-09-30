@@ -802,10 +802,10 @@
     <string name="thought_for_a_while_called_tools">A réfléchi un moment, a appelé %1$d outils</string>
     <string name="remote_device">Appareil</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcgRMOpdmVsb3Bww6kgcGFyIG5ld28tZXRoZXI=</string>
-    <string name="rating_origin_project_b64">UHJvamV0IGTigJlvcmlnaW5lIDogZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0Fnb3Jh</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3IETDqXZlbG9wcMOpIHBhciBuZXdvLWV0aGVy</string>
+    <string name="rating_origin_project_b64">UHJvamV0IGTigJlvcmlnaW5lIDogZ2l0aHViLmNvbS9uZXdvLWV0aGVyL0FnZW50WA==</string>
     <string name="rating_origin_modified_title_b64">VmVyc2lvbiBtb2RpZmnDqWU=</string>
-    <string name="rating_origin_modified_body_b64">Q2V0dGUgYXBwbGljYXRpb24gdXRpbGlzZSB1biBub20gZGUgcGFxdWV0IGRpZmbDqXJlbnQgZGUgY2VsdWkgZHUgcHJvamV0IGTigJlvcmlnaW5lIGV0IGEgw6l0w6kgcmVjb25kaXRpb25uw6llIG91IG1vZGlmacOpZS4gTGUgcHJvamV0IGTigJlvcmlnaW5lIGVzdCBBZ29yYSwgZMOpdmVsb3Bww6kgcGFyIG5ld28tZXRoZXIuIExlcyBtb2RpZmljYXRpb25zIGRlIGNldHRlIHZlcnNpb24gcmVsw6h2ZW50IGRlIGxhIHJlc3BvbnNhYmlsaXTDqSBkZSBzb24gZGlzdHJpYnV0ZXVyIGV0IG5lIHJlcHLDqXNlbnRlbnQgcGFzIGzigJlhdXRldXIgZOKAmW9yaWdpbmUu</string>
+    <string name="rating_origin_modified_body_b64">Q2V0dGUgYXBwbGljYXRpb24gdXRpbGlzZSB1biBub20gZGUgcGFxdWV0IGRpZmbDqXJlbnQgZGUgY2VsdWkgZHUgcHJvamV0IGTigJlvcmlnaW5lIGV0IGEgw6l0w6kgcmVjb25kaXRpb25uw6llIG91IG1vZGlmacOpZS4gTGUgcHJvamV0IGTigJlvcmlnaW5lIGVzdCBBZ2VudFgsIGTDqXZlbG9wcMOpIHBhciBuZXdvLWV0aGVyLiBMZXMgbW9kaWZpY2F0aW9ucyBkZSBjZXR0ZSB2ZXJzaW9uIHJlbMOodmVudCBkZSBsYSByZXNwb25zYWJpbGl0w6kgZGUgc29uIGRpc3RyaWJ1dGV1ciBldCBuZSByZXByw6lzZW50ZW50IHBhcyBs4oCZYXV0ZXVyIGTigJlvcmlnaW5lLg==</string>
     <string name="rating_origin_view_project_b64">Vm9pciBsZSBwcm9qZXQgZOKAmW9yaWdpbmU=</string>
     <string name="message_source_task">Tâche</string>
     <string name="message_source_loop">Boucle</string>

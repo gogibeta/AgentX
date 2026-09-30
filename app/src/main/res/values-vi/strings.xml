@@ -808,10 +808,10 @@
     <string name="thought_for_a_while_called_tools">Đã suy nghĩ một lúc, đã gọi %1$d công cụ</string>
     <string name="remote_device">Thiết bị</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcgxJDGsOG7o2MgcGjDoXQgdHJp4buDbiBi4bufaSBuZXdvLWV0aGVy</string>
-    <string name="rating_origin_project_b64">ROG7sSDDoW4gZ+G7kWM6IGdpdGh1Yi5jb20vbmV3by1ldGhlci9BZ29yYQ==</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3IMSQxrDhu6NjIHBow6F0IHRyaeG7g24gYuG7n2kgbmV3by1ldGhlcg==</string>
+    <string name="rating_origin_project_b64">ROG7sSDDoW4gZ+G7kWM6IGdpdGh1Yi5jb20vbmV3by1ldGhlci9BZ2VudFg=</string>
     <string name="rating_origin_modified_title_b64">UGhpw6puIGLhuqNuIMSRw6Mgc+G7rWEgxJHhu5Vp</string>
-    <string name="rating_origin_modified_body_b64">4buobmcgZOG7pW5nIG7DoHkgZMO5bmcgdMOqbiBnw7NpIGtow6FjIHbhu5tpIGThu7Egw6FuIGfhu5FjIHbDoCDEkcOjIMSRxrDhu6NjIMSRw7NuZyBnw7NpIGzhuqFpIGhv4bq3YyBz4butYSDEkeG7lWkuIEThu7Egw6FuIGfhu5FjIGzDoCBBZ29yYSwgZG8gbmV3by1ldGhlciBwaMOhdCB0cmnhu4NuLiBOaMOgIHBow6JuIHBo4buRaSBwaGnDqm4gYuG6o24gbsOgeSBjaOG7i3UgdHLDoWNoIG5oaeG7h20gduG7gSBjw6FjIHRoYXkgxJHhu5VpOyBjw6FjIHRoYXkgxJHhu5VpIMSRw7Mga2jDtG5nIMSR4bqhaSBkaeG7h24gY2hvIHTDoWMgZ2nhuqMgZ+G7kWMu</string>
+    <string name="rating_origin_modified_body_b64">4buobmcgZOG7pW5nIG7DoHkgZMO5bmcgdMOqbiBnw7NpIGtow6FjIHbhu5tpIGThu7Egw6FuIGfhu5FjIHbDoCDEkcOjIMSRxrDhu6NjIMSRw7NuZyBnw7NpIGzhuqFpIGhv4bq3YyBz4butYSDEkeG7lWkuIEThu7Egw6FuIGfhu5FjIGzDoCBBZ2VudFgsIGRvIG5ld28tZXRoZXIgcGjDoXQgdHJp4buDbi4gTmjDoCBwaMOibiBwaOG7kWkgcGhpw6puIGLhuqNuIG7DoHkgY2jhu4t1IHRyw6FjaCBuaGnhu4dtIHbhu4EgY8OhYyB0aGF5IMSR4buVaTsgY8OhYyB0aGF5IMSR4buVaSDEkcOzIGtow7RuZyDEkeG6oWkgZGnhu4duIGNobyB0w6FjIGdp4bqjIGfhu5FjLg==</string>
     <string name="rating_origin_view_project_b64">WGVtIGThu7Egw6FuIGfhu5Fj</string>
     <string name="message_source_task">Tác vụ</string>
     <string name="message_source_loop">Vòng lặp</string>

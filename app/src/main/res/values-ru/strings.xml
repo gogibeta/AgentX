@@ -802,10 +802,10 @@
     <string name="thought_for_a_while_called_tools">Размышлял некоторое время, вызвано инструментов: %1$d</string>
     <string name="remote_device">Устройство</string>
     <!-- Upstream attribution copy, UTF-8 Base64 for lightweight bulk-rename resistance. -->
-    <string name="rating_origin_credit_b64">QWdvcmEgwrcg0KDQsNC30YDQsNCx0L7RgtGH0LjQujogbmV3by1ldGhlcg==</string>
-    <string name="rating_origin_project_b64">0JjRgdGF0L7QtNC90YvQuSDQv9GA0L7QtdC60YI6IGdpdGh1Yi5jb20vbmV3by1ldGhlci9BZ29yYQ==</string>
+    <string name="rating_origin_credit_b64">QWdlbnRYIMK3INCg0LDQt9GA0LDQsdC+0YLRh9C40Lo6IG5ld28tZXRoZXI=</string>
+    <string name="rating_origin_project_b64">0JjRgdGF0L7QtNC90YvQuSDQv9GA0L7QtdC60YI6IGdpdGh1Yi5jb20vbmV3by1ldGhlci9BZ2VudFg=</string>
     <string name="rating_origin_modified_title_b64">0JjQt9C80LXQvdGR0L3QvdCw0Y8g0LLQtdGA0YHQuNGP</string>
-    <string name="rating_origin_modified_body_b64">0JjQvNGPINC/0LDQutC10YLQsCDRjdGC0L7Qs9C+INC/0YDQuNC70L7QttC10L3QuNGPINC+0YLQu9C40YfQsNC10YLRgdGPINC+0YIg0LjRgdGF0L7QtNC90L7Qs9C+INC/0YDQvtC10LrRgtCwOiDQv9GA0LjQu9C+0LbQtdC90LjQtSDQsdGL0LvQviDQv9C10YDQtdC/0LDQutC+0LLQsNC90L4g0LjQu9C4INC40LfQvNC10L3QtdC90L4uINCY0YHRhdC+0LTQvdGL0Lkg0L/RgNC+0LXQutGCIOKAlCBBZ29yYSwg0YDQsNC30YDQsNCx0L7RgtCw0L3QvdGL0LkgbmV3by1ldGhlci4g0JfQsCDQuNC30LzQtdC90LXQvdC40Y8g0LIg0Y3RgtC+0Lkg0LLQtdGA0YHQuNC4INC+0YLQstC10YfQsNC10YIg0LXRkSDRgNCw0YHQv9GA0L7RgdGC0YDQsNC90LjRgtC10LvRjDsg0L7QvdC4INC90LUg0L/RgNC10LTRgdGC0LDQstC70Y/RjtGCINC/0LXRgNCy0L7QvdCw0YfQsNC70YzQvdC+0LPQviDQsNCy0YLQvtGA0LAu</string>
+    <string name="rating_origin_modified_body_b64">0JjQvNGPINC/0LDQutC10YLQsCDRjdGC0L7Qs9C+INC/0YDQuNC70L7QttC10L3QuNGPINC+0YLQu9C40YfQsNC10YLRgdGPINC+0YIg0LjRgdGF0L7QtNC90L7Qs9C+INC/0YDQvtC10LrRgtCwOiDQv9GA0LjQu9C+0LbQtdC90LjQtSDQsdGL0LvQviDQv9C10YDQtdC/0LDQutC+0LLQsNC90L4g0LjQu9C4INC40LfQvNC10L3QtdC90L4uINCY0YHRhdC+0LTQvdGL0Lkg0L/RgNC+0LXQutGCIOKAlCBBZ2VudFgsINGA0LDQt9GA0LDQsdC+0YLQsNC90L3Ri9C5IG5ld28tZXRoZXIuINCX0LAg0LjQt9C80LXQvdC10L3QuNGPINCyINGN0YLQvtC5INCy0LXRgNGB0LjQuCDQvtGC0LLQtdGH0LDQtdGCINC10ZEg0YDQsNGB0L/RgNC+0YHRgtGA0LDQvdC40YLQtdC70Yw7INC+0L3QuCDQvdC1INC/0YDQtdC00YHRgtCw0LLQu9GP0Y7RgiDQv9C10YDQstC+0L3QsNGH0LDQu9GM0L3QvtCz0L4g0LDQstGC0L7RgNCwLg==</string>
     <string name="rating_origin_view_project_b64">0J7RgtC60YDRi9GC0Ywg0LjRgdGF0L7QtNC90YvQuSDQv9GA0L7QtdC60YI=</string>
     <string name="message_source_task">Задача</string>
     <string name="message_source_loop">Цикл</string>
