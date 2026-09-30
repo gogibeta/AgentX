@@ -24,6 +24,7 @@ import com.newoether.agora.tool.ToolExecutionResult
 import com.newoether.agora.tool.ToolImageStore
 import com.newoether.agora.tool.ToolPresentationMetadata
 import com.newoether.agora.tool.ToolProvider
+import com.newoether.agora.tool.ToolResultSecretRedactor
 import com.newoether.agora.tool.WebSearchToolProvider
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.CancellationException
@@ -260,10 +261,18 @@ internal class GenerationToolExecutor private constructor(
             val attempt = CoroutineScope(currentCoroutineContext() + attemptJob).async {
                 var completedResult: ToolExecutionResult? = null
                 provider.executeEvents(call.name, completeArguments, call.context).collect { event ->
-                    if (event is ToolExecutionEvent.Completed) {
-                        completedResult = event.result
+                    // Redact before the result fans out: the Completed event feeds the
+                    // UI overlay, the persisted transcript, and the next model turn.
+                    // Secrets (agent env values, API keys) must never reach any of them.
+                    val safeEvent = if (event is ToolExecutionEvent.Completed) {
+                        event.copy(result = ToolResultSecretRedactor.redactResult(event.result, call.context))
+                    } else {
+                        event
                     }
-                    onEvent(event)
+                    if (safeEvent is ToolExecutionEvent.Completed) {
+                        completedResult = safeEvent.result
+                    }
+                    onEvent(safeEvent)
                 }
                 completedResult
                     ?: ToolExecutionResult(

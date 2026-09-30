@@ -51,7 +51,7 @@ internal object ShellToolDefinitions {
             }
             add(ToolDefinition(function = ToolFunction(
                 name = "execute_shell_command",
-                description = "Execute a shell command with a 64KB UTF-8 command limit, a 32KB UTF-8 workdir limit, and at most 1MB of retained foreground output. Set background=true for a durable Conch job that survives client disconnects. The user's agent environment variables (see list_env) are exported first, so reference them for authenticated API calls.",
+                description = "Execute a shell command with a 64KB UTF-8 command limit, a 32KB UTF-8 workdir limit, and at most 1MB of retained foreground output. Set background=true for a durable Conch job that survives client disconnects. The user's agent environment variables (see list_env) are exported first, so reference them for authenticated API calls. Secret values are redacted as [REDACTED_SECRET] in the output you receive — this is expected and confirms the protection is working; never ask the user to reveal them.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "command" to ToolProperty("string", "The shell command to execute (64KB UTF-8 maximum)."),
