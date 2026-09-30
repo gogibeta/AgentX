@@ -1,8 +1,9 @@
 # AgentX (mobile-ai-agora) — project memory for future agents
 
 > Working copy lives at `_research/Agora` (clone of
-> https://github.com/newo-ether/Agora.git). All feature work below is
-> UNCOMMITTED-or-new vs upstream until stated otherwise. Device-test toolkit
+> https://github.com/newo-ether/Agora.git, base `6eb7d494`).
+> Shipped to https://github.com/gogibeta/AgentX (`master`).
+> Start with `AGENTS.md`, then `docs/MAP.md`. Device-test toolkit
 > (adb scripts, screenshots, logs) lives at workspace root
 > `mobile-ai-agora/` + `device-logs/` (NOT in the repo).
 

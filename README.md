@@ -1,9 +1,13 @@
 <div align="center">
   <img src="app/src/main/assets/agora_transparent_large.png" alt="Agora Logo" width="120" />
 
-  # Agora
+  # AgentX
 
-  **BYOK LLM client with multi-provider access, agentic workflows, and remote device control.**
+  **BYOK LLM client with multi-provider access, agentic workflows, and remote device control — plus a full agent layer.**
+
+  > AgentX is built on [Agora](https://github.com/newo-ether/Agora) (see
+  > announcement and license notes below). Everything in this section is what
+  > AgentX adds on top.
 
   [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
   [![Platform: Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
@@ -57,6 +61,18 @@ Agora is an open-source Android client for using your own model accounts and end
 - **Local intelligence:** GGUF chat models and local embeddings through llama.cpp.
 - **Portable data:** versioned `.agora` ZIP archives, ChatGPT/Claude imports, and scheduled backups.
 - **Customizable UI:** Material 3 themes, fonts, haptics, thinking/tool presentation, and 12 explicit interface languages plus system default.
+
+### What AgentX adds
+
+- **Universal math/physics/chemistry rendering:** mhchem, siunitx, braket, derivatives and 60+ more macros normalized to native math (65/65 coverage gate); single-`$` inline math on by default; raw LaTeX never shown.
+- **TypeSafe/Jev decisions:** API key + custom base URL, Choice/Score/Noul answers with calibrated probabilities driving search re-rank, context pruning and guardrails.
+- **TinyFish + DuckDuckGo fusion search** (user key) plus a fast `browse_page` browser tool.
+- **Chat / Plan / Build modes** with an in-composer switch; plan mode is read-only by construction.
+- **Multi-model ensemble** (`ask_models`, up to 5 models, primary synthesizes) and **multi-key rotation** (round-robin + auto-failover per retry).
+- **Artifacts:** Markdown/PDF reports with real typography, tables, images (`fetch_image` verifies decodes) into a user-picked workspace folder.
+- **Agent env vars** (encrypted) exported into every shell command; `list_env` for discovery.
+- **Persistent diagnostics:** an always-on AI-parseable `session.log`, shareable from Settings → Agent.
+- **For AI agents:** `AGENTS.md` entry point, `docs/MAP.md` repo map, `docs/LESSONS.md` hard-won rules, `docs/MEMORY.md` full project memory.
 
 Conch application-layer encryption is enabled when an API key is configured. A blank-key Conch endpoint sends plain JSON and should use HTTPS. External providers and tools receive only the data needed for the feature you invoke; see the privacy documentation for the full boundary.
 
