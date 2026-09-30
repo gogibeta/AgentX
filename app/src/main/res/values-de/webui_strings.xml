@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">Agora im Browser steuern</string>
+    <string name="settings_webui_desc">AgentX im Browser steuern</string>
     <string name="webui_enable">WebUI aktivieren</string>
     <string name="webui_status_stopped">Aus. Wenn aktiv, läuft auf diesem Telefon ein Webserver mit einer Benachrichtigung.</string>
     <string name="webui_status_starting">Wird gestartet…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">Keine Netzwerkadresse gefunden.</string>
     <string name="webui_http_warning">HTTP ist nicht verschlüsselt. Alle im selben Netzwerk können das Passwort und die Unterhaltungen mitlesen. Nutze es nur in vertrauenswürdigen Netzwerken wie Tailscale.</string>
     <string name="webui_notification_channel">WebUI-Server</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">Wird gestartet…</string>
     <string name="webui_notification_running">%1$s öffnen</string>
     <string name="webui_notification_failed">Gestoppt: %1$s</string>

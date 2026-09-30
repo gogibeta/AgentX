@@ -3,13 +3,13 @@
     <string name="remote_failed">تعذر إكمال الإجراء عن بُعد. راجع تفاصيل الخطأ.</string>
     <string name="remote_unknown">لم يتأكد التسليم. تحقق من المحادثة في Codex قبل الإرسال مجددًا.</string>
     <string name="remote_rejected">لم يقبل Codex الرسالة. راجع تفاصيل الخطأ قبل المحاولة مجددًا.</string>
-    <string name="remote_storage_failed">تعذر على Agora الوصول إلى بيانات Remote المحلية. تحقق من المساحة المتاحة.</string>
+    <string name="remote_storage_failed">تعذر على AgentX الوصول إلى بيانات Remote المحلية. تحقق من المساحة المتاحة.</string>
     <string name="remote_network_failed">تعذر الاتصال بـ Filo. تحقق من الكمبيوتر المستهدف وعنوان الخدمة والشبكة.</string>
     <string name="remote_auth_failed">رفض Filo رمز الوصول. استخدم الرمز الموجود على الكمبيوتر المستهدف.</string>
     <string name="remote_configuration_failed">أدخل عنوان URL صالحًا للخدمة ورمز وصول من 64 حرفًا.</string>
-    <string name="remote_protocol_failed">تعذر على Agora التحقق من استجابة Filo أو قراءتها. تأكد من تحديث التطبيقين.</string>
+    <string name="remote_protocol_failed">تعذر على AgentX التحقق من استجابة Filo أو قراءتها. تأكد من تحديث التطبيقين.</string>
     <string name="remote_service_failed">تعذر على Codex إكمال الطلب.</string>
-    <string name="remote_save_failed">تعذر على Agora حفظ الجهاز. تحقق من المساحة ثم احفظه مجددًا.</string>
+    <string name="remote_save_failed">تعذر على AgentX حفظ الجهاز. تحقق من المساحة ثم احفظه مجددًا.</string>
     <string name="remote_session_busy">تستخدم عملية Codex أخرى هذه المحادثة. انتظر حتى تحررها.</string>
     <string name="remote_response_too_large">تتجاوز الاستجابة أو المرفق الحجم المدعوم.</string>
     <string name="remote_invalid_request">تعذر على Filo قراءة الطلب. تحقق من القيم المدخلة.</string>

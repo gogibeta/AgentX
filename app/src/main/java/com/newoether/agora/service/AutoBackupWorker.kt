@@ -11,7 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.ExistingWorkPolicy
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.data.BackupResult
 import com.newoether.agora.util.DebugLog
 import java.util.concurrent.TimeUnit
@@ -23,7 +23,7 @@ class AutoBackupWorker(
 
     override suspend fun doWork(): Result {
         DebugLog.d("AutoBackup", "Worker: checking backup")
-        val manager = (applicationContext as AgoraApplication)
+        val manager = (applicationContext as AgentXApplication)
             .awaitContainer()
             ?.autoBackupManager
             ?: return Result.failure()

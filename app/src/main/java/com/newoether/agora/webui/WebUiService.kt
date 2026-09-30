@@ -12,7 +12,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.MainActivity
 import com.newoether.agora.R
 import com.newoether.agora.util.DebugLog
@@ -46,7 +46,7 @@ class WebUiService : Service() {
             foregroundServiceType(),
         )
         scope.launch {
-            val container = (application as AgoraApplication).awaitContainer()
+            val container = (application as AgentXApplication).awaitContainer()
             val webUi = container?.webUi
             if (webUi == null) {
                 stopSelf()

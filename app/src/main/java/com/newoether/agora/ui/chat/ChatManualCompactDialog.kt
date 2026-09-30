@@ -30,8 +30,8 @@ import com.newoether.agora.R
 import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.modelDisplayName
 import com.newoether.agora.ui.components.clearFocusOnTap
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
-import com.newoether.agora.ui.components.AgoraExposedDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXExposedDropdownMenu
 
 /** Manual Compact uses the same Material alert-dialog treatment as the other chat editors. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,12 +100,12 @@ internal fun ChatManualCompactDialog(
                                 enabled = !busy,
                             ),
                     )
-                    AgoraExposedDropdownMenu(
+                    AgentXExposedDropdownMenu(
                         expanded = modelMenu,
                         onDismissRequest = { modelMenu = false },
                     ) {
                         enabledModels.sorted().forEach { candidate ->
-                            AgoraDropdownMenuItem(
+                            AgentXDropdownMenuItem(
                                 text = {
                                     Text(modelDisplayName(candidate, modelAliases, customProviders, modelProviderNames[candidate] != false))
                                 },

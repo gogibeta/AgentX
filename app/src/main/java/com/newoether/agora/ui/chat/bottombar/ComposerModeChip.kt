@@ -23,8 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 /**
  * In-chat Chat / Plan / Build switch bound to the same `agentMode` setting as
@@ -61,14 +61,14 @@ internal fun ComposerModeChip(
             )
             Spacer(modifier = Modifier.width(4.dp))
         }
-        AgoraDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        AgentXDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             val options = listOf(
                 "off" to R.string.agent_mode_off,
                 "plan" to R.string.agent_mode_plan,
                 "build" to R.string.agent_mode_build,
             )
             options.forEach { (key, res) ->
-                AgoraDropdownMenuItem(
+                AgentXDropdownMenuItem(
                     text = { Text(stringResource(res)) },
                     onClick = {
                         onAgentModeChange(key)

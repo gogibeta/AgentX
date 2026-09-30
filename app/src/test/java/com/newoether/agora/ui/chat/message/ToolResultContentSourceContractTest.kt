@@ -112,7 +112,7 @@ class ToolResultContentSourceContractTest {
         assertTrue(thumbnail.contains("contentScale = ContentScale.Crop"))
         assertTrue(thumbnail.contains("onMediaClick(paths, 0)"))
 
-        assertTrue(pending.contains("LocalAgoraMotionPolicy.current.allowContinuousMotion"))
+        assertTrue(pending.contains("LocalAgentXMotionPolicy.current.allowContinuousMotion"))
         assertTrue(pending.contains("Offset(0.5f, 0.5f)"))
         assertTrue(pending.contains("val dotFieldInsetPx = with(density) { 16.dp.toPx() }"))
         assertTrue(pending.contains("val anchorInsetPx = with(density) { 32.dp.toPx() }"))
@@ -229,7 +229,7 @@ class ToolResultContentSourceContractTest {
         val resourceRoot = locateResourceRoot()
         val directories = listOf(
             "values", "values-ar", "values-de", "values-es", "values-fr", "values-ja",
-            "values-ko", "values-pt-rBR", "values-ru", "values-vi", "values-zh", "values-zh-rTW",
+            "values-ko", "values-pt-rBR", "values-ru", "values-vi",
         )
         val resources = directories.associateWith { directory ->
             val file = File(resourceRoot, "$directory/tool_presentation_strings.xml")

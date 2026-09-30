@@ -63,7 +63,7 @@
     <string name="loop_next_in">Следующий запуск через %1$s</string>
     <string name="loop_cycle">Цикл %1$d/%2$d</string>
     <string name="loop_stop">Остановить цикл</string>
-    <string name="automation_notification_channel_desc">Постоянное уведомление во время выполнения автоматизации Agora</string>
+    <string name="automation_notification_channel_desc">Постоянное уведомление во время выполнения автоматизации AgentX</string>
     <string name="settings_automation">Автоматизация</string>
     <string name="settings_automation_desc">Задачи, циклы и точность планирования</string>
     <string name="automation_ai_tools">Доступ к задачам и циклам</string>

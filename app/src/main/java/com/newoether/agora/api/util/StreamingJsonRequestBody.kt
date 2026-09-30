@@ -52,7 +52,7 @@ internal class Base64FileRegistry {
                 return@runCatching null
             }
             FilePart(
-                placeholder = "__AGORA_BASE64_${UUID.randomUUID()}__",
+                placeholder = "__AGENTX_BASE64_${UUID.randomUUID()}__",
                 file = file,
                 byteCount = byteCount,
                 lastModified = lastModified,

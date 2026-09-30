@@ -54,7 +54,7 @@ import com.newoether.agora.ui.chat.MEDIA_LOADING_INDICATOR_STROKE_WIDTH
 import com.newoether.agora.ui.chat.MediaLoadPresentation
 import com.newoether.agora.ui.chat.rememberMediaLoadingVisible
 import com.newoether.agora.ui.chat.toMediaLoadPresentation
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 
 private const val ATTACHMENT_STATUS_CROSSFADE_MS = 200
 
@@ -106,7 +106,7 @@ internal fun AttachmentPreviewRow(
     onFileContentClick: ((fileName: String, content: String) -> Unit)?,
     onPdfPagesClick: ((pages: List<String>, startIndex: Int) -> Unit)?,
 ) {
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
     val mediaAttachments = remember(attachments) {
         attachments.filter {
             !it.unavailable && it.importState == AttachmentImportState.READY &&

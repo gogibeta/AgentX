@@ -29,7 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.zIndex
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -75,7 +75,7 @@ internal fun SettingsOverlayHost(
     onExitFinished: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val scrimAlpha = remember { Animatable(0f) }
     val pageOffsetFraction = remember { Animatable(0f) }
     val pageAlpha = remember { Animatable(1f) }

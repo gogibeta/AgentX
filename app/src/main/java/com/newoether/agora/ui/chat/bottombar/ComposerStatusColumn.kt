@@ -22,7 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.viewmodel.QueuedSend
 
 internal val QUEUED_MESSAGE_HEIGHT: Dp = 40.dp
@@ -61,7 +61,7 @@ internal fun <T> ComposerStatusColumn(
     modifier: Modifier = Modifier,
     itemContent: @Composable (T) -> Unit,
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     AnimatedContent(
         targetState = queuedSends,
         modifier = modifier

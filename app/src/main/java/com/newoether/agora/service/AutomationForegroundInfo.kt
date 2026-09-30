@@ -72,7 +72,7 @@ object AutomationForegroundInfo {
                     Intent(context, MainActivity::class.java).apply {
                         if (conversationId != null) {
                             action = Intent.ACTION_VIEW
-                            data = "agora://conversation/$conversationId".toUri()
+                            data = "agentx://conversation/$conversationId".toUri()
                             putExtra(MainActivity.EXTRA_CONVERSATION_ID, conversationId)
                         }
                         flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP

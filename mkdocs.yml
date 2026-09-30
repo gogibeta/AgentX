@@ -1,8 +1,8 @@
-site_name: Agora User Manual
-site_description: Guide for configuring and using Agora
-site_url: https://newo-ether.github.io/Agora/
-repo_url: https://github.com/newo-ether/Agora
-repo_name: newo-ether/Agora
+site_name: AgentX User Manual
+site_description: Guide for configuring and using AgentX
+site_url: https://gogibeta.github.io/AgentX/
+repo_url: https://github.com/gogibeta/AgentX
+repo_name: newo-ether/AgentX
 
 theme:
   name: material
@@ -39,84 +39,6 @@ plugins:
           name: English
           default: true
           build: true
-        - locale: zh
-          name: 简体中文
-          build: true
-          nav_translations:
-            Home: 首页
-            Getting Started: 快速开始
-            Conversations: 对话
-            API Providers: API 提供商
-            System Prompts: 系统提示词
-            Agentic Tools: 代理工具
-            Overview: 概述
-            Web Search: 网络搜索
-            Remote Shell (Conch): 远程 Shell (Conch)
-            Knowledge Management: 知识管理
-            Conversation Search: 对话搜索
-            Embedding / RAG: 嵌入 / RAG
-            Memory & Cache: 记忆与缓存
-            Skills: 技能
-            Local Models: 本地模型
-            PDF Import: PDF 导入
-            Data Portability: 数据迁移
-            FAQ: 常见问题
-            Models: 模型
-            Manage Models: 管理模型
-            Generation: 生成参数
-            Context: 上下文
-            MCP: MCP
-            Automation: 自动化
-            Parameters: 生成设置
-            Title Generation: 标题生成
-            Image Transcription: 图像转录
-            Image Generation: 图像生成
-            Appearance: 外观
-            Appearance & Language: 外观与语言
-            Language: 语言
-            Shell Setup: Shell 设置
-            Sandbox: 沙盒
-            Privacy & Security: 隐私与安全
-            About: 关于
-        - locale: zh-Hant
-          name: 繁體中文
-          build: true
-          nav_translations:
-            Home: 首頁
-            Getting Started: 快速開始
-            Conversations: 對話
-            API Providers: API 服務商
-            System Prompts: 系統提示詞
-            Agentic Tools: 代理工具
-            Overview: 概述
-            Web Search: 網路搜尋
-            Remote Shell (Conch): 遠端 Shell (Conch)
-            Knowledge Management: 知識管理
-            Conversation Search: 對話搜尋
-            Embedding / RAG: 嵌入 / RAG
-            Memory & Cache: 記憶與快取
-            Skills: 技能
-            Local Models: 本機模型
-            PDF Import: PDF 匯入
-            Data Portability: 資料可攜性
-            FAQ: 常見問題
-            Models: 模型
-            Manage Models: 管理模型
-            Generation: 生成參數
-            Context: 上下文
-            MCP: MCP
-            Automation: 自動化
-            Parameters: 生成設定
-            Title Generation: 標題生成
-            Image Transcription: 圖像轉錄
-            Image Generation: 圖像生成
-            Appearance: 外觀
-            Appearance & Language: 外觀與語言
-            Language: 語言
-            Shell Setup: Shell 設定
-            Sandbox: 沙盒
-            Privacy & Security: 隱私與安全
-            About: 關於
         - locale: es
           name: Español
           build: true

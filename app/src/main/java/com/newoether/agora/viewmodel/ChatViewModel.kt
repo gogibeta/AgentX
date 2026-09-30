@@ -23,7 +23,7 @@ import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.sandbox.SandboxManager
 import com.newoether.agora.sandbox.SandboxManagerFactory
-import com.newoether.agora.service.AgoraForegroundService
+import com.newoether.agora.service.AgentXForegroundService
 import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.util.SnackbarEvent
 import com.newoether.agora.util.UpdateChecker
@@ -267,7 +267,7 @@ class ChatViewModel(
         conversations = convRepo,
         scope = viewModelScope,
         onConversationRead = { conversationId ->
-            AgoraForegroundService.cancelTerminalNotification(appContext, conversationId)
+            AgentXForegroundService.cancelTerminalNotification(appContext, conversationId)
         },
     )
     val currentLoop: StateFlow<com.newoether.agora.data.local.LoopEntity?> =

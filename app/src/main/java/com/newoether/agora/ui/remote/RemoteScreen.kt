@@ -51,10 +51,10 @@ import com.newoether.agora.ui.chat.DrawerConversationIndicator
 import com.newoether.agora.ui.chat.resolveDrawerConversationIndicator
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator
 import com.newoether.agora.ui.motion.MotionAwareLinearProgressIndicator
-import com.newoether.agora.ui.common.LocalAgoraHaptics
-import com.newoether.agora.ui.common.rememberAgoraHaptics
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.common.LocalAgentXHaptics
+import com.newoether.agora.ui.common.rememberAgentXHaptics
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 @Composable
 internal fun RemoteOverlay(
@@ -97,7 +97,7 @@ internal fun RemoteOverlay(
     }
     SettingsOverlayHost(visible, onDismiss, onExitFinished = onExitFinished) {
         val hapticsEnabled by settings.hapticsEnabled.collectAsState(initial = false)
-        CompositionLocalProvider(LocalAgoraHaptics provides rememberAgoraHaptics(hapticsEnabled && hapticsActive)) {
+        CompositionLocalProvider(LocalAgentXHaptics provides rememberAgentXHaptics(hapticsEnabled && hapticsActive)) {
             RemoteScreen(remote, settings, visible, onDismiss, onSnackbarOffsetChanged, onMediaClick, onMessage)
         }
     }
@@ -204,18 +204,18 @@ private fun RemoteScreen(vm: RemoteViewModel, settings: SettingsRepository, acti
                                                     IconButton(onClick = { showMenu = true }, enabled = actionsEnabled) {
                                                         Icon(Icons.Default.MoreVert, stringResource(R.string.more))
                                                     }
-                                                    AgoraDropdownMenu(
+                                                    AgentXDropdownMenu(
                                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                                         tonalElevation = 16.dp,
                                                         expanded = showMenu, onDismissRequest = { showMenu = false },
                                                     ) {
-                                                        AgoraDropdownMenuItem(
+                                                        AgentXDropdownMenuItem(
                                                             text = { Text(stringResource(R.string.rename)) },
                                                             leadingIcon = { Icon(Icons.Default.Edit, null) },
                                                             enabled = actionsEnabled,
                                                             onClick = { showMenu = false; action = "rename" },
                                                         )
-                                                        AgoraDropdownMenuItem(
+                                                        AgentXDropdownMenuItem(
                                                             text = { Text(stringResource(R.string.remote_archive), color = MaterialTheme.colorScheme.error) },
                                                             leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
                                                             enabled = actionsEnabled,
@@ -332,12 +332,12 @@ private fun RemoteDevices(state: RemoteState, vm: RemoteViewModel, onBack: () ->
                             IconButton(onClick = { menuOpen = true }, enabled = enabled) {
                                 Icon(Icons.Default.MoreVert, stringResource(R.string.options))
                             }
-                            AgoraDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            AgentXDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 16.dp) {
-                                AgoraDropdownMenuItem(text = { Text(stringResource(R.string.edit)) }, enabled = enabled,
+                                AgentXDropdownMenuItem(text = { Text(stringResource(R.string.edit)) }, enabled = enabled,
                                     leadingIcon = { Icon(Icons.Default.Edit, null) },
                                     onClick = { menuOpen = false; onForward(); vm.editDevice(device.id) })
-                                AgoraDropdownMenuItem(text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
+                                AgentXDropdownMenuItem(text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                                     enabled = enabled, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
                                     onClick = { menuOpen = false; deleteId = device.id })
                             }

@@ -26,7 +26,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-internal const val NEW_CHAT_WORKSPACE_ID = "agora:new-chat"
+internal const val NEW_CHAT_WORKSPACE_ID = "agentx:new-chat"
 
 internal data class ConversationWorkspaceDraft(
     val text: String,

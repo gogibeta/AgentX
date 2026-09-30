@@ -33,16 +33,16 @@ import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.remote.*
 import com.newoether.agora.ui.chat.*
 import com.newoether.agora.ui.chat.bottombar.*
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.ui.common.thinkingControlShortLabel
 import com.newoether.agora.ui.common.openAiServiceTierShortLabel
 import com.newoether.agora.ui.components.AnimatedBlobBackground
 import com.newoether.agora.ui.components.clearFocusOnTap
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.util.gradientBlur
 import kotlinx.coroutines.flow.filterNotNull
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
-import com.newoether.agora.ui.components.AgoraExposedDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXExposedDropdownMenu
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,8 +61,8 @@ internal fun RemoteConversation(
         else -> com.newoether.agora.mcp.McpConnectionStatus.IDLE
     }
     val density = LocalDensity.current
-    val motion = LocalAgoraMotionPolicy.current
-    val haptics = LocalAgoraHaptics.current
+    val motion = LocalAgentXMotionPolicy.current
+    val haptics = LocalAgentXHaptics.current
     val chatWindow = androidx.compose.ui.platform.LocalWindowInfo.current
     val blur by settings.blurEffectsEnabled.collectAsState(initial = false)
     val amoled by settings.amoledEnabled.collectAsState(initial = false)
@@ -252,7 +252,7 @@ internal fun RemoteConversation(
                 onNavigateBack = onBack, onOpenDrawer = onBack, onSystemPromptClick = {}, onNewChat = vm::newSession,
                 newChatEnabled = active && !state.controlling,
                 moreMenuContent = { dismiss ->
-                    AgoraDropdownMenuItem(
+                    AgentXDropdownMenuItem(
                         text = { Text(stringResource(R.string.conversation_search)) },
                         leadingIcon = { Icon(Icons.Default.Search, null) },
                         enabled = active && !switching,
@@ -431,7 +431,7 @@ internal fun RemoteConversation(
                                 Icon(Icons.Default.MoreVert, stringResource(R.string.tools), modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
 
-                            AgoraExposedDropdownMenu(
+                            AgentXExposedDropdownMenu(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 expanded = activeMenu == "tools",
                                 onDismissRequest = {
@@ -442,7 +442,7 @@ internal fun RemoteConversation(
                                 },
                                 matchAnchorWidth = false,
                             ) {
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(androidx.compose.ui.res.painterResource(id = com.newoether.agora.R.drawable.neurology_24), null, modifier = Modifier.size(CHAT_DROPDOWN_MENU_ICON_SIZE_DP.dp))
@@ -464,7 +464,7 @@ internal fun RemoteConversation(
                                     onClick = { activeMenu = null; showThinkingSheet = true },
                                     enabled = effortChoices.isNotEmpty() && state.selectedEffort != null,
                                 )
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(

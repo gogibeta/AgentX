@@ -10,7 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 
 internal const val MESSAGE_ENTER_DURATION_MS = 320
 internal const val SEGMENT_ENTER_DURATION_MS = 420
@@ -37,7 +37,7 @@ internal fun generationLifecycleAppearanceModifier(
     transformOrigin: TransformOrigin = TransformOrigin.Center,
     forceOpaque: Boolean = false,
 ): Modifier {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val resolvedInitialScale = if (allowSpatialTransitions) initialScale else 1f
     val play = remember(animationKey) { animate }
     val progress = remember(animationKey) {

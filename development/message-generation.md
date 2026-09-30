@@ -2,7 +2,7 @@
 
 Status: authoritative development contract, 2026-08-13.
 
-This document is required context for every Agora development task. It defines two global and
+This document is required context for every AgentX development task. It defines two global and
 orthogonal message contracts. Features such as Compact consume these contracts; they must not
 create parallel feature-specific definitions.
 
@@ -123,7 +123,7 @@ message. It is request-only configuration: it participates in exact token accoun
 written to Room, rendered as a visible message, assigned a Run boundary, or used to alter durable
 parentage. The configured Compact summary instructions remain the complete system prompt; the final
 USER turn only invokes that behavior. A saved custom Compact prompt replaces the built-in system
-prompt in full, with no hidden prefix, suffix, or mandatory guardrail added by Agora. This legacy
+prompt in full, with no hidden prefix, suffix, or mandatory guardrail added by AgentX. This legacy
 shape is the `Preserve System Prompt = off` mode. With Preserve on (the default), the compaction
 request instead keeps the conversation's ordinary resolved system prompt, captured for the compact
 model at admission, and the Compact Prompt moves to the head of the final USER message followed by
@@ -143,14 +143,14 @@ nor lost. A non-successful or anomalous Compact is a hard automatic-handoff boun
 neither queued generation nor loop generation.
 
 Foreground-service ownership is best-effort process-priority assistance for in-process generation,
-not a Run or Provider admission prerequisite. `GenerationManager` attempts to acquire Agora's
+not a Run or Provider admission prerequisite. `GenerationManager` attempts to acquire AgentX's
 foreground-service lease when execution is not externally managed. An unavailable or rejected
 start records that no lease was acquired and generation continues through the same canonical path;
 it must not create a terminal error, retry, delay, alternate execution path, or shadow lifecycle.
 Completion releases the lease only when acquisition actually succeeded. Task and Loop Workers keep
 using their externally managed WorkManager foreground execution. Process death does not recreate a
 coroutine or Provider stream. During interactive App startup, orphaned durable Runs remain dormant:
-Agora must not enumerate conversations or Runs, instantiate per-conversation runtime state, or run
+AgentX must not enumerate conversations or Runs, instantiate per-conversation runtime state, or run
 recovery validation. The ordinary orphaned-Run recovery contract begins only after the user explicitly
 opens that exact conversation and may inspect and recover only that owner.
 

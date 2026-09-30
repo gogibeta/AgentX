@@ -53,7 +53,7 @@ internal class ConversationExportSnapshotReader(
                     Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)
                     runnable.run()
                 },
-                "agora-export-db-${snapshotThreadSequence.incrementAndGet()}",
+                "agentx-export-db-${snapshotThreadSequence.incrementAndGet()}",
             )
         }
         val snapshotDatabase = ChatDatabase.build(

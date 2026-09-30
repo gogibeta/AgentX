@@ -50,7 +50,7 @@ class NativeBackupArchiveTest {
     @Test
     fun directSeekableChannelClosesWithoutDeletingSourceArchive() {
         val archiveFile = rawZip(
-            "direct-source.agora",
+            "direct-source.agentx",
             listOf(RawEntry("manifest.json", "manifest".toByteArray())),
         )
         val channel = FileInputStream(archiveFile).channel

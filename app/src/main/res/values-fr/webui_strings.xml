@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">Contrôler Agora depuis un navigateur</string>
+    <string name="settings_webui_desc">Contrôler AgentX depuis un navigateur</string>
     <string name="webui_enable">Activer la WebUI</string>
     <string name="webui_status_stopped">Désactivée. Une fois activée, ce téléphone exécute un serveur web avec une notification.</string>
     <string name="webui_status_starting">Démarrage…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">Aucune adresse réseau trouvée.</string>
     <string name="webui_http_warning">HTTP n\'est pas chiffré. Toute personne sur le même réseau peut lire le mot de passe et les conversations. Utilisez-la uniquement sur des réseaux de confiance, comme Tailscale.</string>
     <string name="webui_notification_channel">Serveur WebUI</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">Démarrage…</string>
     <string name="webui_notification_running">Ouvrir %1$s</string>
     <string name="webui_notification_failed">Arrêtée : %1$s</string>

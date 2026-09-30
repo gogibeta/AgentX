@@ -45,9 +45,9 @@ import com.newoether.agora.ui.chat.bottombar.LoopStatusBackdrop
 import com.newoether.agora.ui.chat.interaction.ChatUserInteractionBar
 import com.newoether.agora.ui.components.AnimatedBlobBackground
 import com.newoether.agora.ui.components.clearFocusOnTap
-import com.newoether.agora.ui.common.LocalAgoraHaptics
-import com.newoether.agora.ui.common.rememberAgoraHaptics
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.common.LocalAgentXHaptics
+import com.newoether.agora.ui.common.rememberAgentXHaptics
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.model.StableMessageList
 import com.newoether.agora.model.StableModelAliases
 import com.newoether.agora.viewmodel.ChatViewModel
@@ -82,7 +82,7 @@ fun ChatApp(
     val density = LocalDensity.current
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     ConversationShareEffect(viewModel, context)
     val drawerState = rememberChatDrawerState()
     LaunchedEffect(openDrawerOnStart, drawerEnabled) {
@@ -176,7 +176,7 @@ fun ChatApp(
     val stickToBottom by viewModel.settings.stickToBottom.collectAsState()
     val reduceMotion = motionPolicy.reduceMotion
     val hapticsEnabled by viewModel.settings.hapticsEnabled.collectAsState()
-    val haptics = rememberAgoraHaptics(hapticsEnabled && topLevelPresentation == TopLevelPresentation.CHAT)
+    val haptics = rememberAgentXHaptics(hapticsEnabled && topLevelPresentation == TopLevelPresentation.CHAT)
     val chatWindow = LocalWindowInfo.current
     val chatHapticActive = topLevelPresentation == TopLevelPresentation.CHAT &&
         chatWindow.isWindowFocused && !drawerState.shouldHandleBack
@@ -343,7 +343,7 @@ fun ChatApp(
         haptics = haptics,
     )
 
-    CompositionLocalProvider(LocalAgoraHaptics provides haptics) {
+    CompositionLocalProvider(LocalAgentXHaptics provides haptics) {
     ChatDrawerHost(
         state = drawerState,
         drawerEnabled = drawerEnabled,

@@ -44,7 +44,7 @@ internal fun rememberComposerDraftSnapshot(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: Exception) {
-            DebugLog.e("AgoraUI", "Failed to load composer draft for $ownerId", failure)
+            DebugLog.e("AgentXUI", "Failed to load composer draft for $ownerId", failure)
             return@LaunchedEffect
         } finally {
             viewModel.scrollRequests.loadingDraft = false

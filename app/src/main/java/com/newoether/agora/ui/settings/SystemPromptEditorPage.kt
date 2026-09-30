@@ -51,10 +51,10 @@ import com.newoether.agora.data.PredefinedVariables
 import com.newoether.agora.data.PromptItemType
 import com.newoether.agora.data.PromptTemplateItem
 import com.newoether.agora.data.SystemPromptEntry
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareModalBottomSheet as ModalBottomSheet
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 import com.newoether.agora.ui.components.sheetOptionClickable
 
 private fun variableDisplayName(key: String): String = when (key) {
@@ -102,7 +102,7 @@ fun SystemPromptEditorPage(
     onBack: () -> Unit,
     showDocFab: Boolean = true
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val isEdit = entry != null && !isNew
     var title by remember { mutableStateOf(entry?.title ?: "") }
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -421,18 +421,18 @@ private fun InsertBetweenButton(
                     modifier = Modifier.size(12.dp)
                 )
             }
-            AgoraDropdownMenu(
+            AgentXDropdownMenu(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 16.dp,
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                AgoraDropdownMenuItem(
+                AgentXDropdownMenuItem(
                     text = { Text(stringResource(R.string.template_add_text)) },
                     leadingIcon = { Icon(Icons.Default.TextFields, null) },
                     onClick = { expanded = false; onInsertText() }
                 )
-                AgoraDropdownMenuItem(
+                AgentXDropdownMenuItem(
                     text = { Text(stringResource(R.string.template_add_variable)) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Outlined.PlaylistAdd, null) },
                     onClick = { expanded = false; onInsertVariable() }

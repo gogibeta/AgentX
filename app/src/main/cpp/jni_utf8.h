@@ -3,7 +3,7 @@
 #include <jni.h>
 #include <string>
 
-namespace agora {
+namespace agentx {
 namespace jni {
 
 // JNI's GetStringUTFChars returns Modified UTF-8. Native templates, tokenizers and
@@ -45,4 +45,4 @@ inline bool read_java_path(JNIEnv * env, jstring value, std::string & result) {
 }
 
 } // namespace jni
-} // namespace agora
+} // namespace agentx

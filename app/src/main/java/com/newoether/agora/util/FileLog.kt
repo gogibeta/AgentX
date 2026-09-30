@@ -117,7 +117,8 @@ object FileLog {
                     file.renameTo(rotated)
                 }
                 if (queue.isEmpty()) return
-                file.bufferedWriter(Charsets.UTF_8).let { /* create if absent */ it.close() }
+                // FileWriter(file, true) creates the file when absent; never open in
+                // overwrite mode here — that would truncate the existing session log.
                 java.io.FileWriter(file, true).use { fw ->
                     while (true) {
                         val line = queue.poll() ?: break

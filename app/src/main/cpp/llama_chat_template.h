@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace agora::chat {
+namespace agentx::chat {
 
 struct TemplateSamplingMetadata {
     std::string prompt;
@@ -26,4 +26,4 @@ bool read_template_metadata(
     TemplateSamplingMetadata & metadata
 );
 
-} // namespace agora::chat
+} // namespace agentx::chat

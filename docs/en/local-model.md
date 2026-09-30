@@ -1,10 +1,10 @@
 # Local Models
 
-Agora can import GGUF language models for on-device llama.cpp inference.
+AgentX can import GGUF language models for on-device llama.cpp inference.
 
 ## Import
 
-Open **Settings → Providers → Local** and import a GGUF file. Agora copies the model into app-managed storage; an optional multimodal projection file can be associated when supported. Imported models are enabled automatically and can be selected from **Settings → Models** or the chat model picker.
+Open **Settings → Providers → Local** and import a GGUF file. AgentX copies the model into app-managed storage; an optional multimodal projection file can be associated when supported. Imported models are enabled automatically and can be selected from **Settings → Models** or the chat model picker.
 
 ## Configure and use
 
@@ -12,6 +12,6 @@ Model-specific context and generation capability depend on the GGUF and availabl
 
 ## Delete
 
-Deleting an imported local model removes Agora's managed GGUF and associated projection file. It does not delete an unrelated source file outside Agora's managed storage.
+Deleting an imported local model removes AgentX's managed GGUF and associated projection file. It does not delete an unrelated source file outside AgentX's managed storage.
 
 Review [Models](models.md), [Generation](generation.md), and [Privacy & Security](privacy.md). The separate Alpine sandbox is F-Droid-only, but it is not required for llama.cpp model inference.

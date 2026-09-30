@@ -19,9 +19,9 @@ import org.junit.Test
 class NativeBackupV5BaselineTest {
     @Test
     fun unchangedConversationAndMediaAreRawCopiedWhileChangesAndDeletesAreRebuilt() {
-        val directory = Files.createTempDirectory("agora-v5-baseline").toFile()
-        val baselineFile = File(directory, "baseline.agora")
-        val resultFile = File(directory, "result.agora")
+        val directory = Files.createTempDirectory("agentx-v5-baseline").toFile()
+        val baselineFile = File(directory, "baseline.agentx")
+        val resultFile = File(directory, "result.agentx")
         try {
             writeBaseline(baselineFile)
             NativeBackupV5Baseline.openOrNull(baselineFile).use { baseline ->
@@ -86,8 +86,8 @@ class NativeBackupV5BaselineTest {
 
     @Test
     fun damagedBaselineItemIsNotReused() {
-        val directory = Files.createTempDirectory("agora-v5-damaged").toFile()
-        val file = File(directory, "damaged.agora")
+        val directory = Files.createTempDirectory("agentx-v5-damaged").toFile()
+        val file = File(directory, "damaged.agentx")
         try {
             val item = NativeBackupFormat.conversationEntry("same")
             val payload = "payload-same-stored"
@@ -113,8 +113,8 @@ class NativeBackupV5BaselineTest {
     }
     @Test
     fun backupWithoutIncrementalMarkerIsNotUsedAsBaseline() {
-        val directory = Files.createTempDirectory("agora-v5-unmarked").toFile()
-        val file = File(directory, "old.agora")
+        val directory = Files.createTempDirectory("agentx-v5-unmarked").toFile()
+        val file = File(directory, "old.agentx")
         try {
             writeBaseline(
                 file,
@@ -129,8 +129,8 @@ class NativeBackupV5BaselineTest {
     @Test
     fun olderFormatBackupIsNotUsedAsBaseline() {
         // Items written by an older format lack newer message fields, so they must be rebuilt.
-        val directory = Files.createTempDirectory("agora-older-format").toFile()
-        val file = File(directory, "old.agora")
+        val directory = Files.createTempDirectory("agentx-older-format").toFile()
+        val file = File(directory, "old.agentx")
         try {
             writeBaseline(file, MARKED_MANIFEST.replace(
                 "\"agora_export_version\":${NativeBackupFormat.CURRENT_VERSION}",
@@ -143,7 +143,7 @@ class NativeBackupV5BaselineTest {
     }
     @Test
     fun invalidBaselineFallsBackToFullExport() {
-        val file = Files.createTempFile("agora-invalid-baseline", ".agora").toFile()
+        val file = Files.createTempFile("agentx-invalid-baseline", ".agentx").toFile()
         try {
             file.writeText("not a zip")
             assertNull(NativeBackupV5Baseline.openOrNull(file))

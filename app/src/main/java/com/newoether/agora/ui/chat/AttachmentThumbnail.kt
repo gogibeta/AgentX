@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.model.AttachmentItem
 import com.newoether.agora.model.AttachmentMeta
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.util.AttachmentSourceReader
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +147,7 @@ fun AttachmentThumbnailItem(
     handlers: ThumbnailClickHandlers = ThumbnailClickHandlers(),
     modifier: Modifier = Modifier
 ) {
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val shape = RoundedCornerShape(USER_BUBBLE_ATTACHMENT_CORNER)

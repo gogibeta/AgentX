@@ -32,7 +32,7 @@ class WebUiTlsFrontTest {
             passwordHash = { WebUiPasswordHasher(iterations = 1_000).hash("correct horse") },
             hasher = WebUiPasswordHasher(iterations = 1_000),
         ),
-        readAsset = { path -> if (path == WebUiServer.INDEX) "<title>Agora</title>".toByteArray() else null },
+        readAsset = { path -> if (path == WebUiServer.INDEX) "<title>AgentX</title>".toByteArray() else null },
         // As in WebUiController: only requests on the TLS backend connector get a Secure cookie.
         secureCookies = { call -> call.request.local.localPort == tlsPort },
     )
@@ -89,7 +89,7 @@ class WebUiTlsFrontTest {
     fun servesPagesOverTlsWithTheStoredCertificate() {
         val connection = openTls(front(), "/")
         assertEquals(200, connection.responseCode)
-        assertTrue(connection.inputStream.bufferedReader().readText().contains("Agora"))
+        assertTrue(connection.inputStream.bufferedReader().readText().contains("AgentX"))
         assertEquals(identity.certificate, connection.serverCertificates.first())
     }
 
@@ -107,7 +107,7 @@ class WebUiTlsFrontTest {
         val front = front()
         val page = openPlain(front, "/")
         assertEquals(200, page.responseCode)
-        assertTrue(page.inputStream.bufferedReader().readText().contains("Agora"))
+        assertTrue(page.inputStream.bufferedReader().readText().contains("AgentX"))
         // A Secure cookie would be dropped by the browser on plain HTTP and sign-in would fail.
         val login = openPlain(front, "/api/login").login()
         assertEquals(200, login.responseCode)

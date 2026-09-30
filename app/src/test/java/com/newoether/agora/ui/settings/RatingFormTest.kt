@@ -44,11 +44,11 @@ class RatingFormTest {
         var launched: Intent? = null
         showForm("com.newoether.agora", onLaunch = { launched = it })
         compose.onNodeWithText("Modified Version").assertDoesNotExist()
-        compose.onNodeWithText("Agora · Developed by newo-ether").assertIsDisplayed()
+        compose.onNodeWithText("AgentX · Developed by newo-ether").assertIsDisplayed()
         assertEquals(null, launched)
-        compose.onNodeWithText("Original project: github.com/newo-ether/Agora").performClick()
+        compose.onNodeWithText("Original project: github.com/newo-ether/AgentX").performClick()
         assertEquals(Intent.ACTION_VIEW, launched?.action)
-        assertEquals("https://github.com/newo-ether/Agora", launched?.dataString)
+        assertEquals("https://github.com/gogibeta/AgentX", launched?.dataString)
     }
 
     @Test
@@ -56,9 +56,9 @@ class RatingFormTest {
         var launched: Intent? = null
         showForm("com.youlong.ai", onLaunch = { launched = it })
         compose.onNodeWithText("Modified Version").assertIsDisplayed()
-        compose.onNodeWithText("Agora · Developed by newo-ether").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("AgentX · Developed by newo-ether").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("View Original Project").performScrollTo().performClick()
-        assertEquals("https://github.com/newo-ether/Agora", launched?.dataString)
+        assertEquals("https://github.com/gogibeta/AgentX", launched?.dataString)
         compose.onNodeWithText("Submit").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Your Name (optional)").assertExists()
         compose.onNodeWithText("Your Email (optional)").assertExists()
@@ -69,7 +69,7 @@ class RatingFormTest {
     fun mismatchIsExactAndDoesNotTreatOriginalPrefixOrSuffixAsAuthenticity() {
         assertFalse(ratingUsesDifferentPackage("com.newoether.agora"))
         listOf("", "com.youlong.ai", "com.newoether.agora.fork", "com.newoether.agora.screenshots",
-            "com.newoether.agorax", "com.newoether.Agora").forEach {
+            "com.newoether.agorax", "com.newoether.AgentX").forEach {
             assertTrue(it, ratingUsesDifferentPackage(it))
         }
     }
@@ -87,7 +87,7 @@ class RatingFormTest {
     fun chineseNoticeUsesLocalizedDecodedResources() {
         showForm("com.youlong.ai")
         compose.onNodeWithText("当前为修改版本").assertIsDisplayed()
-        compose.onNodeWithText("Agora · 由 newo-ether 开发").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("AgentX · 由 newo-ether 开发").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("查看原项目").performScrollTo().assertIsDisplayed()
     }
 
@@ -117,9 +117,9 @@ class RatingFormTest {
                 value
             }
             assertTrue(locale.name, decoded.getValue("rating_origin_credit_b64").contains("newo-ether"))
-            assertTrue(locale.name, decoded.getValue("rating_origin_modified_body_b64").contains("Agora"))
+            assertTrue(locale.name, decoded.getValue("rating_origin_modified_body_b64").contains("AgentX"))
             assertTrue(locale.name, decoded.getValue("rating_origin_modified_body_b64").contains("newo-ether"))
-            assertTrue(locale.name, decoded.getValue("rating_origin_project_b64").contains("github.com/newo-ether/Agora"))
+            assertTrue(locale.name, decoded.getValue("rating_origin_project_b64").contains("github.com/newo-ether/AgentX"))
             titles += decoded.getValue("rating_origin_modified_title_b64")
         }
         assertEquals("Each shipped locale has a translated notice title", 12, titles.size)

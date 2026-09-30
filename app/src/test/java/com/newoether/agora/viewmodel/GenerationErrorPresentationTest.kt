@@ -275,7 +275,7 @@ class GenerationErrorPresentationTest {
             "app/src/main/java/com/newoether/agora/viewmodel/GenerationOutputAccumulator.kt",
         )
         val failureLog =
-            "DebugLog.e(\"AgoraVM\", \"Failed to execute terminal generation effect\", e)"
+            "DebugLog.e(\"AgentXVM\", \"Failed to execute terminal generation effect\", e)"
         val afterFailureLog = generation.substringAfter(failureLog, missingDelimiterValue = "")
 
         assertTrue(afterFailureLog.trimStart().startsWith("throw e"))
@@ -323,8 +323,6 @@ class GenerationErrorPresentationTest {
             "values-pt-rBR",
             "values-ru",
             "values-vi",
-            "values-zh",
-            "values-zh-rTW",
         )
         val defaults = stringValues(sourceFile("app/src/main/res/values/strings.xml"))
         assertTrue(defaults.keys.containsAll(keys))

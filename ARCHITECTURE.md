@@ -1,17 +1,17 @@
-# Agora Architecture
+# AgentX Architecture
 
 This document describes the current repository architecture. It intentionally avoids
 line counts and exhaustive file inventories because those became stale faster than the
 contracts they were meant to explain.
 
-Normative development behavior is indexed by `.harness/PROJECTS.md`. Before changing Agora, read
+Normative development behavior is indexed by `.harness/PROJECTS.md`. Before changing AgentX, read
 `development/README.md` and every applicable module contract; for message generation, Run
 boundaries, Provider context, Compact, and Regenerate, `development/message-generation.md` is the
 authoritative contract when older descriptive prose conflicts.
 
 ## 1. System shape
 
-Agora is a single-module Android application built with Kotlin, Jetpack Compose,
+AgentX is a single-module Android application built with Kotlin, Jetpack Compose,
 coroutines, Room, DataStore, WorkManager, OkHttp, and a small native layer.
 
 ```text
@@ -61,7 +61,7 @@ those instances instead of building competing stacks.
 | `app/src/main/cpp` | llama.cpp chat/embedding JNI and PRoot bridge |
 | `thirdparty` | Vendored/submodule native dependencies |
 | `build-logic` | Android bytecode compatibility transform and repository source-size policy |
-| `server` | Optional Agora-related server components; not part of the APK runtime |
+| `server` | Optional AgentX-related server components; not part of the APK runtime |
 | `docs` | User-facing MkDocs documentation |
 
 There are two store flavors, `fdroid` and `play`. The application currently targets
@@ -445,7 +445,7 @@ SDK.
 
 ## 10. Data portability and recovery
 
-`.agora` export/import supports selective categories. Third-party importers support
+`.agentx` export/import supports selective categories. Third-party importers support
 ChatGPT and Claude exports. Auto backup uses WorkManager and configurable retention.
 
 Recovery rules:

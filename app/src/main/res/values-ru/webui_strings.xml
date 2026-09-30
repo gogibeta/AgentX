@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">Управление Agora из браузера</string>
+    <string name="settings_webui_desc">Управление AgentX из браузера</string>
     <string name="webui_enable">Включить WebUI</string>
     <string name="webui_status_stopped">Выключено. Во включённом состоянии на телефоне работает веб-сервер с уведомлением.</string>
     <string name="webui_status_starting">Запуск…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">Сетевой адрес не найден.</string>
     <string name="webui_http_warning">HTTP не шифруется. Любой в той же сети может прочитать пароль и переписку. Используйте только в доверенных сетях, например в Tailscale.</string>
     <string name="webui_notification_channel">Сервер WebUI</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">Запуск…</string>
     <string name="webui_notification_running">Открыть %1$s</string>
     <string name="webui_notification_failed">Остановлено: %1$s</string>

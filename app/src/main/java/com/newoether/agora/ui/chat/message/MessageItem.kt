@@ -54,13 +54,13 @@ import com.newoether.agora.model.ThinkingSegmentDisplayModes
 import com.newoether.agora.ui.chat.ConversationSearchMatch
 import com.newoether.agora.ui.chat.conversationSearchMatchRanges
 import com.newoether.agora.ui.chat.deletionRemovesEntireConversation
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.ui.components.*
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.mikepenz.markdown.compose.components.markdownComponents
 import kotlinx.coroutines.flow.StateFlow
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 
 
@@ -186,8 +186,8 @@ internal fun MessageItem(
         )
     }
     var showCompactDetail by remember(message.id) { mutableStateOf(false) }
-    val haptics = LocalAgoraHaptics.current
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val haptics = LocalAgentXHaptics.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val compactPresentation = contextCompactPillPresentation(message.status)
     val compactInProgress =
         message.isContextCompact() &&
@@ -518,7 +518,7 @@ internal fun ContextCompactPill(
     onDelete: () -> Unit = {},
 ) {
     var actionsExpanded by remember { mutableStateOf(false) }
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val pillShape = RoundedCornerShape(100.dp)
     val presentationTransition = updateTransition(
         targetState = presentation,
@@ -651,13 +651,13 @@ internal fun ContextCompactPill(
                         modifier = Modifier.size(18.dp),
                     )
                 }
-                AgoraDropdownMenu(
+                AgentXDropdownMenu(
                     expanded = actionsExpanded,
                     onDismissRequest = { actionsExpanded = false },
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 16.dp,
                 ) {
-                    AgoraDropdownMenuItem(
+                    AgentXDropdownMenuItem(
                         text = {
                             Text(
                                 text = stringResource(com.newoether.agora.R.string.recompact),
@@ -675,7 +675,7 @@ internal fun ContextCompactPill(
                             onRecompact()
                         },
                     )
-                    AgoraDropdownMenuItem(
+                    AgentXDropdownMenuItem(
                         text = {
                             Text(
                                 text = stringResource(com.newoether.agora.R.string.delete),

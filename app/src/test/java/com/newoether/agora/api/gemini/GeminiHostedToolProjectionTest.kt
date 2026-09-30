@@ -25,10 +25,10 @@ class GeminiHostedToolProjectionTest {
               "candidates": [{
                 "content": {"parts": [{"text": "Grounded answer"}]},
                 "groundingMetadata": {
-                  "webSearchQueries": ["Agora Android app"],
+                  "webSearchQueries": ["AgentX Android app"],
                   "searchEntryPoint": {"renderedContent": "<div>Search</div>"},
                   "groundingChunks": [
-                    {"web": {"uri": "https://example.com/agora", "title": "Agora"}}
+                    {"web": {"uri": "https://example.com/agentx", "title": "AgentX"}}
                   ],
                   "groundingSupports": [
                     {"segment": {"startIndex": 0, "endIndex": 8}, "groundingChunkIndices": [0]}
@@ -46,10 +46,10 @@ class GeminiHostedToolProjectionTest {
         val result = json.parseToJsonElement(checkNotNull(update.result)).jsonObject
 
         assertEquals("google_search", update.name)
-        assertEquals("Agora Android app", arguments.getValue("query").jsonPrimitive.content)
+        assertEquals("AgentX Android app", arguments.getValue("query").jsonPrimitive.content)
         assertEquals(1, result.getValue("results").jsonArray.size)
         assertEquals(
-            "https://example.com/agora",
+            "https://example.com/agentx",
             result.getValue("results").jsonArray.single().jsonObject.getValue("url").jsonPrimitive.content,
         )
         assertTrue(result.containsKey("grounding_metadata"))

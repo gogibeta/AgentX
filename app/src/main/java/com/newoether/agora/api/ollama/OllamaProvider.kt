@@ -264,7 +264,7 @@ class OllamaProvider : LlmProvider {
                     requiredArrayFields = setOf("messages"),
                 )
                 DebugLog.d(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "[Ollama] request model=${config.modelId} messages=${requestBody.messages.size} " +
                         "tools=${config.tools?.size ?: 0}",
                 )
@@ -412,7 +412,7 @@ class OllamaProvider : LlmProvider {
                                 if (streamError != null || sawDone) break
                             } catch (e: Exception) {
                                 DebugLog.e(
-                                    "AgoraAPI",
+                                    "AgentXAPI",
                                     "[Ollama] malformed stream payload exception=${e.javaClass.simpleName}",
                                 )
                                 streamError = GenerationError.SseParse(
@@ -433,7 +433,7 @@ class OllamaProvider : LlmProvider {
                             streamError = streamError,
                             timedOut = timedOut,
                         )
-                        DebugLog.d("AgoraSSE", "[Ollama] ${termination.describe()}")
+                        DebugLog.d("AgentXSSE", "[Ollama] ${termination.describe()}")
                         if (termination.isRetryable && attempt < maxAttempts) {
                             emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
                             delay(ProviderRetryPolicy.delayMillis(attempt))
@@ -445,7 +445,7 @@ class OllamaProvider : LlmProvider {
                         val errorRaw = handle.errorBody.orEmpty()
                         val responseBytes = errorRaw.toByteArray(Charsets.UTF_8).size
                         DebugLog.e(
-                            "AgoraAPI",
+                            "AgentXAPI",
                             "[Ollama] HTTP ${handle.code} responseBytes=$responseBytes",
                         )
 
@@ -469,7 +469,7 @@ class OllamaProvider : LlmProvider {
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: RequestFormatException) {
-            DebugLog.e("AgoraAPI", "[Ollama] blocked invalid request: ${e.violations.joinToString()}")
+            DebugLog.e("AgentXAPI", "[Ollama] blocked invalid request: ${e.violations.joinToString()}")
             emit(StreamEvent.Error(GenerationError.RequestFormat("Ollama", e.violations.joinToString())))
         } catch (e: java.net.SocketTimeoutException) {
             emit(StreamEvent.Error(GenerationError.Timeout))

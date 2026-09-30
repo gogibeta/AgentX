@@ -1,6 +1,6 @@
 package com.newoether.agora.screenshot
 
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.api.DebugProvider
 import com.newoether.agora.data.ShellDeviceConfig
 import com.newoether.agora.data.local.ChatEntity
@@ -18,7 +18,7 @@ object ScreenshotFixture {
     private const val BASE_TIME = 1_797_700_000_000L
 
     @JvmStatic
-    fun seed(application: AgoraApplication, destination: String) = runBlocking {
+    fun seed(application: AgentXApplication, destination: String) = runBlocking {
         val container = application.awaitContainer() ?: error("Database unavailable")
         val settings = container.settingsManager
 

@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
@@ -102,7 +102,7 @@ internal fun rememberSmoothBottomSheetState(): SmoothBottomSheetState =
     remember { SmoothBottomSheetState() }
 
 /**
- * Agora's interruptible spring sheet shell.
+ * AgentX's interruptible spring sheet shell.
  *
  * The caller owns only navigation, title, and content. This shell owns the dialog, dimming,
  * established anchors, drag interruption, nested-scroll handoff, and reduced-motion behavior.
@@ -116,7 +116,7 @@ internal fun SmoothBottomSheet(
     header: @Composable ColumnScope.() -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val screenHeightPx =
         LocalWindowInfo.current.containerSize.height.toFloat().coerceAtLeast(1f)
     val coroutineScope = rememberCoroutineScope()

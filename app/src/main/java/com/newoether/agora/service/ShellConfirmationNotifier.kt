@@ -101,7 +101,7 @@ object ShellConfirmationNotifier {
             context,
             (promptId % Int.MAX_VALUE).toInt(),
             Intent(action, null, context, ShellConfirmationReceiver::class.java)
-                .setData(android.net.Uri.parse("agora-shell-confirm://$sessionId/$promptId"))
+                .setData(android.net.Uri.parse("agentx-shell-confirm://$sessionId/$promptId"))
                 .putExtra(EXTRA_SESSION_ID, sessionId)
                 .putExtra(EXTRA_PROMPT_ID, promptId),
             flags,

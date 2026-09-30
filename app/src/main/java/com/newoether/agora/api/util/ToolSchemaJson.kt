@@ -8,7 +8,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
- * JSON Schema for tool parameters, for providers that take a schema object instead of Agora's typed
+ * JSON Schema for tool parameters, for providers that take a schema object instead of AgentX's typed
  * [ToolParameters].
  *
  * Anthropic and Gemini both want the same plain schema, so the conversion lives here once rather

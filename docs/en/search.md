@@ -8,7 +8,7 @@ Open **Settings → Conversation Search** to configure keyword and semantic acce
 
 ## Caching
 
-**Auto-Cache New Messages** is enabled by default. With an active embedding model, Agora indexes newly persisted searchable messages. When you switch the active embedding model, it also fills that model's missing message embeddings while Auto-Cache is enabled.
+**Auto-Cache New Messages** is enabled by default. With an active embedding model, AgentX indexes newly persisted searchable messages. When you switch the active embedding model, it also fills that model's missing message embeddings while Auto-Cache is enabled.
 
 When automatic caching is off, new messages remain uncached until you start caching manually. **Show Uncached Notification** is visible only in this state and controls reminders that can offer a **Cache now** action.
 

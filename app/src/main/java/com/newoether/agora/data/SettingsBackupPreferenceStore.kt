@@ -53,6 +53,6 @@ internal class SettingsBackupPreferenceStore(private val dataStore: DataStore<Pr
         const val DEFAULT_PERIOD_HOURS = 24
         const val DEFAULT_DELETE_PERIOD_HOURS = 168
         const val DEFAULT_CATEGORIES = "conversations,memories,system_prompts,settings"
-        const val DEFAULT_DIRECTORY = "Download/Agora/Backup"
+        const val DEFAULT_DIRECTORY = "Download/AgentX/Backup"
     }
 }

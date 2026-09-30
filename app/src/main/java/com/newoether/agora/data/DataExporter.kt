@@ -34,7 +34,7 @@ class DataExporter(
     private val skillManager: SkillManager,
 ) {
     companion object {
-        private const val SNAPSHOT_PREFIX = "agora-export-snapshot-"
+        private const val SNAPSHOT_PREFIX = "agentx-export-snapshot-"
         private const val SNAPSHOT_SUFFIX = ".jsonl"
         private const val SNAPSHOT_CONVERSATION = "C"
         private const val SNAPSHOT_RUN = "R"
@@ -589,7 +589,18 @@ class DataExporter(
         includeApiKeys: Boolean,
         baselineFile: File? = null,
         onProgress: (Float) -> Unit = {}
-    ): ExportResult = withContext(Dispatchers.IO) {
+    ): ExportResult {
+        val startNanos = System.nanoTime()
+        com.newoether.agora.util.DebugLog.event(
+            "DataTransfer",
+            mapOf(
+                "action" to "export_start",
+                "categories" to categories.joinToString(",") { it.manifestKey },
+            ),
+            "export start",
+        )
+        return try {
+            withContext(Dispatchers.IO) {
         val appInfo = context.packageManager.getPackageInfo(context.packageName, 0)
         val appVersion = appInfo.versionName ?: "unknown"
         val exportedAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now())
@@ -732,6 +743,31 @@ class DataExporter(
         } finally {
             baseline?.close()
             conversationSpool?.delete()
+        }
+            }
+        } catch (e: Throwable) {
+            com.newoether.agora.util.DebugLog.event(
+                "DataTransfer",
+                mapOf(
+                    "action" to "export_end",
+                    "outcome" to "error",
+                    "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
+                ),
+                "export end",
+            )
+            throw e
+        }.also { result ->
+            com.newoether.agora.util.DebugLog.event(
+                "DataTransfer",
+                mapOf(
+                    "action" to "export_end",
+                    "outcome" to "ok",
+                    "images" to result.imagesExported.toString(),
+                    "missingResources" to result.missingResourceCount.toString(),
+                    "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
+                ),
+                "export end",
+            )
         }
     }
 }

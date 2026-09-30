@@ -35,7 +35,7 @@ class SandboxDocumentsProvider : DocumentsProvider() {
         const val DEFAULT_AUTHORITY_SUFFIX = "documents"
 
         private const val LEGACY_HOME_DOCUMENT_ID = "home"
-        private const val HOME_VIRTUAL_PATH = "home/agora"
+        private const val HOME_VIRTUAL_PATH = "home/agentx"
 
         private val DEFAULT_ROOT_PROJECTION = arrayOf(
             Root.COLUMN_ROOT_ID,
@@ -83,7 +83,7 @@ class SandboxDocumentsProvider : DocumentsProvider() {
             newRow().apply {
                 add(Root.COLUMN_ROOT_ID, ROOT_ID)
                 add(Root.COLUMN_DOCUMENT_ID, ROOT_DOCUMENT_ID)
-                add(Root.COLUMN_TITLE, "Agora")
+                add(Root.COLUMN_TITLE, "AgentX")
                 add(Root.COLUMN_SUMMARY, "Sandbox /")
                 add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
                 add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE or Root.FLAG_LOCAL_ONLY)
@@ -215,7 +215,7 @@ class SandboxDocumentsProvider : DocumentsProvider() {
                 Document.COLUMN_DISPLAY_NAME,
                 when (virtualPath) {
                     "" -> "/"
-                    HOME_VIRTUAL_PATH -> "agora"
+                    HOME_VIRTUAL_PATH -> "agentx"
                     else -> virtualPath.substringAfterLast('/')
                 }
             )
@@ -329,7 +329,7 @@ fun Context.openSandboxRoot(authority: String = "$packageName.${SandboxDocuments
 
     val viewIntent = Intent(Intent.ACTION_VIEW).apply {
         // Root.MIME_TYPE_ITEM was only added to the SDK in API 26, but its wire value is
-        // understood by DocumentsUI on every API Agora supports.
+        // understood by DocumentsUI on every API AgentX supports.
         setDataAndType(rootUri, "vnd.android.document/root")
         addCategory(Intent.CATEGORY_DEFAULT)
         addFlags(grantFlags)

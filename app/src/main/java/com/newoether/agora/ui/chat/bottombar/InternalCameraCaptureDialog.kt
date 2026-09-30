@@ -60,7 +60,7 @@ internal fun canLaunchSystemImageCapture(context: Context): Boolean =
 /**
  * Vendor-neutral full-resolution fallback for devices whose camera app does not expose
  * [MediaStore.ACTION_IMAGE_CAPTURE]. CameraX writes directly to [targetPath], which already lives
- * under Agora's private files directory.
+ * under AgentX's private files directory.
  */
 @Composable
 internal fun InternalCameraCaptureDialog(

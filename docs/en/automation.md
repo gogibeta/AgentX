@@ -1,6 +1,6 @@
 # Automation
 
-Agora provides saved **Tasks** and conversation-scoped **Loops**. Open **Settings → Automation** to control model access and Android background execution.
+AgentX provides saved **Tasks** and conversation-scoped **Loops**. Open **Settings → Automation** to control model access and Android background execution.
 
 ## Tasks
 
@@ -21,11 +21,11 @@ A Loop belongs to one conversation and starts another generation after a configu
 
 ## Background Execution
 
-Agora normally uses battery-friendly inexact alarms, so Android may delay a run.
+AgentX normally uses battery-friendly inexact alarms, so Android may delay a run.
 
-**Exact Execution** requests exact alarms for Tasks and Loops. On Android 12 and newer, enabling it opens the system **Alarms & reminders** access flow when needed. If access is denied or later revoked, Agora turns Exact Execution off and falls back to inexact scheduling.
+**Exact Execution** requests exact alarms for Tasks and Loops. On Android 12 and newer, enabling it opens the system **Alarms & reminders** access flow when needed. If access is denied or later revoked, AgentX turns Exact Execution off and falls back to inexact scheduling.
 
-**Battery Optimization** reports whether Android is currently optimizing Agora. Tap the row to open Android's general battery-optimization settings. Agora refreshes the status when the page opens or resumes; it does not directly request an exemption for itself.
+**Battery Optimization** reports whether Android is currently optimizing AgentX. Tap the row to open Android's general battery-optimization settings. AgentX refreshes the status when the page opens or resumes; it does not directly request an exemption for itself.
 
 Exact alarms and a battery-optimization exemption can improve background reliability, but they do not override network, device-vendor, or other Android background restrictions.
 

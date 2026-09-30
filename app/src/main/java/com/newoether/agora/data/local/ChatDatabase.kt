@@ -218,7 +218,7 @@ abstract class ChatDatabase : RoomDatabase() {
          * Builds and validates the database without any destructive fallback.
          *
          * The compatibility check is repeated here as a defense-in-depth boundary for
-         * Workers or future callers that do not enter through AgoraApplication.
+         * Workers or future callers that do not enter through AgentXApplication.
          */
         fun build(
             context: Context,
@@ -227,7 +227,7 @@ abstract class ChatDatabase : RoomDatabase() {
         ): ChatDatabase {
             val compatibility = inspectCompatibility(context)
             check(compatibility.canOpen) {
-                "Refusing to open incompatible Agora database: " +
+                "Refusing to open incompatible AgentX database: " +
                     compatibility.javaClass.simpleName
             }
 

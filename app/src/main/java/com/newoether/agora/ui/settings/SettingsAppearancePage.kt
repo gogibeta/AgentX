@@ -51,8 +51,8 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -183,7 +183,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        AgoraDropdownMenu(
+                                        AgentXDropdownMenu(
                                             expanded = expanded,
                                             onDismissRequest = { expanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -196,7 +196,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                     "DARK" -> themeMode == "DARK"
                                                     else -> themeMode != "LIGHT" && themeMode != "DARK"
                                                 }
-                                                AgoraDropdownMenuItem(
+                                                AgentXDropdownMenuItem(
                                                     text = { Text(label) },
                                                     leadingIcon = {
                                                         if (isSelected) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
@@ -284,7 +284,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    AgoraDropdownMenu(
+                                    AgentXDropdownMenu(
                                         expanded = expanded,
                                         onDismissRequest = { expanded = false },
                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -294,7 +294,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             val presetPrimary = remember(preset, currentStyle, isDark) {
                                                 colorSchemeForPreset(preset, currentStyle, isDark).primary
                                             }
-                                            AgoraDropdownMenuItem(
+                                            AgentXDropdownMenuItem(
                                                 text = { Text(presetDisplayName(preset)) },
                                                 leadingIcon = {
                                                     if (preset == currentPreset) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
@@ -336,14 +336,14 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    AgoraDropdownMenu(
+                                    AgentXDropdownMenu(
                                         expanded = expanded,
                                         onDismissRequest = { expanded = false },
                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                         tonalElevation = 16.dp
                                     ) {
                                         SchemeStyle.entries.forEach { style ->
-                                            AgoraDropdownMenuItem(
+                                            AgentXDropdownMenuItem(
                                                 text = { Text(styleDisplayName(style)) },
                                                 leadingIcon = {
                                                     if (style == currentStyle) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
@@ -534,14 +534,14 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        AgoraDropdownMenu(
+                                        AgentXDropdownMenu(
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 16.dp,
                                             expanded = expanded,
                                             onDismissRequest = { expanded = false }
                                         ) {
                                             options.forEach { (mode, label) ->
-                                                AgoraDropdownMenuItem(
+                                                AgentXDropdownMenuItem(
                                                     text = { Text(label) },
                                                     leadingIcon = {
                                                         if (normalizedToolCallDisplayMode == mode) {
@@ -595,7 +595,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                 style = MaterialTheme.typography.labelLarge,
                                                 color = MaterialTheme.colorScheme.primary,
                                             )
-                                            AgoraDropdownMenu(
+                                            AgentXDropdownMenu(
                                                 expanded = expanded,
                                                 onDismissRequest = { expanded = false },
                                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -607,7 +607,7 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                                     ThinkingSegmentDisplayModes.BOTTOM_SHEET to
                                                         stringResource(R.string.thinking_segment_display_bottom_sheet),
                                                 ).forEach { (mode, label) ->
-                                                    AgoraDropdownMenuItem(
+                                                    AgentXDropdownMenuItem(
                                                         text = { Text(label) },
                                                         leadingIcon = {
                                                             if (
@@ -720,14 +720,14 @@ fun SettingsAppearancePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
-                                        AgoraDropdownMenu(
+                                        AgentXDropdownMenu(
                                             expanded = expanded,
                                             onDismissRequest = { expanded = false },
                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 16.dp
                                         ) {
                                             options.forEach { (value, label) ->
-                                                AgoraDropdownMenuItem(
+                                                AgentXDropdownMenuItem(
                                                     text = { Text(label) },
                                                     leadingIcon = {
                                                         if (fontPreference == value) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)

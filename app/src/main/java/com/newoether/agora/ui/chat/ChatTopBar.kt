@@ -55,11 +55,11 @@ import androidx.compose.ui.res.stringResource
 import com.newoether.agora.R
 import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ContextBudget
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.rememberIdentityClipWidth
 import com.newoether.agora.ui.theme.ChatType
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 private const val TITLE_CAPSULE_MAX_WIDTH_DP = 260
 
@@ -102,7 +102,7 @@ internal fun ChatTopBar(
     moreMenuContent: (@Composable ColumnScope.(dismiss: () -> Unit) -> Unit)? = null,
 ) {
     var moreMenuOpen by remember { mutableStateOf(false) }
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val searchFocusRequester = remember { FocusRequester() }
     LaunchedEffect(searchActive) {
         if (searchActive) {
@@ -263,7 +263,7 @@ internal fun ChatTopBar(
                 // Resolve the active conversation's title; null in new-chat mode OR
                 // before the conversation/title has loaded. Both the brand TEXT and the
                 // brand font SIZE are gated on this single value, so the title never
-                // changes size before the text swaps (no transient "Agora at 17sp").
+                // changes size before the text swaps (no transient "AgentX at 17sp").
                 val resolvedTitle = if (isNewChatMode) null else {
                     currentConversationTitle?.takeIf { it.isNotBlank() }
                         ?: conversations.find { it.id == currentConversationId }?.title?.takeIf { it.isNotBlank() }
@@ -451,14 +451,14 @@ internal fun ChatTopBar(
                                     modifier = Modifier.size(26.dp),
                                 )
                             }
-                            AgoraDropdownMenu(
+                            AgentXDropdownMenu(
                                 expanded = moreMenuOpen,
                                 onDismissRequest = { moreMenuOpen = false },
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 16.dp,
                             ) {
                                 if (moreMenuContent != null) moreMenuContent { moreMenuOpen = false } else {
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = { Text(stringResource(R.string.conversation_search)) },
                                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                                     enabled = conversationActionsEnabled,
@@ -467,7 +467,7 @@ internal fun ChatTopBar(
                                         onSearchClick()
                                     },
                                 )
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = { Text(stringResource(R.string.system_prompt)) },
                                     leadingIcon = {
                                         Icon(Icons.Default.Psychology, contentDescription = null)
@@ -478,7 +478,7 @@ internal fun ChatTopBar(
                                         onSystemPromptClick()
                                     },
                                 )
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = { Text(stringResource(R.string.conversation_fork_menu)) },
                                     leadingIcon = {
                                         Icon(Icons.Default.CallSplit, contentDescription = null)
@@ -489,7 +489,7 @@ internal fun ChatTopBar(
                                         onForkConversation()
                                     },
                                 )
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = { Text(stringResource(R.string.conversation_share)) },
                                     leadingIcon = {
                                         Icon(Icons.Default.Share, contentDescription = null)

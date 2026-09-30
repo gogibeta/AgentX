@@ -4,7 +4,7 @@ Open **Settings → Image Generation** to choose the model and default image siz
 
 ## Model and credentials
 
-The selected value identifies a configured `Provider:model`. Agora resolves the API key and base URL from that provider; this page does not maintain a separate image-generation key or endpoint. The picker favors image-capable models and can show all configured models when needed.
+The selected value identifies a configured `Provider:model`. AgentX resolves the API key and base URL from that provider; this page does not maintain a separate image-generation key or endpoint. The picker favors image-capable models and can show all configured models when needed.
 
 A model may be synchronized from a provider even if it is not enabled for ordinary chat. Whether it can actually generate images depends on the provider and model.
 

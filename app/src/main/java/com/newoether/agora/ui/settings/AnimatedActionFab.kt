@@ -31,7 +31,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 
 /** Shared pill-shaped FAB with the press animation used by settings documentation actions. */
 @Composable
@@ -48,7 +48,7 @@ fun AnimatedActionFab(
     val animatePress =
         isPressed &&
             enabled &&
-            LocalAgoraMotionPolicy.current.allowSpatialTransitions
+            LocalAgentXMotionPolicy.current.allowSpatialTransitions
 
     val targetWidth = if (animatePress) 240.dp else 200.dp
     val targetHeight = if (animatePress) 56.dp else 48.dp

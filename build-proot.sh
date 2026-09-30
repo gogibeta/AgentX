@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# build-proot.sh - Build proot native binaries for the Agora Android app.
+# build-proot.sh - Build proot native binaries for the AgentX Android app.
 # Invoked from build.ps1 / build-googleplay.ps1 / build_fdroid.ps1.
 # Must run inside WSL Arch (or any Linux with NDK 28.2.13676358).
 

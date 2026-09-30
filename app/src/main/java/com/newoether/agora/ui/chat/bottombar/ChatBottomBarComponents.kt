@@ -14,7 +14,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import com.newoether.agora.model.ContextBudget
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -55,8 +55,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import com.newoether.agora.ui.motion.rememberIdentityClipWidth
 import com.newoether.agora.R
 import com.newoether.agora.ui.theme.ChatType
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
-import com.newoether.agora.ui.components.AgoraExposedDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXExposedDropdownMenu
 
 internal const val CHAT_DROPDOWN_MENU_ICON_SIZE_DP = 24
 
@@ -117,7 +117,7 @@ internal fun RowScope.ComposerModelSelector(
         val clipWidth = rememberIdentityClipWidth(
             identity = displayText,
             targetWidth = targetWidth,
-            allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions,
+            allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions,
         )
         ExposedDropdownMenuBox(expanded = expanded && enabled, onExpandedChange = {}) {
             // The slot takes the clip width, so the controls after it follow the visible edge, and one
@@ -158,7 +158,7 @@ internal fun RowScope.ComposerModelSelector(
                     }
                 }
             }
-            AgoraExposedDropdownMenu(
+            AgentXExposedDropdownMenu(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 expanded = expanded && enabled,
                 onDismissRequest = onDismissRequest,
@@ -171,7 +171,7 @@ internal fun RowScope.ComposerModelSelector(
 
 @Composable
 internal fun ComposerModelMenuItem(displayText: String, selected: Boolean, onClick: () -> Unit) {
-    AgoraDropdownMenuItem(
+    AgentXDropdownMenuItem(
         text = { Text(displayText) },
         leadingIcon = {
             if (selected) Icon(Icons.Default.Check, null, Modifier.size(CHAT_DROPDOWN_MENU_ICON_SIZE_DP.dp))
@@ -194,7 +194,7 @@ internal fun ComposerContextIndicator(
     onClick: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val available = estimatedTokens != null && tokenBudget != null
     val overCompactThreshold = estimatedTokens != null && tokenBudget != null &&
         contextUsageExceedsCompactThreshold(estimatedTokens, tokenBudget, compactThresholdPercent)
@@ -236,7 +236,7 @@ internal fun ComposerContextIndicator(
                 color = contextProgressColor,
             )
         }
-        AgoraExposedDropdownMenu(
+        AgentXExposedDropdownMenu(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             expanded = expanded && available,
             onDismissRequest = onDismissRequest,
@@ -297,7 +297,7 @@ internal fun NativeSearchMenuItem(
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    AgoraDropdownMenuItem(
+    AgentXDropdownMenuItem(
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(

@@ -84,15 +84,15 @@ import com.newoether.agora.diagnostics.DiagnosticEventPayload
 import com.newoether.agora.diagnostics.DiagnosticExportFormat
 import com.newoether.agora.diagnostics.DiagnosticRequestContext
 import com.newoether.agora.diagnostics.DiagnosticSnapshot
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 private const val CaptureCrossfadeDurationMillis = 250
 private val CaptureEdgeTolerance = 2.dp
@@ -110,7 +110,7 @@ internal fun SettingsDeveloperCapturePage(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val snapshot by DeveloperDiagnostics.snapshots.collectAsState()
@@ -246,13 +246,13 @@ internal fun SettingsDeveloperCapturePage(
                         )
                     }
                 }
-                AgoraDropdownMenu(
+                AgentXDropdownMenu(
                     expanded = showActionsMenu,
                     onDismissRequest = { showActionsMenu = false },
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     tonalElevation = 16.dp,
                 ) {
-                    AgoraDropdownMenuItem(
+                    AgentXDropdownMenuItem(
                         text = {
                             Text(
                                 stringResource(
@@ -479,7 +479,7 @@ private fun CaptureExportMenuItem(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    AgoraDropdownMenuItem(
+    AgentXDropdownMenuItem(
         text = { Text(label) },
         leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null) },
         enabled = enabled,
@@ -565,7 +565,7 @@ private fun CaptureEventCard(
     viewMode: CaptureViewMode,
     onClick: () -> Unit,
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -749,7 +749,7 @@ private suspend fun shareDiagnosticCapture(
         val mimeType = if (extension == "txt") "text/plain" else "application/json"
         val formatName = format.name.lowercase().replace('_', '-')
         val shareDirectory = File(context.cacheDir, "shared").apply { mkdirs() }
-        val file = File(shareDirectory, "agora-diagnostics-$formatName.$extension").apply {
+        val file = File(shareDirectory, "agentx-diagnostics-$formatName.$extension").apply {
             writeText(content, Charsets.UTF_8)
         }
         val uri = FileProvider.getUriForFile(
@@ -760,7 +760,7 @@ private suspend fun shareDiagnosticCapture(
         Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
-            clipData = ClipData.newRawUri("Agora diagnostics", uri)
+            clipData = ClipData.newRawUri("AgentX diagnostics", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }

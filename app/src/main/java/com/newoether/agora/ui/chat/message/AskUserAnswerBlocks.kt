@@ -44,7 +44,7 @@ internal fun askUserBlocks(source: MessageSource, unansweredLabel: String): List
 }
 
 private val NO_TRIM = LineHeightStyle(LineHeightStyle.Alignment.Proportional, LineHeightStyle.Trim.None)
-private const val METRICS_SAMPLE = "Ag测"
+private const val METRICS_SAMPLE = "Ag\u3042"
 
 /**
  * The ask_user bubble body, laid out as separate blocks so a wrapped question can use its own

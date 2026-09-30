@@ -26,7 +26,7 @@ class GenerationForegroundLeaseGateTest {
     }
 
     @Test
-    fun externallyManagedGenerationDoesNotAcquireAgoraLease() = runTest {
+    fun externallyManagedGenerationDoesNotAcquireAgentXLease() = runTest {
         var acquireCalled = false
         val acquired = acquireGenerationForegroundLease(managedExternally = true) {
             acquireCalled = true

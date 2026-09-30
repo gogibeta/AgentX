@@ -167,7 +167,48 @@ internal class GenerationToolExecutor private constructor(
             ?.acknowledgeCommittedJobs(calls, context)
     }
 
+    /**
+     * Execute one authorized tool call, emitting always-on diagnostics (tool name,
+     * elapsed time, outcome) into the persistent session log. Arguments and results
+     * are never logged — they may contain user content.
+     */
     suspend fun execute(
+        call: AuthorizedToolCall,
+        onEvent: suspend (ToolExecutionEvent) -> Unit,
+    ): AuthorizedToolResult {
+        val startNanos = System.nanoTime()
+        com.newoether.agora.util.DebugLog.event(
+            "Tool",
+            mapOf("tool" to call.name),
+            "tool start",
+        )
+        return try {
+            executeInternal(call, onEvent).also { result ->
+                com.newoether.agora.util.DebugLog.event(
+                    "Tool",
+                    mapOf(
+                        "tool" to call.name,
+                        "outcome" to if (result.result.isError) "error" else "ok",
+                        "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
+                    ),
+                    "tool end",
+                )
+            }
+        } catch (e: Throwable) {
+            com.newoether.agora.util.DebugLog.event(
+                "Tool",
+                mapOf(
+                    "tool" to call.name,
+                    "outcome" to "threw",
+                    "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
+                ),
+                "tool end",
+            )
+            throw e
+        }
+    }
+
+    private suspend fun executeInternal(
         call: AuthorizedToolCall,
         onEvent: suspend (ToolExecutionEvent) -> Unit,
     ): AuthorizedToolResult {

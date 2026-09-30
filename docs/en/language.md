@@ -2,7 +2,7 @@
 
 Open **Settings → Language** to choose the app interface language.
 
-Agora supports the system default plus:
+AgentX supports the system default plus:
 
 - English
 - Arabic

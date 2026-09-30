@@ -71,7 +71,7 @@ object HttpClient {
             val elapsedMs = (System.nanoTime() - startedAtNanos) / 1_000_000L
             val suffix = detail.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
             DebugLog.d(
-                "AgoraTTFT",
+                "AgentXTTFT",
                 "[req=$requestId origin=$origin] stage=$stage elapsedMs=$elapsedMs$suffix",
             )
             DeveloperDiagnostics.recordHttpStage(
@@ -125,14 +125,50 @@ object HttpClient {
 
     /** Fail-closed guard: never transmit API credentials over cleartext HTTP to a
      *  non-local host. LAN / loopback / Tailscale endpoints (Ollama, self-hosted) stay allowed. */
-    internal fun guardCleartextCredentials(url: String, headers: Map<String, String>) {
-        if (!url.startsWith("http://", ignoreCase = true)) return
+    internal fun guardCleartextCredentials(url: String, headers: Map<String, String>) {        if (!url.startsWith("http://", ignoreCase = true)) return
         val host = try { java.net.URI(url).host ?: "" } catch (_: Exception) { "" }
         if (isLocalHost(host)) return
         if (headers.keys.any { it.lowercase() in CREDENTIAL_HEADERS }) {
             throw IOException(
                 "Refusing to send API credentials over cleartext HTTP to a non-local host. " +
                     "Use an https:// endpoint, or reach it over LAN/Tailscale."
+            )
+        }
+    }
+
+    /**
+     * Privacy-safe URL for the diagnostics log: scheme + host + path only.
+     * Query strings and fragments are dropped — they routinely carry API keys
+     * and other secrets. Never log the raw URL.
+     */
+    internal fun sanitizeUrlForLog(url: String): String = runCatching {
+        val uri = java.net.URI(url)
+        val path = uri.path?.takeIf { it.isNotBlank() } ?: "/"
+        "${uri.scheme}://${uri.host}$path"
+    }.getOrDefault("unparseable-url")
+
+    /**
+     * One-line HTTP summary for the always-on diagnostics log: method, sanitized
+     * URL, status code, and latency. No headers, no bodies, no query strings.
+     */
+    private fun logHttpSummary(
+        method: String,
+        url: String,
+        code: Int?,
+        elapsedMs: Long,
+        error: String?,
+    ) {
+        runCatching {
+            DebugLog.event(
+                "Http",
+                buildMap {
+                    put("method", method)
+                    put("url", sanitizeUrlForLog(url))
+                    put("elapsedMs", elapsedMs.toString())
+                    if (code != null) put("code", code.toString())
+                    if (error != null) put("error", error)
+                },
+                "http $method completed",
             )
         }
     }
@@ -413,6 +449,8 @@ object HttpClient {
         maxErrorBytes: Long? = null,
     ): StreamHandle {
         guardCleartextCredentials(url, headers)
+        val startNanos = System.nanoTime()
+        fun elapsedMs() = (System.nanoTime() - startNanos) / 1_000_000L
         val trace = boundRequestTrace()
         val diagnosticContext = trace?.beginHttpExchange()
         DeveloperDiagnostics.recordHttpRequest(
@@ -442,8 +480,10 @@ object HttpClient {
             val response = call.execute()
             handle.attach(response)
             trace?.mark("response_headers", "code=${response.code}")
+            logHttpSummary("POST", url, response.code, elapsedMs(), null)
             handle
         } catch (t: Throwable) {
+            logHttpSummary("POST", url, null, elapsedMs(), t.javaClass.simpleName)
             handle.close()
             throw t
         }
@@ -508,6 +548,7 @@ object HttpClient {
         readTimeoutMillis: Long? = null,
     ): String? {
         guardCleartextCredentials(url, headers)
+        val startNanos = System.nanoTime()
         val body = jsonBody.toRequestBody(JSON)
         val requestBuilder = Request.Builder().url(url).post(body)
         headers.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
@@ -517,6 +558,10 @@ object HttpClient {
             readTimeoutMillis = readTimeoutMillis,
         ).execute()
         return response.use {
+            logHttpSummary(
+                "POST", url, it.code,
+                (System.nanoTime() - startNanos) / 1_000_000L, null,
+            )
             if (it.isSuccessful) it.body?.string()
             else {
                 DebugLog.e("HttpClient", "POST failed status=${it.code}")
@@ -532,10 +577,15 @@ object HttpClient {
         callTimeoutMillis: Long? = null,
     ): TextResponse {
         guardCleartextCredentials(url, headers)
+        val startNanos = System.nanoTime()
         val body = bodyText.toRequestBody(JSON)
         val requestBuilder = Request.Builder().url(url).post(body)
         headers.forEach { (key, value) -> requestBuilder.addHeader(key, value) }
         return newCall(requestBuilder.build(), callTimeoutMillis).execute().use { response ->
+            logHttpSummary(
+                "POST", url, response.code,
+                (System.nanoTime() - startNanos) / 1_000_000L, null,
+            )
             TextResponse(
                 code = response.code,
                 body = response.body?.string().orEmpty(),
@@ -558,10 +608,15 @@ object HttpClient {
         callTimeoutMillis: Long? = null,
     ): TextResponse {
         guardCleartextCredentials(url, headers)
+        val startNanos = System.nanoTime()
         val requestBuilder = Request.Builder().url(url).get()
         headers.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
         val response = newCall(requestBuilder.build(), callTimeoutMillis).execute()
         return response.use {
+            logHttpSummary(
+                "GET", url, it.code,
+                (System.nanoTime() - startNanos) / 1_000_000L, null,
+            )
             TextResponse(
                 code = it.code,
                 body = it.body.string(),
@@ -575,9 +630,14 @@ object HttpClient {
         headers: Map<String, String> = emptyMap(),
     ): TextResponse {
         guardCleartextCredentials(url, headers)
+        val startNanos = System.nanoTime()
         val requestBuilder = Request.Builder().url(url).get()
         headers.forEach { (key, value) -> requestBuilder.addHeader(key, value) }
         return client.newCall(requestBuilder.build()).execute().use { response ->
+            logHttpSummary(
+                "GET", url, response.code,
+                (System.nanoTime() - startNanos) / 1_000_000L, null,
+            )
             TextResponse(
                 code = response.code,
                 body = response.body?.string().orEmpty(),
@@ -594,6 +654,7 @@ object HttpClient {
         readTimeoutMillis: Long? = null,
     ): ByteArray? {
         guardCleartextCredentials(url, headers)
+        val startNanos = System.nanoTime()
         val requestBuilder = Request.Builder().url(url).get()
         headers.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
         val response = newCall(
@@ -602,6 +663,10 @@ object HttpClient {
             readTimeoutMillis = readTimeoutMillis,
         ).execute()
         return response.use {
+            logHttpSummary(
+                "GET", url, it.code,
+                (System.nanoTime() - startNanos) / 1_000_000L, null,
+            )
             if (it.isSuccessful) it.body?.bytes() else null
         }
     }

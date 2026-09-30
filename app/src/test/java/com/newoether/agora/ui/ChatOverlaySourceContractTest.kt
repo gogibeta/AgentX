@@ -190,7 +190,7 @@ internal class ChatOverlaySourceContractTest : UiSourceContractFixture() {
             "app/src/main/java/com/newoether/agora/ui/chat/ChatAppInteractionEffects.kt",
         )
         val service = sourceFile(
-            "app/src/main/java/com/newoether/agora/service/AgoraForegroundService.kt",
+            "app/src/main/java/com/newoether/agora/service/AgentXForegroundService.kt",
         )
         val activityStartup = main
             .substringAfter("override fun onCreate(savedInstanceState: Bundle?)")
@@ -220,11 +220,11 @@ internal class ChatOverlaySourceContractTest : UiSourceContractFixture() {
             "mutableStateOf(screenshotDestination == null && !shouldRequestNotificationPermission)"
         ))
         assertTrue(permissionLauncher.contains("initialComposerFocusReady = true"))
-        assertTrue(permissionEffect.contains("AgoraForegroundService.createChannels(appContext)"))
+        assertTrue(permissionEffect.contains("AgentXForegroundService.createChannels(appContext)"))
         assertTrue(permissionEffect.contains("notificationPermissionLauncher.launch("))
         assertFalse(permissionEffect.contains("delay("))
         assertTrue(
-            permissionEffect.indexOf("AgoraForegroundService.createChannels(appContext)") <
+            permissionEffect.indexOf("AgentXForegroundService.createChannels(appContext)") <
                 permissionEffect.indexOf("notificationPermissionLauncher.launch("),
         )
         assertTrue(main.contains("initialComposerFocusReady = initialComposerFocusReady"))

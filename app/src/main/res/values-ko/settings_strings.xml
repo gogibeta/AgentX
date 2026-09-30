@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">빈 항목</string>
     <string name="prompts_template_blank_desc">비어 있는 편집 가능한 시스템 프롬프트로 시작합니다.</string>
     <string name="prompts_template_default">기본</string>
-    <string name="prompts_template_default_desc">런타임 컨텍스트, 메모리, 웹 검색, 셸, 기기 파일 접근 규칙이 포함된 Agora 기본 프롬프트를 사용합니다.</string>
+    <string name="prompts_template_default_desc">런타임 컨텍스트, 메모리, 웹 검색, 셸, 기기 파일 접근 규칙이 포함된 AgentX 기본 프롬프트를 사용합니다.</string>
     <string name="prompts_duplicate">복제</string>
     <string name="prompts_duplicate_title">%1$s 사본</string>
     <string name="prompts_empty_preview">빈 프롬프트</string>

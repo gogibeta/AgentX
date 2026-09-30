@@ -56,10 +56,10 @@ class AskUserControllerTest {
         val answer = async { controller.awaitAnswer(request) }
         runCurrent()
 
-        controller.submit(request.id, emptyList(), "Agora")
+        controller.submit(request.id, emptyList(), "AgentX")
 
         assertTrue(answer.await().choices.isEmpty())
-        assertEquals("Agora", answer.await().text)
+        assertEquals("AgentX", answer.await().text)
         assertTrue(answer.await().answered)
     }
 

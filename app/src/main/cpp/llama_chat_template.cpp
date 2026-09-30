@@ -5,9 +5,9 @@
 #include "jni_utf8.h"
 #include <cstring>
 
-namespace agora::chat {
+namespace agentx::chat {
 
-using agora::jni::read_java_string;
+using agentx::jni::read_java_string;
 
 static bool read_string_field(
     JNIEnv * env,
@@ -185,12 +185,12 @@ bool read_template_metadata(
     return true;
 }
 
-} // namespace agora::chat
+} // namespace agentx::chat
 
-using agora::chat::ChatHandle;
-using agora::chat::utf8_to_jstring;
-using agora::chat::read_string_field;
-using agora::chat::make_template_result;
+using agentx::chat::ChatHandle;
+using agentx::chat::utf8_to_jstring;
+using agentx::chat::read_string_field;
+using agentx::chat::make_template_result;
 
 extern "C" {
 

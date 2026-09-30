@@ -19,8 +19,8 @@ class WebUiThemeTest {
         assertTrue(css.contains("color-scheme:dark"))
         assertTrue(css.contains("--md-primary:#112233;"))
         assertTrue(css.contains("--md-on-surface-variant:#aabbcc80;"))
-        assertTrue(css.contains("@font-face{font-family:\"AgoraApp\";src:url(\"${WebUiTheme.FONT_PATH}?v="))
-        assertTrue(css.contains("--app-font:\"AgoraApp\","))
+        assertTrue(css.contains("@font-face{font-family:\"AgentXApp\";src:url(\"${WebUiTheme.FONT_PATH}?v="))
+        assertTrue(css.contains("--app-font:\"AgentXApp\","))
     }
 
     @Test
@@ -28,7 +28,7 @@ class WebUiThemeTest {
         val css = WebUiTheme(dark = false, colors = colors, font = WebUiFont.System).toCss()
         assertTrue(css.contains("color-scheme:light"))
         assertFalse(css.contains("@font-face"))
-        assertFalse(css.contains("AgoraApp"))
+        assertFalse(css.contains("AgentXApp"))
     }
 
     @Test

@@ -40,7 +40,7 @@ import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
 import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.ui.components.*
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import com.newoether.agora.ui.theme.ChatType
 import com.newoether.agora.util.noOpBringIntoView
@@ -100,7 +100,7 @@ internal fun CompactSegmentBlock(
     onBlockHeightChanged: (Int) -> Unit = {}
 ) {
     if (segs.isEmpty()) return
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val containsToolSummary = segs.any { it.type == "tool" }
     val animateCardAppearance = rememberSegmentAppearance(
         registry = segmentAppearanceRegistry,

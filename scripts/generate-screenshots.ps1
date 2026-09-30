@@ -112,7 +112,7 @@ function Capture-Screenshot(
     Invoke-Adb shell input keyevent 111 | Out-Null
     Start-Sleep -Milliseconds 600
 
-    $stem = "agora-$Profile-screenshot-$Index"
+    $stem = "agentx-$Profile-screenshot-$Index"
     $png = Join-Path $env:TEMP "$stem.png"
     $jpg = Join-Path $OutputDirectory "screenshot_$Index.jpg"
     $remotePng = "/data/local/tmp/$stem.png"

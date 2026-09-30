@@ -126,7 +126,7 @@ internal class ShellDurableJobExecutor {
                 if (outputUpdate.lostBytes > 0) {
                     onOutput(
                         "[Conch output gap: ${outputUpdate.lostBytes} earlier UTF-8 bytes " +
-                            "were evicted before Agora could read them.]\n",
+                            "were evicted before AgentX could read them.]\n",
                     )
                 }
                 if (outputUpdate.delta.isNotEmpty()) {

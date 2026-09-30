@@ -215,6 +215,11 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         val path = com.newoether.agora.util.FileLog.logFilePath(context)
                         val file = java.io.File(path)
                         if (file.exists()) {
+                            com.newoether.agora.util.DebugLog.event(
+                                "Diagnostics",
+                                mapOf("action" to "share_log"),
+                                "diagnostics log shared",
+                            )
                             val uri = androidx.core.content.FileProvider.getUriForFile(
                                 context, context.packageName + ".fileprovider", file,
                             )

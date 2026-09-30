@@ -159,7 +159,7 @@ object ModelThinkingCapabilityDefaults {
      *  - 3.7 through 4.5 take `thinking.enabled` with `budget_tokens` and no effort selector;
      *  - 4.6 adds `output_config.effort` while still accepting the sampling parameters;
      *  - later models take effort and reject temperature/top_k/top_p.
-     * An id Agora has no documentation for gets every option.
+     * An id AgentX has no documentation for gets every option.
      */
     private fun anthropicCapability(model: String): ModelThinkingCapability = when {
         !model.startsWith("claude") -> anthropicUndocumented

@@ -170,7 +170,7 @@ fun stripEmptyTurns(messages: List<ChatMessage>): List<ChatMessage> =
  * Builds an API-only view where assistant-generated images remain available for
  * visual follow-ups without being serialized as assistant-side image content.
  *
- * Chat completion schemas treat images as user inputs. Agora stores generated
+ * Chat completion schemas treat images as user inputs. AgentX stores generated
  * images on model messages for display, so the latest generated image set is
  * projected onto the latest normal user message when images are being sent.
  */

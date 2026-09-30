@@ -43,7 +43,7 @@ def main():
     if not shutil.which(compiler):
         parser.error("Set CXX or put a host g++ compiler on PATH")
 
-    with tempfile.TemporaryDirectory(prefix="agora-native-utf8-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="agentx-native-utf8-") as temporary:
         output = Path(temporary)
         library = output / ("probe.dll" if windows else "libprobe.so")
         flags = ["-static-libgcc", "-static-libstdc++"] if windows else ["-fPIC"]

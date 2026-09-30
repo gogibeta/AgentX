@@ -13,10 +13,10 @@ class DefaultSystemPromptTest {
     }
 
     @Test
-    fun titleForLocale_usesChineseDefaultForChineseLocale() {
+    fun titleForLocale_fallsBackToEnglishForRemovedChineseLocale() {
         assertEquals("Default", DefaultSystemPrompt.titleForLocale(Locale.ENGLISH))
-        assertEquals("\u9ed8\u8ba4", DefaultSystemPrompt.titleForLocale(Locale.SIMPLIFIED_CHINESE))
-        assertEquals("\u9810\u8a2d", DefaultSystemPrompt.titleForLocale(Locale.forLanguageTag("zh-Hant")))
+        assertEquals("Default", DefaultSystemPrompt.titleForLocale(Locale.SIMPLIFIED_CHINESE))
+        assertEquals("Default", DefaultSystemPrompt.titleForLocale(Locale.forLanguageTag("zh-Hant")))
         assertEquals("Predeterminado", DefaultSystemPrompt.titleForLocale(Locale.forLanguageTag("es")))
         assertEquals("Par d\u00e9faut", DefaultSystemPrompt.titleForLocale(Locale.FRENCH))
     }
@@ -79,12 +79,16 @@ class DefaultSystemPromptTest {
             Locale.KOREAN,
             Locale.forLanguageTag("pt-BR"),
             Locale.forLanguageTag("ru"),
-            Locale.SIMPLIFIED_CHINESE,
-            Locale.forLanguageTag("zh-Hant"),
         )
+        // Legacy installs created before Chinese was removed still carry Chinese
+        // built-in titles; they must keep being recognised as built-in.
+        val legacyChineseTitles = listOf("\u9ed8\u8ba4", "\u9810\u8a2d")
         val previousEntries = locales.mapIndexed { index, locale ->
             DefaultSystemPrompt.previousVersionForMigration(locale)
                 .copy(id = "localized-default-$index")
+        } + legacyChineseTitles.mapIndexed { index, title ->
+            DefaultSystemPrompt.previousVersionForMigration(Locale.ENGLISH)
+                .copy(id = "legacy-chinese-default-$index", title = title)
         } + DefaultSystemPrompt.previousVersionForMigration(Locale.ENGLISH)
             .copy(id = "mixed-case-default", title = "dEfAuLt")
         val migrated = migrateUnmodifiedBuiltInDefault(
@@ -139,8 +143,8 @@ class DefaultSystemPromptTest {
         val suffix = PredefinedVariables.compile(userTemplate.afterPrompt, emptyMap(), emptyMap())
         val assistantTemplate = PredefinedVariables.splitMessageTemplate(entry.resolvedAssistantItems)
 
-        assertEquals("<agora_user_message sent_date=\"2026-05-09 Sat\" sent_time=\"21:35:10\">\n", prefix)
-        assertEquals("\n</agora_user_message>", suffix)
+        assertEquals("<agentx_user_message sent_date=\"2026-05-09 Sat\" sent_time=\"21:35:10\">\n", prefix)
+        assertEquals("\n</agentx_user_message>", suffix)
         assertTrue(assistantTemplate.beforePrompt.isEmpty())
         assertTrue(assistantTemplate.afterPrompt.isEmpty())
     }

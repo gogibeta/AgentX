@@ -1,8 +1,8 @@
-# Agora Development Contracts
+# AgentX Development Contracts
 
 Status: authoritative mandatory development entry, 2026-08-13.
 
-Every Agora development task must read this document before planning or editing. It then must read
+Every AgentX development task must read this document before planning or editing. It then must read
 each module contract whose code, data, UI, persistence, automation, or behavior is in scope. These
 documents are executable product/architecture contracts, not optional background material.
 
@@ -24,7 +24,7 @@ override an explicit contract.
 
 ## 2. Mandatory core contracts
 
-These generation and Room invariants govern Agora-owned conversations. Externally owned
+These generation and Room invariants govern AgentX-owned conversations. Externally owned
 Remote sessions follow [remote-sessions.md](remote-sessions.md), as explicitly requested
 by the owner; they reuse the presentation while leaving execution and durable truth in Codex.
 
@@ -154,7 +154,7 @@ Never:
 | Generic Web Search providers/settings/tool execution or native provider-hosted web search | [web-search.md](web-search.md) |
 | Persistent Skill files, Skill catalog prompt projection, Skill tools/settings, or Skill archive transport | [skills.md](skills.md) |
 | Application-level onboarding motion, settings category copy, or other non-message global UI behavior | [application-ui.md](application-ui.md) |
-| Native `.agora` archive categories, settings portability, import strategies, secrets, or backup compatibility | [import-export.md](import-export.md) |
+| Native `.agentx` archive categories, settings portability, import strategies, secrets, or backup compatibility | [import-export.md](import-export.md) |
 | Shared Settings page structure, interaction, copy, localization, or documentation entry points | [settings-ui-ux.md](settings-ui-ux.md) |
 
 Add a module document when a user defines durable behavior for another subsystem. Each module
@@ -167,12 +167,12 @@ preserve migration or audit evidence only and never override the module contract
 
 ## 8. Development completion gate
 
-The 2026-09-11 owner requirement prohibits TypeScript in Agora, Filo and Conch.
-Agora remains Kotlin; Filo moves fully to Go with no Node.js runtime dependency.
-The current delivery includes merging Remote into the original Agora branch after
+The 2026-09-11 owner requirement prohibits TypeScript in AgentX, Filo and Conch.
+AgentX remains Kotlin; Filo moves fully to Go with no Node.js runtime dependency.
+The current delivery includes merging Remote into the original AgentX branch after
 qualification, preserving its existing commits and unrelated uncommitted changes.
 
-The owner requires a sustainable Filo and Agora baseline (2026-09-10). Split maintained
+The owner requires a sustainable Filo and AgentX baseline (2026-09-10). Split maintained
 source, tests, resources and contracts by responsibility before files approach 999 lines;
 target 700–800 lines or less. Never compress statements or remove useful formatting to
 evade this limit. Preserve established behavior throughout structural cleanup. Baseline

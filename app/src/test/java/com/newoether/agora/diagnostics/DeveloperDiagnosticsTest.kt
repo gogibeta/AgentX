@@ -165,7 +165,7 @@ class DeveloperDiagnosticsTest {
         @JvmStatic
         @BeforeClass
         fun initializeDiagnostics() {
-            root = Files.createTempDirectory("agora-developer-diagnostics").toFile()
+            root = Files.createTempDirectory("agentx-developer-diagnostics").toFile()
             scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
             runBlocking {
                 DeveloperDiagnostics.initialize(root, scope)

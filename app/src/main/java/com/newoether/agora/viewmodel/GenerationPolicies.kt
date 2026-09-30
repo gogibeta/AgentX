@@ -137,7 +137,7 @@ internal fun toolRoundThoughtSegments(
 }
 
 /**
- * Removes only the strict cumulative thought prefix written by older Agora builds.
+ * Removes only the strict cumulative thought prefix written by older AgentX builds.
  *
  * Legacy tool rows for one run were shaped as `[thought 1, ..., thought N, tool N]`; replaying all
  * rows therefore sent the same signed reasoning over and over. Current rows contain only their own

@@ -10,13 +10,13 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 
 /**
- * Hands the resolved app theme to the WebUI. Call it inside `AgoraTheme` so it sees the same
+ * Hands the resolved app theme to the WebUI. Call it inside `AgentXTheme` so it sees the same
  * [MaterialTheme.colorScheme] as the app; it republishes whenever the scheme or font changes.
  */
 @Composable
 internal fun PublishWebUiTheme(webUi: WebUiController, fontPreference: String, customFontPath: String) {
     val scheme = MaterialTheme.colorScheme
-    // AgoraTheme remembers its scheme, so this rebuilds only when the theme or font changes.
+    // AgentXTheme remembers its scheme, so this rebuilds only when the theme or font changes.
     val theme = remember(scheme, fontPreference, customFontPath) {
         WebUiTheme(
             dark = scheme.background.luminance() < 0.5f,

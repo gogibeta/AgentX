@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">AgentX</string>
-    <string name="agora_responded">Agora responded</string>
+    <string name="agentx_responded">AgentX responded</string>
 
     <!-- Chat Bottom Bar -->
     <string name="add_attachment">Add Attachment</string>
@@ -19,7 +19,7 @@
     <string name="openai_search">OpenAI Search</string>
     <string name="thinking">Thinking</string>
     <string name="web_search">Web Search</string>
-    <string name="ask_agora">Ask Agora anything...</string>
+    <string name="ask_agentx">Ask AgentX anything...</string>
     <string name="send">Send</string>
 
     <!-- Tool Display -->
@@ -301,9 +301,9 @@
     <string name="play">Play</string>
     <string name="video_preview">Video preview</string>
     <string name="total_tokens">Total: %1$d tokens</string>
-    <string name="welcome_to_agora">Welcome to Agora.</string>
+    <string name="welcome_to_agentx">Welcome to AgentX.</string>
     <string name="database_incompatible">Database Incompatible</string>
-    <string name="database_incompatible_desc">The database is incompatible with this version of Agora. Please clear the database and restart the app.</string>
+    <string name="database_incompatible_desc">The database is incompatible with this version of AgentX. Please clear the database and restart the app.</string>
     <string name="quit">Quit</string>
     <string name="clear_database">Clear Database</string>
     <string name="generate_title">Generate Title</string>
@@ -393,10 +393,10 @@
     <string name="about_update_available">Update available: v%1$s</string>
     <string name="about_up_to_date">You\'re up to date (v%1$s)</string>
     <string name="about_checking">Checking...</string>
-    <string name="about_available_body">A new version of Agora is available on GitHub.</string>
+    <string name="about_available_body">A new version of AgentX is available on GitHub.</string>
     <string name="about_view_release">View Release</string>
     <string name="about_later">Later</string>
-    <string name="rating_title">Rate Agora</string>
+    <string name="rating_title">Rate AgentX</string>
     <string name="rating_star">%1$d star(s)</string>
     <string name="rating_your_name">Your Name (optional)</string>
     <string name="rating_your_email">Your Email (optional)</string>
@@ -413,7 +413,7 @@
     <string name="data_export_title">Export Data</string>
     <string name="data_export_subtitle">Save conversations, memories, prompts, and settings to a file.</string>
     <string name="data_import_title">Import Data</string>
-    <string name="data_import_subtitle">Restore from a previous .agora export file.</string>
+    <string name="data_import_subtitle">Restore from a previous .agentx export file.</string>
     <string name="export_category_conversations">Conversations &amp; Messages</string>
     <string name="export_category_memories">Memories</string>
     <string name="export_category_system_prompts">System Prompts</string>
@@ -429,7 +429,7 @@
 
     <string name="export_failed">Export failed: %1$s</string>
     <string name="import_preview_title">Import Data</string>
-    <string name="import_from">Exported on %1$s\nFrom Agora v%2$s</string>
+    <string name="import_from">Exported on %1$s\nFrom AgentX v%2$s</string>
     <string name="import_unsupported_backup_version">Backup format v%1$d is not supported. This app supports up to v%2$d.</string>
     <string name="import_strategy_merge">Merge</string>
     <string name="import_strategy_replace">Replace</string>
@@ -443,7 +443,7 @@
     <string name="loading_label">Loading…</string>
     <string name="import_success">Import complete: %1$s</string>
     <string name="import_failed">Import failed: %1$s</string>
-    <string name="import_invalid_file">Invalid .agora file. Please select a valid export.</string>
+    <string name="import_invalid_file">Invalid .agentx file. Please select a valid export.</string>
     <string name="import_no_data">This export file contains no importable data.</string>
 
     <!-- Claude Chat Import -->
@@ -526,7 +526,7 @@
     <string name="show_documentation_links_desc">Display documentation button on settings pages</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_title">Welcome to Agora</string>
+    <string name="onboarding_welcome_title">Welcome to AgentX</string>
     <string name="onboarding_welcome_desc">A BYOK app that takes back your data sovereignty.</string>
     <string name="onboarding_byok_title">Bring Your Own Key</string>
     <string name="onboarding_byok_desc">Set up your API keys or import a GGUF model to unlock on-device inference.</string>
@@ -610,7 +610,7 @@
     <string name="shell_confirm_setting">Confirm Remote Shell Actions</string>
     <string name="shell_confirm_setting_desc">Ask before the assistant runs commands or writes files on remote SSH/Conch servers</string>
     <string name="shell_confirm_notification_channel">Command approval</string>
-    <string name="shell_confirm_notification_desc">Asks you to allow or deny a remote command while Agora is in the background</string>
+    <string name="shell_confirm_notification_desc">Asks you to allow or deny a remote command while AgentX is in the background</string>
 
     <string name="ask_user_title">The assistant is asking</string>
     <string name="ask_user_send">Send</string>
@@ -621,11 +621,11 @@
     <string name="interaction_expand">Expand</string>
     <string name="ask_user_custom_answer">Answer in your own words</string>
     <string name="ask_user_skip">Skip</string>
-    <string name="ask_user_notification_channel">Question from Agora</string>
+    <string name="ask_user_notification_channel">Question from AgentX</string>
     <string name="ask_user_notification_desc">Asks you to answer a question from the assistant while the chat screen is not open</string>
 
     <!-- Crash reporting -->
-    <string name="crash_title">Agora quit unexpectedly</string>
+    <string name="crash_title">AgentX quit unexpectedly</string>
     <string name="crash_message">Sorry about that. You can help fix this by sending an anonymous crash report.</string>
     <string name="crash_submit">Submit report</string>
     <string name="crash_dismiss">Don\'t send</string>
@@ -721,7 +721,7 @@
     <string name="developer_options_disable_confirm">Turn off</string>
     <string name="developer_options_clear_diagnostics">Clear Diagnostic Session?</string>
     <string name="developer_options_clear_diagnostics_action">Clear Diagnostic Session</string>
-    <string name="developer_options_export_share_title">Share Agora Diagnostic Bundle</string>
+    <string name="developer_options_export_share_title">Share AgentX Diagnostic Bundle</string>
     <string name="developer_options_export_failed">Could not create the diagnostic bundle.</string>
     <string name="responses_api">Responses API</string>
     <string name="responses_api_desc">Use the provider’s /responses endpoint instead of Chat Completions.</string>

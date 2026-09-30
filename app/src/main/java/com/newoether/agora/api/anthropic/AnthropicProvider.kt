@@ -380,7 +380,7 @@ class AnthropicProvider(
                     requiredArrayFields = setOf("messages"),
                 )
                 DebugLog.d(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "[$name] request model=$modelName messages=${requestBody.messages.size} " +
                         "thinking=${thinking?.type} tools=${anthropicTools?.size ?: 0}",
                 )
@@ -405,7 +405,7 @@ class AnthropicProvider(
                     val retryable = e.asRetryableTransportError()
                     if (retryable != null && attempt < maxAttempts) {
                         DebugLog.w(
-                            "AgoraAPI",
+                            "AgentXAPI",
                             "[$name] Transport failure opening the stream on attempt " +
                                 "$attempt/$maxAttempts (${e.javaClass.simpleName}), retrying",
                         )
@@ -464,7 +464,7 @@ class AnthropicProvider(
                                 }
                             } catch (e: Exception) {
                                 DebugLog.e(
-                                    "AgoraAPI",
+                                    "AgentXAPI",
                                     "[$name] malformed stream payload exception=${e.javaClass.simpleName}",
                                 )
                                 eventRouter.captureParseError(
@@ -499,7 +499,7 @@ class AnthropicProvider(
                         alreadyReportedError = eventRouter.reportedError || reportedError,
                         timedOut = timedOut,
                     )
-                    DebugLog.d("AgoraSSE",
+                    DebugLog.d("AgentXSSE",
                         "[$name] stream_end ${termination.describe()} " +
                         "tool_use_blocks=${eventRouter.toolUseBlockStarts} " +
                         "attempt=$attempt/$maxAttempts"
@@ -507,7 +507,7 @@ class AnthropicProvider(
 
                     if (termination.isRetryable && attempt < maxAttempts) {
                         // Nothing was surfaced yet, so replaying cannot duplicate visible output.
-                        DebugLog.w("AgoraAPI",
+                        DebugLog.w("AgentXAPI",
                             "[$name] Incomplete stream on attempt $attempt/$maxAttempts, retrying")
                         val retryDelayMs = ProviderRetryPolicy.delayMillis(attempt)
                         emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
@@ -520,7 +520,7 @@ class AnthropicProvider(
                     val errorRaw = handle.errorBody.orEmpty()
                     val responseBytes = errorRaw.toByteArray(Charsets.UTF_8).size
                     DebugLog.e(
-                        "AgoraAPI",
+                        "AgentXAPI",
                         "[$name] HTTP ${handle.code} responseBytes=$responseBytes",
                     )
 
@@ -532,7 +532,7 @@ class AnthropicProvider(
                         ) && attempt < maxAttempts
                     ) {
                         val retryDelayMs = ProviderRetryPolicy.delayMillis(attempt)
-                        DebugLog.w("AgoraAPI", "[$name] Transient error ${handle.code} on attempt $attempt/$maxAttempts, retrying in ${retryDelayMs}ms...")
+                        DebugLog.w("AgentXAPI", "[$name] Transient error ${handle.code} on attempt $attempt/$maxAttempts, retrying in ${retryDelayMs}ms...")
                         emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
                         delay(retryDelayMs)
                     } else {
@@ -546,7 +546,7 @@ class AnthropicProvider(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: RequestFormatException) {
-            DebugLog.e("AgoraAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
+            DebugLog.e("AgentXAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
             emit(StreamEvent.Error(GenerationError.RequestFormat(name, e.violations.joinToString())))
         } catch (e: java.net.SocketTimeoutException) {
             emit(StreamEvent.Error(GenerationError.Timeout))

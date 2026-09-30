@@ -26,14 +26,14 @@ class ToolPresentationResolverTest {
             MessageSegment(
                 type = "tool",
                 toolName = "google_search",
-                toolArgs = """{"query":"Agora"}""",
-                toolResult = """{"type":"web_search","provider":"Google","query":"Agora","results":[{"title":"Agora","url":"https://example.com"}]}""",
+                toolArgs = """{"query":"AgentX"}""",
+                toolResult = """{"type":"web_search","provider":"Google","query":"AgentX","results":[{"title":"AgentX","url":"https://example.com"}]}""",
                 toolState = ToolExecutionStates.SUCCEEDED,
             ),
         )
 
         assertEquals(ToolKind.WEB_SEARCH, presentation.kind)
-        assertEquals("Agora", presentation.subject)
+        assertEquals("AgentX", presentation.subject)
         assertEquals(1, presentation.count)
         assertEquals(ToolPresentationState.COMPLETED, presentation.state)
     }

@@ -41,11 +41,11 @@ import com.newoether.agora.ui.chat.AttachmentThumbnailItem
 import com.newoether.agora.ui.chat.ThumbnailClickHandlers
 import com.newoether.agora.ui.chat.USER_BUBBLE_CONTENT_PADDING
 import com.newoether.agora.ui.chat.resolveAttachmentType
-import com.newoether.agora.ui.common.LocalAgoraHaptics
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.common.LocalAgentXHaptics
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.theme.ChatType
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 /**
  * The right-aligned user message bubble: attachment thumbnails, the message text
@@ -117,8 +117,8 @@ internal fun UserMessageBubble(
 ) {
     @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
-    val haptics = LocalAgoraHaptics.current
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val haptics = LocalAgentXHaptics.current
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     var showMenu by remember { mutableStateOf(false) }
     val editFocusRequester = remember(message.id) { FocusRequester() }
     LaunchedEffect(isEditing, editFocusRequester) {
@@ -314,14 +314,14 @@ internal fun UserMessageBubble(
             }
         }
 
-            AgoraDropdownMenu(
+            AgentXDropdownMenu(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 16.dp,
                 expanded = showMenu && showActions && !isEditing,
                 onDismissRequest = { showMenu = false },
             ) {
                 if (!actionCopyText.isNullOrBlank()) {
-                    AgoraDropdownMenuItem(
+                    AgentXDropdownMenuItem(
                         text = { Text(stringResource(R.string.copy)) },
                         onClick = {
                             clipboardManager.setText(AnnotatedString(actionCopyText))
@@ -331,7 +331,7 @@ internal fun UserMessageBubble(
                         leadingIcon = { Icon(Icons.Default.ContentCopy, null) },
                     )
                 }
-                if (allowMutations) AgoraDropdownMenuItem(
+                if (allowMutations) AgentXDropdownMenuItem(
                     text = { Text(stringResource(R.string.edit)) },
                     onClick = {
                         showMenu = false
@@ -341,7 +341,7 @@ internal fun UserMessageBubble(
                     leadingIcon = { Icon(Icons.Default.Edit, null) },
                 )
                 if (message.text.isNotBlank()) {
-                    AgoraDropdownMenuItem(
+                    AgentXDropdownMenuItem(
                         text = { Text(stringResource(R.string.select_text)) },
                         onClick = {
                             showMenu = false
@@ -350,7 +350,7 @@ internal fun UserMessageBubble(
                         leadingIcon = { Icon(Icons.Default.SelectAll, null) },
                     )
                 }
-                AgoraDropdownMenuItem(
+                AgentXDropdownMenuItem(
                     text = { Text(stringResource(R.string.info)) },
                     onClick = {
                         showMenu = false
@@ -358,7 +358,7 @@ internal fun UserMessageBubble(
                     },
                     leadingIcon = { Icon(Icons.Default.Info, null) },
                 )
-                if (allowMutations) AgoraDropdownMenuItem(
+                if (allowMutations) AgentXDropdownMenuItem(
                     text = {
                         Text(
                             stringResource(R.string.delete),

@@ -13,8 +13,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import com.newoether.agora.model.SelectedAttachment
-import com.newoether.agora.ui.common.AgoraHaptics
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.AgentXHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.util.AttachmentFiles
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.util.FileValidator
@@ -36,7 +36,7 @@ data class CameraCaptureTarget(
 /** UI-only coordination for attachment dialogs, camera capture, and rejection feedback. */
 class ChatComposerState(
     private val context: Context,
-    private val haptics: AgoraHaptics,
+    private val haptics: AgentXHaptics,
     private val scope: CoroutineScope,
     private val sandboxEnabled: () -> Boolean = { false },
     private val isSandboxFlavor: Boolean = false,
@@ -77,7 +77,7 @@ class ChatComposerState(
     }
 
     /**
-     * Creates the camera output inside Agora's private files directory and exposes only that path
+     * Creates the camera output inside AgentX's private files directory and exposes only that path
      * through FileProvider. The system camera writes the full-resolution image directly.
      */
     suspend fun createCameraCaptureTarget(): CameraCaptureTarget? =
@@ -234,7 +234,7 @@ fun rememberChatComposerState(
     isSandboxFlavor: Boolean = false,
 ): ChatComposerState {
     val context = LocalContext.current
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
     val scope = rememberCoroutineScope()
     val latestSandboxEnabled = rememberUpdatedState(sandboxEnabled)
     return remember(context, haptics, scope, isSandboxFlavor) {

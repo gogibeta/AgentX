@@ -63,7 +63,7 @@
     <string name="loop_next_in">Prochaine exécution dans %1$s</string>
     <string name="loop_cycle">Cycle %1$d/%2$d</string>
     <string name="loop_stop">Arrêter la boucle</string>
-    <string name="automation_notification_channel_desc">Notification permanente pendant l’exécution d’une automatisation Agora</string>
+    <string name="automation_notification_channel_desc">Notification permanente pendant l’exécution d’une automatisation AgentX</string>
     <string name="settings_automation">Automatisation</string>
     <string name="settings_automation_desc">Tâches, boucles et précision de planification</string>
     <string name="automation_ai_tools">Accéder aux tâches et aux boucles</string>

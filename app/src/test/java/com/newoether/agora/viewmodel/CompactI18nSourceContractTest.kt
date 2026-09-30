@@ -87,8 +87,6 @@ class CompactI18nSourceContractTest {
             "values-pt-rBR",
             "values-ru",
             "values-vi",
-            "values-zh",
-            "values-zh-rTW",
         )
         val defaults = stringValues(sourceFile("app/src/main/res/values/strings.xml"))
         assertTrue(defaults.keys.containsAll(keys))

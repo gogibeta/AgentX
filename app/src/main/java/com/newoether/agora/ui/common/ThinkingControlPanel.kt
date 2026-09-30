@@ -40,7 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.model.ThinkingLevels
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -341,7 +341,7 @@ private fun MaybeAnimatedVisibility(
 ) {
     if (animate) {
         val allowSpatialTransitions =
-            LocalAgoraMotionPolicy.current.allowSpatialTransitions
+            LocalAgentXMotionPolicy.current.allowSpatialTransitions
         AnimatedVisibility(
             visible = visible,
             enter = if (allowSpatialTransitions) {

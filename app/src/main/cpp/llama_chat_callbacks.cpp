@@ -3,7 +3,7 @@
 #include <cstring>
 #include <vector>
 
-namespace agora::chat {
+namespace agentx::chat {
 
 // Returns the byte length of the largest prefix of `text` that ends on a
 // complete UTF-8 character boundary. llama frequently splits a multi-byte glyph
@@ -181,4 +181,4 @@ bool report_tool_calls_complete(
     return accepted == JNI_TRUE;
 }
 
-} // namespace agora::chat
+} // namespace agentx::chat

@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.newoether.agora.R
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.theme.ChatType
 import com.newoether.agora.util.noOpBringIntoView
 
@@ -47,7 +47,7 @@ internal fun ChatComposerLayout(
     attachmentContent: @Composable () -> Unit = {},
     controls: @Composable RowScope.() -> Unit,
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val composerOcclusionColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
     val composerOcclusionShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     Box(modifier = modifier.fillMaxWidth().then(if (isExpanded) Modifier.fillMaxHeight() else Modifier).padding(start = COMPOSER_HOST_SIDE_PADDING, end = COMPOSER_HOST_SIDE_PADDING, top = COMPOSER_HOST_TOP_PADDING, bottom = COMPOSER_CONTROLS_INSET)) {
@@ -107,7 +107,7 @@ internal fun ChatComposerLayout(
                     ),
                 placeholder = {
                     Text(
-                        stringResource(R.string.ask_agora),
+                        stringResource(R.string.ask_agentx),
                         style = ChatType.input,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )

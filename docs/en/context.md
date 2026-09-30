@@ -1,12 +1,12 @@
 # Context
 
-Context settings control how much conversation history is available to each generation and what Agora does when that history approaches the configured token budget.
+Context settings control how much conversation history is available to each generation and what AgentX does when that history approaches the configured token budget.
 
 ## Context Window
 
 **Default Context Window** is a token budget, not a message count. Available presets range from **4K** to **1M** tokens; the default is **32K**.
 
-The budget includes the provider-visible request: system instructions, enabled tool definitions, attachment text or stored image transcription, and the selected conversation branch. Agora estimates those costs locally, then keeps the newest complete messages that fit. A complete tool-call round is never split.
+The budget includes the provider-visible request: system instructions, enabled tool definitions, attachment text or stored image transcription, and the selected conversation branch. AgentX estimates those costs locally, then keeps the newest complete messages that fit. A complete tool-call round is never split.
 
 The context indicator in the chat bottom bar shows estimated usage. The estimate can differ from the provider's final token accounting because tokenizers and provider-side formatting vary.
 

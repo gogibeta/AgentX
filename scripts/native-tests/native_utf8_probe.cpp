@@ -4,7 +4,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL Java_NativeUtf8Probe_bytes(
     JNIEnv * env, jclass, jstring value
 ) {
     std::string result;
-    if (!agora::jni::read_java_string(env, value, result)) return nullptr;
+    if (!agentx::jni::read_java_string(env, value, result)) return nullptr;
     jbyteArray bytes = env->NewByteArray(static_cast<jsize>(result.size()));
     if (bytes && !result.empty()) {
         env->SetByteArrayRegion(
@@ -19,5 +19,5 @@ extern "C" JNIEXPORT jboolean JNICALL Java_NativeUtf8Probe_pathAccepted(
     JNIEnv * env, jclass, jstring value
 ) {
     std::string result;
-    return agora::jni::read_java_path(env, value, result) ? JNI_TRUE : JNI_FALSE;
+    return agentx::jni::read_java_path(env, value, result) ? JNI_TRUE : JNI_FALSE;
 }

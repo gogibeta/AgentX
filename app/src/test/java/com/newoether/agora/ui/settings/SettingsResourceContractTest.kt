@@ -31,7 +31,7 @@ class SettingsResourceContractTest {
         assertTrue(controls.contains("Icons.Default.Check"))
         assertTrue(controls.contains("MaterialTheme.colorScheme.surfaceContainer"))
         assertTrue(controls.contains("tonalElevation = 16.dp"))
-        assertTrue(controls.contains("AgoraDropdownMenu("))
+        assertTrue(controls.contains("AgentXDropdownMenu("))
         assertFalse(controls.contains("R.string.save"))
         val resources = locateResourceDirectory()
         val defaults = readStringValues(File(resources, "values"))
@@ -150,7 +150,7 @@ class SettingsResourceContractTest {
             "developer_options_clear_diagnostics_action" to "Clear Diagnostic Session",
             "developer_options_capture_scroll_to_top" to "Scroll to Top",
             "developer_options_capture_scroll_to_bottom" to "Scroll to Bottom",
-            "developer_options_export_share_title" to "Share Agora Diagnostic Bundle",
+            "developer_options_export_share_title" to "Share AgentX Diagnostic Bundle",
             "skills_empty" to "No Skills Yet",
         )
         expected.forEach { (key, title) ->

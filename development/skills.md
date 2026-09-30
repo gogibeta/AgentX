@@ -2,7 +2,7 @@
 
 Status: authoritative development contract, 2026-08-28.
 
-This document is required context for changes to Agora's persistent Skill library, Skill catalog
+This document is required context for changes to AgentX's persistent Skill library, Skill catalog
 prompt projection, Skill tools, Skill settings, or Skill archive transport.
 
 ## 1. Product model
@@ -11,7 +11,7 @@ A Skill is a named Markdown instruction file plus an optional short description.
 global, user-owned resources. They are not memories, conversation messages, Providers, MCP servers,
 system prompts, or a second generation pipeline.
 
-Agora has no Active Skill. There is no `active_skill.md`, active-Skill singleton, active-Skill
+AgentX has no Active Skill. There is no `active_skill.md`, active-Skill singleton, active-Skill
 toggle, active-Skill prompt variable, or `update_active_skill` tool. A single active item would waste
 context, limit composition, and inject irrelevant instructions into unrelated requests.
 

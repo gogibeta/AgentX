@@ -71,8 +71,8 @@ import com.newoether.agora.ui.settings.SettingsItem
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.Locale
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 /**
  * The schedule editor mode is explicit UI state. In particular, CUSTOM must not be inferred from
@@ -598,13 +598,13 @@ private fun ScheduleGroup(
                             Icon(Icons.Default.Repeat, null, tint = MaterialTheme.colorScheme.primary)
                         },
                     )
-                    AgoraDropdownMenu(
+                    AgentXDropdownMenu(
                         expanded = showRepeatMenu,
                         onDismissRequest = { showRepeatMenu = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
                         ScheduleEditorMode.entries.forEach { mode ->
-                            AgoraDropdownMenuItem(
+                            AgentXDropdownMenuItem(
                                 text = { Text(repeatLabel(mode)) },
                                 leadingIcon = {
                                     if (editorMode == mode) {

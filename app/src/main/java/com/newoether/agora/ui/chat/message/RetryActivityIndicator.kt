@@ -26,7 +26,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.ui.chat.GenerationActivityDot
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.theme.ChatType
 import java.text.BreakIterator
 import kotlin.math.floor
@@ -93,7 +93,7 @@ internal fun RetryActivityIndicator(
     label: String,
     modifier: Modifier = Modifier,
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val textStyle = ChatType.body

@@ -1,14 +1,14 @@
-# AgentX (mobile-ai-agora) — project memory for future agents
+# AgentX (mobile-ai-agentx) — project memory for future agents
 
-> Working copy lives at `_research/Agora` (clone of
-> https://github.com/newo-ether/Agora.git, base `6eb7d494`).
+> Working copy lives at `_research/AgentX` (clone of
+> https://github.com/gogibeta/AgentX.git, base `6eb7d494`).
 > Shipped to https://github.com/gogibeta/AgentX (`master`).
 > Start with `AGENTS.md`, then `docs/MAP.md`. Device-test toolkit
 > (adb scripts, screenshots, logs) lives at workspace root
-> `mobile-ai-agora/` + `device-logs/` (NOT in the repo).
+> `mobile-ai-agentx/` + `device-logs/` (NOT in the repo).
 
 ## What this is
-Agora (renamed **AgentX** in-app, `app_name` in all locales) + a full agent
+AgentX (renamed **AgentX** in-app, `app_name` in all locales) + a full agent
 layer: universal math/physics/chemistry rendering, TypeSafe/Jev decisions,
 TinyFish+DDG fusion search, Chat/Plan/Build modes, multi-model ensemble,
 artifact PDF/MD export, env vars, key rotation, persistent FileLog.
@@ -43,7 +43,7 @@ artifact PDF/MD export, env vars, key rotation, persistent FileLog.
   wired in `GenerationRequestBuilder`, `GenerationApiPathBuilder`,
   `BaseOpenAiProvider` (all 7 OpenAI-protocol providers inherit it).
 - `util/FileLog.kt` — `filesDir/agentx-logs/session.log`, auto-start in
-  `AgoraApplication.onCreate`, AI-parseable lines, 4MB rotation, share via
+  `AgentXApplication.onCreate`, AI-parseable lines, 4MB rotation, share via
   Settings → Agent → Diagnostics log. `DebugLog` forwards everything.
 - `ui/chat/bottombar/ComposerModeChip.kt` — Chat/Plan/Build chip in composer.
 - `ui/settings/SettingsAgentPage.kt` — mode, workspace (SAF), ensemble models,

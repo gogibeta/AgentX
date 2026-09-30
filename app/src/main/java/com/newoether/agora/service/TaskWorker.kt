@@ -9,7 +9,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.R
 import com.newoether.agora.automation.TaskManager
 import com.newoether.agora.data.replaceCustomProviderIdsForDisplay
@@ -23,7 +23,7 @@ import kotlinx.coroutines.CancellationException
  * Runs a single scheduled task execution off the main thread, reliably and across process death.
  *
  * Delegates to the process-scoped [com.newoether.agora.automation.TaskManager], which drives the
- * generation through the shared engine. The engine already raises [AgoraForegroundService] for
+ * generation through the shared engine. The engine already raises [AgentXForegroundService] for
  * the duration of the LLM call, so this worker does not manage its own foreground state.
  */
 class TaskWorker(
@@ -35,7 +35,7 @@ class TaskWorker(
         val taskId = inputData.getString(KEY_TASK_ID) ?: return Result.failure()
         val executionId = inputData.getString(KEY_EXECUTION_ID) ?: return Result.failure()
         val scheduledAt = inputData.getLong(KEY_SCHEDULED_AT, 0L)
-        val container = (applicationContext as AgoraApplication)
+        val container = (applicationContext as AgentXApplication)
             .awaitContainer()
             ?: return Result.failure(workDataOf(KEY_ERROR to "Database unavailable"))
         fun displayError(text: String): String = replaceCustomProviderIdsForDisplay(

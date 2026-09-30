@@ -4,7 +4,7 @@ Attach a PDF from the chat composer to render selected pages as images for a mod
 
 ## Page selection
 
-Agora initially selects the first five pages. It renders the document asynchronously and lets you select any pages in the file; there is no fixed 50-page application limit. Large documents or many selected pages can require substantial memory and time.
+AgentX initially selects the first five pages. It renders the document asynchronously and lets you select any pages in the file; there is no fixed 50-page application limit. Large documents or many selected pages can require substantial memory and time.
 
 ## Sending
 

@@ -1,4 +1,4 @@
-// Agora WebUI: sign-in shell (stage 2), styled after the app's Material 3 theme. Chat views arrive in later stages.
+// AgentX WebUI: sign-in shell (stage 2), styled after the app's Material 3 theme. Chat views arrive in later stages.
 import { h, render } from "./vendor/preact.mjs";
 import { useEffect, useState } from "./vendor/preact-hooks.mjs";
 import htm from "./vendor/htm.mjs";
@@ -7,38 +7,38 @@ const html = htm.bind(h);
 
 const TEXT = {
   en: {
-    title: "Agora",
+    title: "AgentX",
     signInTitle: "Sign In",
-    signInHint: "Enter the WebUI password set in the Agora app.",
+    signInHint: "Enter the WebUI password set in the AgentX app.",
     show: "Show",
     hide: "Hide",
     password: "Password",
     signIn: "Sign In",
     signingIn: "Signing in…",
     connectedTitle: "Connected",
-    connectedHint: "This browser is signed in to Agora. Chat controls arrive in a later update.",
+    connectedHint: "This browser is signed in to AgentX. Chat controls arrive in a later update.",
     signOut: "Sign Out",
     wrongPassword: (left) => `Wrong password. ${left} attempts left before a 5-minute lock.`,
     locked: (seconds) => `Too many attempts. Try again in ${Math.ceil(seconds / 60)} min.`,
     notConfigured: "No WebUI password is set in the app.",
-    failed: "Could not reach Agora. Check that the phone is on the same network.",
+    failed: "Could not reach AgentX. Check that the phone is on the same network.",
   },
   zh: {
-    title: "Agora",
+    title: "AgentX",
     signInTitle: "登录",
-    signInHint: "输入在 Agora App 里设置的 WebUI 密码。",
+    signInHint: "输入在 AgentX App 里设置的 WebUI 密码。",
     show: "显示",
     hide: "隐藏",
     password: "密码",
     signIn: "登录",
     signingIn: "正在登录…",
     connectedTitle: "已连接",
-    connectedHint: "这个浏览器已登录 Agora。聊天功能会在后续更新中加入。",
+    connectedHint: "这个浏览器已登录 AgentX。聊天功能会在后续更新中加入。",
     signOut: "退出登录",
     wrongPassword: (left) => `密码错误。再错 ${left} 次将锁定 5 分钟。`,
     locked: (seconds) => `尝试次数过多，请 ${Math.ceil(seconds / 60)} 分钟后再试。`,
     notConfigured: "App 里还没有设置 WebUI 密码。",
-    failed: "连不上 Agora。请确认手机和这台设备在同一网络。",
+    failed: "连不上 AgentX。请确认手机和这台设备在同一网络。",
   },
 };
 

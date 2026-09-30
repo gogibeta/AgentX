@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">Em branco</string>
     <string name="prompts_template_blank_desc">Começar com um prompt de sistema editável vazio.</string>
     <string name="prompts_template_default">Padrão</string>
-    <string name="prompts_template_default_desc">Usar o prompt padrão do Agora com contexto de execução, memória, busca na web, shell e regras de acesso a arquivos do dispositivo.</string>
+    <string name="prompts_template_default_desc">Usar o prompt padrão do AgentX com contexto de execução, memória, busca na web, shell e regras de acesso a arquivos do dispositivo.</string>
     <string name="prompts_duplicate">Duplicar</string>
     <string name="prompts_duplicate_title">Cópia de %1$s</string>
     <string name="prompts_empty_preview">Prompt vazio</string>

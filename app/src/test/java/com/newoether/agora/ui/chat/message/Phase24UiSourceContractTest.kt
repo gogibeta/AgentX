@@ -180,8 +180,6 @@ class Phase24UiSourceContractTest {
             "values-pt-rBR",
             "values-ru",
             "values-vi",
-            "values-zh",
-            "values-zh-rTW",
         )
     }
 }

@@ -1,6 +1,6 @@
 # MAP.md — AgentX repo map (2-minute orientation)
 
-Upstream Agora layout is unchanged; AgentX additions are marked **[AX]**.
+Upstream AgentX layout is unchanged; AgentX additions are marked **[AX]**.
 
 ```
 app/src/main/java/com/newoether/agora/

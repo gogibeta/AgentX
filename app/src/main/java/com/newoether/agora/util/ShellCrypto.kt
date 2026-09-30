@@ -15,7 +15,7 @@ import javax.crypto.spec.SecretKeySpec
 object ShellCrypto {
     private const val GCM_NONCE_SIZE = 12
     private const val GCM_TAG_SIZE = 128
-    private const val HKDF_INFO = "conch-agora-v2"
+    private const val HKDF_INFO = "conch-agentx-v2"
 
     private val secureRandom = SecureRandom()
     private const val B64_URL_FLAGS = Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING

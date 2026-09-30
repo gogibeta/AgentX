@@ -1,6 +1,6 @@
 # Model Context Protocol (MCP)
 
-Agora can connect to remote MCP servers and expose their tools to supported chat models.
+AgentX can connect to remote MCP servers and expose their tools to supported chat models.
 
 ## Add a Server
 
@@ -18,9 +18,9 @@ Custom header values use the same secret-setting storage as API keys: normally a
 
 An enabled server connects in the background. Its status is shown as **Idle**, **Connecting**, **Connected**, or **Connection error**. Use **Reconnect** from the server menu or editor to retry discovery.
 
-After a successful connection, Agora lists the server's tools. Each discovered tool is enabled by default; open the server editor to disable individual tools. Disabling the server removes all of its tools from new model requests without deleting the configuration.
+After a successful connection, AgentX lists the server's tools. Each discovered tool is enabled by default; open the server editor to disable individual tools. Disabling the server removes all of its tools from new model requests without deleting the configuration.
 
-Enabled MCP tools join Agora's normal tool-calling pipeline. The model sees each tool's name, description, and input schema, and a tool result is stored with the conversation like other tool calls.
+Enabled MCP tools join AgentX's normal tool-calling pipeline. The model sees each tool's name, description, and input schema, and a tool result is stored with the conversation like other tool calls.
 
 ## Edit or Remove a Server
 

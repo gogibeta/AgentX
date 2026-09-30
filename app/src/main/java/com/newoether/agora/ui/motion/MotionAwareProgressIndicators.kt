@@ -28,7 +28,7 @@ fun MotionAwareCircularProgressIndicator(
     color: Color = MaterialTheme.colorScheme.primary,
     strokeWidth: androidx.compose.ui.unit.Dp = 4.dp,
 ) {
-    if (LocalAgoraMotionPolicy.current.allowContinuousMotion) {
+    if (LocalAgentXMotionPolicy.current.allowContinuousMotion) {
         MaterialCircularProgressIndicator(
             modifier = modifier,
             color = color,
@@ -84,7 +84,7 @@ fun MotionAwareLinearProgressIndicator(
     color: Color = MaterialTheme.colorScheme.primary,
     trackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
-    if (LocalAgoraMotionPolicy.current.allowContinuousMotion) {
+    if (LocalAgentXMotionPolicy.current.allowContinuousMotion) {
         MaterialLinearProgressIndicator(
             modifier = modifier,
             color = color,

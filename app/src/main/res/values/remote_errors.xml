@@ -3,13 +3,13 @@
     <string name="remote_failed">Remote could not complete this action. See the error details.</string>
     <string name="remote_unknown">Delivery is unconfirmed. Check the conversation in Codex before sending again.</string>
     <string name="remote_rejected">Codex did not accept this message. Check the error details before trying again.</string>
-    <string name="remote_storage_failed">Agora could not access local Remote storage. Check available space.</string>
+    <string name="remote_storage_failed">AgentX could not access local Remote storage. Check available space.</string>
     <string name="remote_network_failed">Cannot reach Filo. Check the target computer, service address and network.</string>
     <string name="remote_auth_failed">Filo rejected the access token. Use the token from the target computer.</string>
     <string name="remote_configuration_failed">Enter a valid service URL and a 64-character access token.</string>
-    <string name="remote_protocol_failed">Agora could not verify or read the Filo response. Check that both apps are up to date.</string>
+    <string name="remote_protocol_failed">AgentX could not verify or read the Filo response. Check that both apps are up to date.</string>
     <string name="remote_service_failed">Codex could not complete the request.</string>
-    <string name="remote_save_failed">Agora could not save this device. Check available storage and save again.</string>
+    <string name="remote_save_failed">AgentX could not save this device. Check available storage and save again.</string>
     <string name="remote_session_busy">Another Codex process owns this conversation. Wait for it to release the conversation.</string>
     <string name="remote_response_too_large">The response or attachment exceeds the supported size.</string>
     <string name="remote_invalid_request">Filo could not read this request. Check the supplied values.</string>

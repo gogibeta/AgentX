@@ -20,8 +20,8 @@ import com.newoether.agora.R
 import com.newoether.agora.ui.settings.SettingsGroup
 import com.newoether.agora.ui.settings.SettingsItem
 import com.newoether.agora.viewmodel.ChatViewModel
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 private fun categoryLabelRes(key: String): Int = when (key) {
     "conversations" -> R.string.export_category_conversations
@@ -35,7 +35,7 @@ private fun categoryLabelRes(key: String): Int = when (key) {
 /** Decode a SAF content:// URI into a human-readable path. */
 private fun resolveDisplayPath(uri: String): String {
     if (!uri.startsWith("content://")) {
-        return uri.ifBlank { "Download/Agora/Backup" }
+        return uri.ifBlank { "Download/AgentX/Backup" }
     }
     // Decode percent-encoded characters (%3A → :, %2F → /, etc.)
     val decoded = Uri.decode(uri)
@@ -137,12 +137,12 @@ private fun AutoBackupPeriodDropdown(currentHours: Int, onSelect: (Int) -> Unit)
             },
             modifier = Modifier.clickable { expanded = true }
         )
-        AgoraDropdownMenu(
+        AgentXDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
             periods.forEach { (hours, labelRes) ->
-                AgoraDropdownMenuItem(
+                AgentXDropdownMenuItem(
                     text = { Text(stringResource(labelRes)) },
                     onClick = { onSelect(hours); expanded = false },
                     leadingIcon = if (hours == currentHours) {{ Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }} else {{}}
@@ -171,12 +171,12 @@ private fun AutoDeletePeriodDropdown(currentHours: Int, backupHours: Int, onSele
             },
             modifier = Modifier.clickable { expanded = true }
         )
-        AgoraDropdownMenu(
+        AgentXDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
             validPeriods.forEach { (hours, labelRes) ->
-                AgoraDropdownMenuItem(
+                AgentXDropdownMenuItem(
                     text = { Text(stringResource(labelRes)) },
                     onClick = { onSelect(hours); expanded = false },
                     leadingIcon = if (hours == currentHours) {{ Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }} else {{}}

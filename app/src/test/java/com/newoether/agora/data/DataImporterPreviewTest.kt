@@ -55,7 +55,7 @@ class DataImporterPreviewTest {
             """{"id":"c1","dataChangedAt":1,"entry":"$one","mediaEntries":[]},""" +
             """{"id":"c2","dataChangedAt":2,"entry":"$two","mediaEntries":[]}]}"""
         val backup = archive(
-            "v5.agora",
+            "v5.agentx",
             mapOf(
                 NativeBackupFormat.MANIFEST_ENTRY to manifest(5),
                 NativeBackupFormat.CONVERSATION_INDEX_ENTRY to index,
@@ -73,9 +73,9 @@ class DataImporterPreviewTest {
 
     @Test
     fun missingOrInvalidManifestYieldsVersionZero() {
-        val missing = archive("missing.agora", mapOf("settings.json" to "{}"))
+        val missing = archive("missing.agentx", mapOf("settings.json" to "{}"))
         assertEquals(0, missing.use { importer().preview(it) }.manifest.version)
-        val invalid = archive("invalid.agora", mapOf(NativeBackupFormat.MANIFEST_ENTRY to "not-json"))
+        val invalid = archive("invalid.agentx", mapOf(NativeBackupFormat.MANIFEST_ENTRY to "not-json"))
         assertEquals(0, invalid.use { importer().preview(it) }.manifest.version)
     }
 }

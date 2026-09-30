@@ -7,8 +7,8 @@
 #include "ggml-backend.h"
 #include "jni_utf8.h"
 
-using agora::jni::read_java_path;
-using agora::jni::read_java_string;
+using agentx::jni::read_java_path;
+using agentx::jni::read_java_string;
 
 #define LOG_TAG "LlamaEngine"
 #ifndef NDEBUG

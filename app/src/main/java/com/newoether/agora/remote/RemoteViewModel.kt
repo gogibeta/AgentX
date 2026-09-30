@@ -103,7 +103,7 @@ internal class RemoteViewModel(
         val suffix = if (failure == null) "" else ".${failure.name}.${error.javaClass.simpleName}"
         // Preserve the existing privacy wrapper and diagnostic logging preferences.
         if (failure != null) runCatching {
-            com.newoether.agora.util.DebugLog.w("AgoraRemote", "remote.$stage$suffix" +
+            com.newoether.agora.util.DebugLog.w("AgentXRemote", "remote.$stage$suffix" +
                 (if (error is FiloHttpException) " code=${error.status}" else "") +
                 " cause=${error.cause?.javaClass?.simpleName.orEmpty()}")
         }

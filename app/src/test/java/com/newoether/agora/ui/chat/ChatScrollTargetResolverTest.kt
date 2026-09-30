@@ -23,8 +23,8 @@ import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.model.ChatConversation
-import com.newoether.agora.ui.common.NoOpAgoraHaptics
-import com.newoether.agora.ui.motion.AgoraMotionPolicy
+import com.newoether.agora.ui.common.NoOpAgentXHaptics
+import com.newoether.agora.ui.motion.AgentXMotionPolicy
 import com.newoether.agora.viewmodel.ChatViewModel
 import com.newoether.agora.viewmodel.ScrollRequestCoordinator
 import com.newoether.agora.viewmodel.AnimatedScrollDestination
@@ -149,12 +149,12 @@ class ChatScrollTargetResolverTest {
                     loadedMessagesConversationId = id,
                     messages = rows,
                     density = Density(1f),
-                    motionPolicy = AgoraMotionPolicy.Default,
+                    motionPolicy = AgentXMotionPolicy.Default,
                     bottomBarHeight = 0.dp,
                     shareSelectionBarSpace = 0.dp,
                     imeBottomPx = 0,
                     viewModel = viewModel,
-                    haptics = NoOpAgoraHaptics,
+                    haptics = NoOpAgentXHaptics,
                 )
             }
             runCurrent()
@@ -250,7 +250,7 @@ class ChatScrollTargetResolverTest {
                     isLoading = true, isStopping = false, isSwitching = false,
                     conversationSearchActive = false, shareSelectionActive = false,
                     regenerationTransition = null, animatedScrollRequest = request.value,
-                    messages = rows, density = Density(1f), motionPolicy = AgoraMotionPolicy.Default,
+                    messages = rows, density = Density(1f), motionPolicy = AgentXMotionPolicy.Default,
                     bottomBarHeight = 0.dp, shareSelectionBarSpace = 0.dp,
                     onAnimatedScrollFinished = viewModel.scrollRequests::complete,
                 )

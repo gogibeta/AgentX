@@ -4,7 +4,7 @@ Status: authoritative product, persistence, and compatibility contract, updated 
 version 5 conversation-granular archive and incremental automatic backups, with export assembly
 streaming the spool one conversation at a time after the v5 materialization OOM regression.
 
-This document owns native `.agora` archives, portable settings, import strategies, secret transport,
+This document owns native `.agentx` archives, portable settings, import strategies, secret transport,
 and automatic-backup compatibility. Public manuals describe the user workflow; this contract defines
 the exact development boundary. Current explicit user requirements override older archives or prose.
 
@@ -99,7 +99,7 @@ metadata, never by the size of the database or of any single conversation. Basel
 the same per-conversation flow: an unchanged conversation's item entry and media entries are copied
 byte-for-byte from the baseline archive without touching the spool.
 
-Automatic backups reuse the most recent valid `Agora_backup_*.agora` file as an optional baseline. A
+Automatic backups reuse the most recent valid `AgentX_backup_*.agentx` file as an optional baseline. A
 conversation whose `dataChangedAt` watermark is unchanged is raw-copied byte-for-byte from the
 baseline item entry, and its media entries are raw-copied without rescanning; changed or new
 conversations are re-exported. A baseline that is missing, corrupt, unreadable, older than version
@@ -233,7 +233,7 @@ The unified Settings UI must present a second destructive confirmation before st
 `REPLACE`, explicitly stating that all existing conversations will be deleted and only the selected
 imported conversations will remain.
 
-The native `.agora` preview separates each visible category decision block by 16 dp while retaining
+The native `.agentx` preview separates each visible category decision block by 16 dp while retaining
 the existing 4 dp label-to-strategy-control gap inside a block. After the user selects an archive,
 reading, validating, and generating its preview shows a non-dismissible modal titled `Loading…`
 until the preview is ready or the operation fails. The preview choices appear only after that loading

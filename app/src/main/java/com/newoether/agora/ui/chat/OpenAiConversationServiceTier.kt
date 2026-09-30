@@ -7,7 +7,7 @@ import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.ConversationSettings
 import com.newoether.agora.data.isResponsesApiEnabledForProvider
 import com.newoether.agora.model.OpenAiServiceTiers
-import com.newoether.agora.ui.common.AgoraHaptics
+import com.newoether.agora.ui.common.AgentXHaptics
 import com.newoether.agora.viewmodel.ChatViewModel
 
 internal data class OpenAiConversationServiceTierState(
@@ -58,7 +58,7 @@ internal fun openAiConversationServiceTierState(
 internal fun updateOpenAiConversationServiceTierEnabled(
     viewModel: ChatViewModel,
     conversationId: String?,
-    haptics: AgoraHaptics,
+    haptics: AgentXHaptics,
     enabled: Boolean,
 ) {
     haptics.toggle(enabled)
@@ -70,7 +70,7 @@ internal fun updateOpenAiConversationServiceTierEnabled(
 internal fun updateOpenAiConversationServiceTier(
     viewModel: ChatViewModel,
     conversationId: String?,
-    haptics: AgoraHaptics,
+    haptics: AgentXHaptics,
     tier: String,
 ) {
     haptics.selection()

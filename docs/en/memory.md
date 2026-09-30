@@ -1,6 +1,6 @@
 # Memory & Cache
 
-Agora has two model-accessible memory sources:
+AgentX has two model-accessible memory sources:
 
 - **Active memory**: compact information intended to be available across conversations.
 - **Saved memories**: persistent memory files that tools can read and update.

@@ -77,7 +77,7 @@ internal class GenerationTerminalSettlementController(
         error: Exception,
     ) {
         DebugLog.e(
-            "AgoraVM",
+            "AgentXVM",
             "Failed to start Run $runId errorType=${error.javaClass.simpleName}",
         )
         val errorText = failureText()

@@ -128,7 +128,7 @@ internal class ConversationBranchMutationService(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                DebugLog.e("AgoraVM", "Failed to delete message branch $messageId", error)
+                DebugLog.e("AgentXVM", "Failed to delete message branch $messageId", error)
             } finally {
                 withContext(NonCancellable + resultDispatcher) {
                     if (!committed) origin.failTreeMutation(switchingRequestId)

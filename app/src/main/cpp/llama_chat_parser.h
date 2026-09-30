@@ -4,7 +4,7 @@
 #include "llama_chat_template.h"
 #include "nlohmann/json.hpp"
 
-namespace agora::chat {
+namespace agentx::chat {
 
 struct NativeChatParser {
     common_chat_parser_params params;
@@ -109,4 +109,4 @@ struct NativeChatParser {
     }
 };
 
-} // namespace agora::chat
+} // namespace agentx::chat

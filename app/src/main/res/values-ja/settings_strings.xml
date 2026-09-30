@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">空白</string>
     <string name="prompts_template_blank_desc">空の編集可能なシステムプロンプトから始めます。</string>
     <string name="prompts_template_default">デフォルト</string>
-    <string name="prompts_template_default_desc">ランタイムコンテキスト、メモリ、Web 検索、シェル、デバイスファイルアクセスのルールを含む Agora のデフォルトプロンプトを使用します。</string>
+    <string name="prompts_template_default_desc">ランタイムコンテキスト、メモリ、Web 検索、シェル、デバイスファイルアクセスのルールを含む AgentX のデフォルトプロンプトを使用します。</string>
     <string name="prompts_duplicate">複製</string>
     <string name="prompts_duplicate_title">%1$s のコピー</string>
     <string name="prompts_empty_preview">空のプロンプト</string>

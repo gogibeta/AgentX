@@ -11,14 +11,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageGenerationBoundaryResolver
-import com.newoether.agora.ui.motion.AgoraMotionPolicy
+import com.newoether.agora.ui.motion.AgentXMotionPolicy
 import kotlinx.coroutines.flow.filter
 internal suspend fun ChatScrollCoordinator.animateToUserMessage(
     messages: List<ChatMessage>,
     targetMessageId: String? = null,
     easing: Easing = FastOutSlowInEasing,
     density: Density,
-    motionPolicy: AgoraMotionPolicy,
+    motionPolicy: AgentXMotionPolicy,
 ): Boolean {
     if (messages.isEmpty() || viewportHeightPx == 0) return false
     val layoutTurns = buildMessageListTurns(messages)

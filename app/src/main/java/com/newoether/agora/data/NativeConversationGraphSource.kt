@@ -81,7 +81,7 @@ internal class NativeConversationGraphSource private constructor(
                 ?.decodeToString()
                 ?.let { Json.decodeFromString<NativeConversationIndex>(it) }
                 ?: error("${NativeBackupFormat.CONVERSATION_INDEX_ENTRY} is missing")
-            val spool = Spool(Files.createTempDirectory(cacheDir.toPath(), "agora-import-v5-").toFile())
+            val spool = Spool(Files.createTempDirectory(cacheDir.toPath(), "agentx-import-v5-").toFile())
             val writers = mutableMapOf<String, JsonWriter>()
             try {
                 val seenIds = mutableSetOf<String>()

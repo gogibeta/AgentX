@@ -411,19 +411,19 @@ class RagToolProvider(
     suspend fun semanticSearch(query: String, limit: Int, ctx: GenerationContext): List<Pair<MessageEntity, Float>> = withContext(Dispatchers.IO) {
         val config = ctx.activeEmbeddingConfig
         if (config == null) {
-            DebugLog.w("AgoraVM", "GM RAG: no active embedding config")
+            DebugLog.w("AgentXVM", "GM RAG: no active embedding config")
             return@withContext emptyList()
         }
         val queryEmbedding = if (config.type == com.newoether.agora.data.EmbeddingModelType.LOCAL) {
             if (!LlamaEngine.isModelReady(config.localFilePath)) {
-                DebugLog.w("AgoraVM", "GM RAG: local model not ready")
+                DebugLog.w("AgentXVM", "GM RAG: local model not ready")
                 return@withContext emptyList()
             }
             LlamaEngine.computeEmbedding(query, config.localFilePath)
         } else {
             val apiKey = resolveEmbeddingApiKey(ctx)
             if (apiKey == null) {
-                DebugLog.w("AgoraVM", "GM RAG: no API key")
+                DebugLog.w("AgentXVM", "GM RAG: no API key")
                 return@withContext emptyList()
             }
             EmbeddingClient.computeEmbedding(
@@ -434,7 +434,7 @@ class RagToolProvider(
             )
         }
         if (queryEmbedding == null) {
-            DebugLog.w("AgoraVM", "GM RAG: failed to compute query embedding")
+            DebugLog.w("AgentXVM", "GM RAG: failed to compute query embedding")
             return@withContext emptyList()
         }
 
@@ -451,7 +451,7 @@ class RagToolProvider(
             )
         }
         DebugLog.d(
-            "AgoraVM",
+            "AgentXVM",
             "GM RAG: scanned=${selection.scannedRows}, invalid=${selection.skippedInvalidRows}, " +
                 "query dim=${queryEmbedding.size}, best cosine=${"%.4f".format(selection.bestScore)}",
         )

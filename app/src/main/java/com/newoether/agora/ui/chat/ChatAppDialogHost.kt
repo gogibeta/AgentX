@@ -12,7 +12,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.replaceCustomProviderIdsForDisplay
-import com.newoether.agora.ui.common.AgoraHaptics
+import com.newoether.agora.ui.common.AgentXHaptics
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
@@ -125,7 +125,7 @@ internal fun rememberChatAppDialogState(
 internal fun ChatAppDialogHost(
     state: ChatAppDialogState,
     viewModel: ChatViewModel,
-    haptics: AgoraHaptics,
+    haptics: AgentXHaptics,
     compactModel: String?,
     selectedModel: String,
     compactPrompt: String,

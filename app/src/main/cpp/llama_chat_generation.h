@@ -5,7 +5,7 @@
 #include "sampling.h"
 #include <cstddef>
 
-namespace agora::chat {
+namespace agentx::chat {
 
 static constexpr int32_t CALLBACK_TOKEN_BATCH = 4;
 static constexpr size_t CALLBACK_BYTE_BATCH = 64;
@@ -38,4 +38,4 @@ bool is_preserved_token(
     llama_token token
 );
 
-} // namespace agora::chat
+} // namespace agentx::chat

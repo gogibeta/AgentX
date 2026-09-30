@@ -19,7 +19,7 @@ import java.util.Base64
 class StreamingJsonRequestBodyTest {
     @Test
     fun manyFilesStreamWithExactLengthAndReplayIdentically() {
-        val directory = Files.createTempDirectory("agora-streaming-json-").toFile()
+        val directory = Files.createTempDirectory("agentx-streaming-json-").toFile()
         try {
             val registry = Base64FileRegistry()
             val payloads = listOf(ByteArray(0)) + (0 until 64).map { index ->
@@ -52,7 +52,7 @@ class StreamingJsonRequestBodyTest {
             }
             assertTrue(request.diagnosticJson.contains("[STREAMED_BASE64:"))
             assertTrue(request.diagnosticJson.contains("_BYTES]"))
-            assertFalse(request.diagnosticJson.contains("__AGORA_BASE64_"))
+            assertFalse(request.diagnosticJson.contains("__AGENTX_BASE64_"))
             assertFalse(request.diagnosticJson.contains(images[1].jsonPrimitive.content))
         } finally {
             directory.deleteRecursively()
@@ -61,7 +61,7 @@ class StreamingJsonRequestBodyTest {
 
     @Test
     fun sameLengthReplacementIsRejectedEvenWhenTimestampIsRestored() {
-        val file = File.createTempFile("agora-stream-replay-", ".jpg")
+        val file = File.createTempFile("agentx-stream-replay-", ".jpg")
         try {
             val original = ByteArray(8_193) { index -> (index and 0xff).toByte() }
             file.writeBytes(original)
@@ -89,7 +89,7 @@ class StreamingJsonRequestBodyTest {
     @Test
     fun missingFilesAreNotRegistered() {
         val registry = Base64FileRegistry()
-        assertEquals(null, registry.register("Z:/agora/missing/image.png"))
+        assertEquals(null, registry.register("Z:/agentx/missing/image.png"))
         assertEquals(null, registry.prepare("{\"images\":[]}"))
     }
 }

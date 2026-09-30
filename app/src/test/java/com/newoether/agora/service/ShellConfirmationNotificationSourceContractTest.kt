@@ -25,7 +25,7 @@ class ShellConfirmationNotificationSourceContractTest {
     @Test
     fun `notification intents bind both session and prompt and receiver is private`() {
         val notifier = source("service/ShellConfirmationNotifier.kt")
-        assertTrue(notifier.contains("setData(android.net.Uri.parse(\"agora-shell-confirm://\$sessionId/\$promptId\"))"))
+        assertTrue(notifier.contains("setData(android.net.Uri.parse(\"agentx-shell-confirm://\$sessionId/\$promptId\"))"))
         assertTrue(notifier.contains("putExtra(EXTRA_SESSION_ID, sessionId)"))
         assertTrue(notifier.contains("putExtra(EXTRA_PROMPT_ID, promptId)"))
         assertTrue(notifier.contains("PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT"))

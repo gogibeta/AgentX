@@ -63,7 +63,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.ui.chat.message.ChatMarkdownCodeBlock
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.viewmodel.AskUserController
 import com.newoether.agora.viewmodel.ShellConfirmationController
 
@@ -129,7 +129,7 @@ internal fun UserInteractionBar(
     onCardGone: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val visible = interactions.isNotEmpty()
     // The exit animation still needs a card to draw, so the last non-empty list stays around.
     var shown by remember { mutableStateOf(conversationId to interactions) }
@@ -232,7 +232,7 @@ private fun InteractionDeck(
     val position = if (pages.size > 1) "${index + 1} / ${pages.size}" else null
     val back: (() -> Unit)? = if (index > 0) ({ onPageChange(keys[index - 1]) }) else null
     val next: (() -> Unit)? = if (index < pages.lastIndex) ({ onPageChange(keys[index + 1]) }) else null
-    val motion = LocalAgoraMotionPolicy.current
+    val motion = LocalAgentXMotionPolicy.current
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     Column(

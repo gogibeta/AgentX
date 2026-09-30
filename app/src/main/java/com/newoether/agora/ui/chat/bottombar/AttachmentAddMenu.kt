@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
-import com.newoether.agora.ui.components.AgoraExposedDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXExposedDropdownMenu
 
 @androidx.compose.material3.ExperimentalMaterial3Api
 @Composable
@@ -70,7 +70,7 @@ internal fun AttachmentAddMenu(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        AgoraExposedDropdownMenu(
+        AgentXExposedDropdownMenu(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
             expanded = enabled && showAddMenu,
             onDismissRequest = {
@@ -95,7 +95,7 @@ private fun AttachmentMenuItem(
     label: Int,
     onClick: () -> Unit,
 ) {
-    AgoraDropdownMenuItem(
+    AgentXDropdownMenuItem(
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, null, modifier = Modifier.size(CHAT_DROPDOWN_MENU_ICON_SIZE_DP.dp))

@@ -17,7 +17,7 @@ import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshots.Snapshot
 import com.newoether.agora.service.AppForegroundTracker
-import com.newoether.agora.ui.common.AgoraHaptics
+import com.newoether.agora.ui.common.AgentXHaptics
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
@@ -43,7 +43,7 @@ class AnsweringHapticEligibilityTest {
         every { viewModel.onSendAccepted = any() } answers { accepted = firstArg() }
         var confirmations = 0
         var active = false
-        val haptics = mockk<AgoraHaptics>()
+        val haptics = mockk<AgentXHaptics>()
         every { haptics.startAnsweringTexture() } answers { active = true }
         every { haptics.stopAnsweringTexture() } answers { active = false }
         every { haptics.confirm() } answers { confirmations++ }

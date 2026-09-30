@@ -1,6 +1,6 @@
 # Network Proxy
 
-Open **Settings → Network Proxy** to route Agora's shared HTTP-client traffic through a configured proxy.
+Open **Settings → Network Proxy** to route AgentX's shared HTTP-client traffic through a configured proxy.
 
 ## Scope
 
@@ -14,6 +14,6 @@ The destination may still see traffic metadata, and the proxy operator can obser
 
 ## Authentication and bypass
 
-Configure the proxy type, host, port, optional username/password, and bypass rules accepted by the UI. Test the route before relying on it. A proxy password is included in an Agora export only if the secrets/API-key category is explicitly selected.
+Configure the proxy type, host, port, optional username/password, and bypass rules accepted by the UI. Test the route before relying on it. A proxy password is included in an AgentX export only if the secrets/API-key category is explicitly selected.
 
 See [Privacy & Security](privacy.md).

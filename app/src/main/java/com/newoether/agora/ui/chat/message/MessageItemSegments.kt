@@ -17,7 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.api.LOCAL_CONTEXT_CAPACITY_ERROR_CODE
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
@@ -112,7 +112,7 @@ private const val SEGMENT_GROUP_OUTER_RADIUS_DP = 24
 internal fun rememberAnimatedSegmentGroupShape(
     position: SegmentGroupPosition,
 ): RoundedCornerShape {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val innerCorner = SEGMENT_GROUP_INNER_RADIUS_DP.dp
     val outerCorner = SEGMENT_GROUP_OUTER_RADIUS_DP.dp
     val targetTopStart =

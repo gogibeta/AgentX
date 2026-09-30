@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">فارغ</string>
     <string name="prompts_template_blank_desc">ابدأ بموجّه نظام فارغ قابل للتحرير.</string>
     <string name="prompts_template_default">افتراضي</string>
-    <string name="prompts_template_default_desc">استخدم الموجّه الافتراضي في Agora مع سياق التشغيل والذاكرة وبحث الويب والصدفة وقواعد الوصول إلى ملفات الجهاز.</string>
+    <string name="prompts_template_default_desc">استخدم الموجّه الافتراضي في AgentX مع سياق التشغيل والذاكرة وبحث الويب والصدفة وقواعد الوصول إلى ملفات الجهاز.</string>
     <string name="prompts_duplicate">تكرار</string>
     <string name="prompts_duplicate_title">نسخة من %1$s</string>
     <string name="prompts_empty_preview">موجّه فارغ</string>

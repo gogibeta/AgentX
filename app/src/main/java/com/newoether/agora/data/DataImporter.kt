@@ -410,7 +410,17 @@ class DataImporter(
         decisions: Map<DataExporter.ExportCategory, DataImporter.ImportStrategy>,
         onProgress: (Float) -> Unit = {}
     ): ImportResult {
-        return withContext(Dispatchers.IO) {
+        val startNanos = System.nanoTime()
+        com.newoether.agora.util.DebugLog.event(
+            "DataTransfer",
+            mapOf(
+                "action" to "import_start",
+                "categories" to decisions.keys.joinToString(",") { it.manifestKey },
+            ),
+            "import start",
+        )
+        return try {
+            withContext(Dispatchers.IO) {
             val archive = NativeBackupArchive.open(context, uri)
                 ?: return@withContext ImportResult(errors = listOf("Could not open backup archive"))
             archive.use { opened ->
@@ -743,6 +753,29 @@ class DataImporter(
                     errors = errors,
                 )
             }
+            }
+        } catch (e: Throwable) {
+            com.newoether.agora.util.DebugLog.event(
+                "DataTransfer",
+                mapOf(
+                    "action" to "import_end",
+                    "outcome" to "error",
+                    "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
+                ),
+                "import end",
+            )
+            throw e
+        }.also { result ->
+            com.newoether.agora.util.DebugLog.event(
+                "DataTransfer",
+                mapOf(
+                    "action" to "import_end",
+                    "outcome" to "ok",
+                    "errors" to result.errors.size.toString(),
+                    "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
+                ),
+                "import end",
+            )
         }
     }
 

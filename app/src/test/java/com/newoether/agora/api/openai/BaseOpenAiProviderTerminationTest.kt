@@ -394,7 +394,7 @@ class BaseOpenAiProviderTerminationTest : OpenAiSseTestFixture() {
                 """{"type":"response.web_search_call.completed","sequence_number":4,"output_index":0,"item_id":"ws_1"}""",
             )
             socket.writeSse(
-                """{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"ws_1","type":"web_search_call","status":"completed","action":{"type":"search","query":"latest Agora"}}}""",
+                """{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"ws_1","type":"web_search_call","status":"completed","action":{"type":"search","query":"latest AgentX"}}}""",
             )
             socket.writeSse(
                 """{"type":"response.reasoning_summary_text.delta","sequence_number":6,"output_index":1,"summary_index":0,"delta":"**Checked current sources**"}""",
@@ -433,7 +433,7 @@ class BaseOpenAiProviderTerminationTest : OpenAiSseTestFixture() {
         val hosted = events.filterIsInstance<StreamEvent.HostedToolCallUpdate>()
         assertEquals(2, hosted.size)
         assertEquals(null, hosted.first().result)
-        assertTrue(hosted.last().arguments.contains("latest Agora"))
+        assertTrue(hosted.last().arguments.contains("latest AgentX"))
         assertTrue(hosted.last().result?.contains("web_search_call") == true)
         assertTrue(hosted.all { it.name == "openai_search" })
         assertEquals(
@@ -478,7 +478,7 @@ class BaseOpenAiProviderTerminationTest : OpenAiSseTestFixture() {
                 """{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"type":"web_search_call","status":"in_progress"}}""",
             )
             socket.writeSse(
-                """{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"ws_late","type":"web_search_call","status":"completed","action":{"type":"search","query":"Agora"}}}""",
+                """{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"ws_late","type":"web_search_call","status":"completed","action":{"type":"search","query":"AgentX"}}}""",
             )
             socket.writeSse(
                 """{"type":"response.completed","sequence_number":3,"response":{"status":"completed"}}""",
@@ -502,7 +502,7 @@ class BaseOpenAiProviderTerminationTest : OpenAiSseTestFixture() {
                 """{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"ws_1","type":"web_search_call","status":"in_progress"}}""",
             )
             socket.writeSse(
-                """{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"ws_2","type":"web_search_call","status":"completed","action":{"type":"search","query":"Agora"}}}""",
+                """{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"ws_2","type":"web_search_call","status":"completed","action":{"type":"search","query":"AgentX"}}}""",
             )
         },
     ) { provider, config, _ ->

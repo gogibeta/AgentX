@@ -255,7 +255,7 @@ class SettingsRepository(
     val autoBackupEnabled: StateFlow<Boolean> = hot(settingsManager.autoBackupEnabled, true)
     val autoBackupPeriodHours: StateFlow<Int> = hot(settingsManager.autoBackupPeriodHours, 24)
     val autoBackupCategories: StateFlow<String> = hot(settingsManager.autoBackupCategories, "conversations,memories,system_prompts,settings")
-    val autoBackupDirectory: StateFlow<String> = hot(settingsManager.autoBackupDirectory, "Download/Agora/Backup")
+    val autoBackupDirectory: StateFlow<String> = hot(settingsManager.autoBackupDirectory, "Download/AgentX/Backup")
     val autoDeleteEnabled: StateFlow<Boolean> = hot(settingsManager.autoDeleteEnabled, true)
     val autoDeletePeriodHours: StateFlow<Int> = hot(settingsManager.autoDeletePeriodHours, 168)
     val lastBackupTimestamp: StateFlow<Long> = hot(settingsManager.lastBackupTimestamp, 0L)

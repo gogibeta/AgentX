@@ -1,7 +1,7 @@
 #include "llama_chat_generation.h"
 #include <algorithm>
 
-namespace agora::chat {
+namespace agentx::chat {
 
 static constexpr int32_t PENALTY_LAST_N = 64;
 
@@ -158,4 +158,4 @@ bool is_preserved_token(
     return metadata.preserved_token_ids.find(token) != metadata.preserved_token_ids.end();
 }
 
-} // namespace agora::chat
+} // namespace agentx::chat

@@ -3,7 +3,7 @@
 Status: authoritative embedded llama.cpp lifecycle contract, 2026-08-28.
 
 This document owns process-wide admission, native model residency, identity changes, cancellation,
-and idle offload for Agora's embedded llama.cpp Chat and Embedding paths. Conversation/Run lifecycle
+and idle offload for AgentX's embedded llama.cpp Chat and Embedding paths. Conversation/Run lifecycle
 remains owned by [message-generation.md](message-generation.md), while portability of the device-local
 retention setting remains owned by [import-export.md](import-export.md).
 

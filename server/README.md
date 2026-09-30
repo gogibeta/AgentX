@@ -1,6 +1,6 @@
-# Agora public server APIs
+# AgentX public server APIs
 
-These dependency-free receivers implement Agora's two public submission APIs:
+These dependency-free receivers implement AgentX's two public submission APIs:
 
 * [`rating/`](rating/) accepts `POST /api/rating` and writes valid submissions to SQLite. It exposes no read or administration API.
 * [`crash/`](crash/) accepts opt-in crash reports, applies a field allowlist, omits client IP addresses, and writes records to local JSONL storage.

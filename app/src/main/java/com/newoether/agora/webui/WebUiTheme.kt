@@ -26,7 +26,7 @@ internal data class WebUiTheme(
     /** CSS custom properties consumed by `style.css`: `--md-<role>` and `--app-font`. */
     fun toCss(): String = buildString {
         if (font != WebUiFont.System) {
-            append("@font-face{font-family:\"AgoraApp\";src:url(\"$FONT_PATH?v=")
+            append("@font-face{font-family:\"AgentXApp\";src:url(\"$FONT_PATH?v=")
             append(fontVersion())
             append("\");font-weight:100 900;font-display:swap}\n")
         }
@@ -37,7 +37,7 @@ internal data class WebUiTheme(
             append("--md-").append(role.toKebabCase()).append(':').append(argb.toCssHex()).append(';')
         }
         append("--app-font:")
-        append(if (font == WebUiFont.System) SYSTEM_STACK else "\"AgoraApp\",$SYSTEM_STACK")
+        append(if (font == WebUiFont.System) SYSTEM_STACK else "\"AgentXApp\",$SYSTEM_STACK")
         append("}\n")
     }
 

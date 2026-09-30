@@ -25,7 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.viewmodel.ChatViewModel
 import com.newoether.agora.util.UpdateInfo
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +48,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val upToDateStatus = stringResource(R.string.about_up_to_date, versionName)
     val developerOptionsEnabled by viewModel.settings.developerOptionsEnabled.collectAsState()
     var developerTapCount by rememberSaveable { mutableIntStateOf(0) }
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
     val developerTapsRemainingFormat = stringResource(R.string.developer_options_taps_remaining)
     val developerEnabledMessage = stringResource(R.string.developer_options_enabled_message)
     val developerAlreadyEnabledMessage = stringResource(R.string.developer_options_already_enabled_message)
@@ -202,7 +202,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             SettingsGroup(title = stringResource(R.string.about_links), items = listOf({
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_website)) },
-                    supportingContent = { Text("agora.newoether.com") },
+                    supportingContent = { Text("agentx.newoether.com") },
                     leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
                     trailingContent = {
                         Icon(
@@ -211,7 +211,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://agora.newoether.com") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/gogibeta/AgentX") }
                 )
             }, {
                 SettingsItem(
@@ -224,7 +224,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/newo-ether/Agora") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/gogibeta/AgentX") }
                 )
             }, {
                 SettingsItem(
@@ -237,7 +237,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/newo-ether/Agora/issues") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/gogibeta/AgentX/issues") }
                 )
             }, {
                 SettingsItem(
@@ -250,7 +250,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/newo-ether/Agora/pulls") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/gogibeta/AgentX/pulls") }
                 )
             }, {
                 SettingsItem(
@@ -263,7 +263,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/newo-ether/Agora/blob/master/PRIVACY.md") }
+                    modifier = Modifier.clickable { openUrl("https://github.com/gogibeta/AgentX/blob/master/PRIVACY.md") }
                 )
             }, {
                 SettingsItem(

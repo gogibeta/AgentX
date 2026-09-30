@@ -44,6 +44,6 @@ class ImageGenPendingImagesTest {
             if (candidate.isFile) return candidate.readText().replace("\r\n", "\n")
             directory = directory.parentFile ?: return@repeat
         }
-        error("Unable to locate Agora main sources")
+        error("Unable to locate AgentX main sources")
     }
 }

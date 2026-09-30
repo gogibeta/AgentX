@@ -2,7 +2,7 @@
 
 Status: authoritative repository build policy.
 
-Agora limits every handwritten Kotlin source file to at most 800 physical lines. Aim below
+AgentX limits every handwritten Kotlin source file to at most 800 physical lines. Aim below
 700-800 lines and split by responsibility before reaching the limit. Never compress formatting
 or remove useful documentation to evade the budget.
 

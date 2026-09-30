@@ -10,7 +10,7 @@ Open **Settings → Generation** to configure default request parameters. Conver
 - Maximum output tokens caps the generated response.
 - Frequency and presence penalties discourage repetition where supported.
 
-Agora sends only parameters supported by the selected provider protocol.
+AgentX sends only parameters supported by the selected provider protocol.
 
 ## Thinking
 

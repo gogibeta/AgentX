@@ -30,8 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.newoether.agora.R
 import com.newoether.agora.model.AttachmentImportState
-import com.newoether.agora.ui.common.LocalAgoraHaptics
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.common.LocalAgentXHaptics
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.viewmodel.ConversationComposerController
 import com.newoether.agora.viewmodel.ConversationComposerSnapshot
 import com.newoether.agora.viewmodel.ConversationComposerSubmissionController
@@ -44,8 +44,8 @@ import kotlinx.coroutines.withContext
 import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.providerDisplayName
 import com.newoether.agora.data.modelDisplayName
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
-import com.newoether.agora.ui.components.AgoraExposedDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXExposedDropdownMenu
 internal val CHAT_BOTTOM_BAR_OUTER_RADIUS = 28.dp
 internal val CHAT_BOTTOM_BAR_OUTER_SHAPE = RoundedCornerShape(CHAT_BOTTOM_BAR_OUTER_RADIUS)
 // Non-expanded bar geometry, measured from the bar's outer edge.
@@ -158,7 +158,7 @@ internal fun ChatBottomBar(
     onSendQueuedNow: () -> Unit = {},
     isStopping: Boolean = false,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val scrollState = rememberScrollState()
     BackHandler(enabled = isExpanded) { onCollapse() }
     val isModelValid = selectedModel.isNotBlank() && enabledModels.contains(selectedModel)
@@ -171,7 +171,7 @@ internal fun ChatBottomBar(
     val submission by submissionState.collectAsState()
     val composer = composerState
     val context = LocalContext.current
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
     val activityLaunchScope = rememberCoroutineScope()
     suspend fun withOwner(ownerId: String, action: suspend () -> Unit): Boolean {
         if (submissionController.snapshot(ownerId).isFrozen) return false
@@ -472,7 +472,7 @@ internal fun ChatBottomBar(
                     },
                 ) {
                     if (enabledModels.isEmpty()) {
-                        AgoraDropdownMenuItem(
+                        AgentXDropdownMenuItem(
                             text = { Text(stringResource(R.string.models_no_models)) },
                             onClick = {
                                 activeMenu = null
@@ -551,7 +551,7 @@ internal fun ChatBottomBar(
                         Icon(Icons.Default.MoreVert, stringResource(R.string.tools), modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     
-                    AgoraExposedDropdownMenu(
+                    AgentXExposedDropdownMenu(
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         expanded = activeMenu == "tools",
                         onDismissRequest = {

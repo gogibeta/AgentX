@@ -103,7 +103,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
             val bytes: ByteArray
             val mime: String
             if (format == "pdf") {
-                val tmp = File.createTempFile("agora_artifact", ".pdf", app.cacheDir)
+                val tmp = File.createTempFile("agentx_artifact", ".pdf", app.cacheDir)
                 try {
                     val images = resolvePdfImages(content, ctx)
                     ArtifactExporter.savePdf(tmp, title, content, images)

@@ -15,21 +15,16 @@ import com.newoether.agora.R
 fun DocumentationFab(docPath: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
-    val langTag = locale.toLanguageTag()
-    val baseUrl = "https://newo-ether.github.io/Agora/"
+    val baseUrl = "https://gogibeta.github.io/AgentX/"
     // Map the resolved locale to the docs URL prefix.
     // "en" and anything unrecognised → root (English); each supported
     // language maps to its own subdirectory under the docs site.
-    val langPrefix = when {
-        langTag == "zh-Hant"  -> "zh-Hant/"
-        langTag.startsWith("zh") -> "zh/"
-        else -> {
-            val lang = locale.language
-            when (lang) {
-                "es", "fr", "de", "ru", "ja", "ko", "ar" -> "$lang/"
-                "pt" -> "pt-BR/"
-                else -> ""  // en or unknown → root (English)
-            }
+    val langPrefix = run {
+        val lang = locale.language
+        when (lang) {
+            "es", "fr", "de", "ru", "ja", "ko", "ar" -> "$lang/"
+            "pt" -> "pt-BR/"
+            else -> ""  // en or unknown → root (English)
         }
     }
 

@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ChatMessage
-import com.newoether.agora.ui.common.AgoraHaptics
-import com.newoether.agora.ui.motion.AgoraMotionPolicy
+import com.newoether.agora.ui.common.AgentXHaptics
+import com.newoether.agora.ui.motion.AgentXMotionPolicy
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.viewmodel.AnimatedScrollDestination
 import com.newoether.agora.viewmodel.AnimatedScrollRequest
@@ -242,12 +242,12 @@ internal class ChatScrollCoordinator internal constructor(
         loadedMessagesConversationId: String?,
         messages: State<List<ChatMessage>>,
         density: Density,
-        motionPolicy: AgoraMotionPolicy,
+        motionPolicy: AgentXMotionPolicy,
         bottomBarHeight: Dp,
         shareSelectionBarSpace: Dp,
         imeBottomPx: Int,
         viewModel: ChatViewModel,
-        haptics: AgoraHaptics,
+        haptics: AgentXHaptics,
     ) {
         val latestCurrentConversationId by rememberUpdatedState(currentConversationId)
         val latestCurrentConversation by rememberUpdatedState(currentConversation)
@@ -337,7 +337,7 @@ internal class ChatScrollCoordinator internal constructor(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
-                DebugLog.e("AgoraUI", "Switching request ${request.id} failed", error)
+                DebugLog.e("AgentXUI", "Switching request ${request.id} failed", error)
                 viewModel.failSwitchingScroll(request.id, "unexpected UI failure")
                 terminalized = true
             } finally {
@@ -367,7 +367,7 @@ internal class ChatScrollCoordinator internal constructor(
         animatedScrollRequest: AnimatedScrollRequest?,
         messages: State<List<ChatMessage>>,
         density: Density,
-        motionPolicy: AgoraMotionPolicy,
+        motionPolicy: AgentXMotionPolicy,
         bottomBarHeight: Dp,
         shareSelectionBarSpace: Dp,
         onRegenerationScrollFinished: (Long, Boolean) -> Unit = { _, _ -> },
@@ -540,7 +540,7 @@ internal class ChatScrollCoordinator internal constructor(
                             )
                         ) {
                             DebugLog.e(
-                                "AgoraUI",
+                                "AgentXUI",
                                 "Animated scroll target was not committed: ${request.targetMessageId}",
                             )
                         }
@@ -571,7 +571,7 @@ internal class ChatScrollCoordinator internal constructor(
                         }
                     } else if (!targetCommitted) {
                         DebugLog.e(
-                            "AgoraUI",
+                            "AgentXUI",
                             "Absolute-bottom scroll target was not committed: ${request.targetMessageId}",
                         )
                     }
@@ -597,7 +597,7 @@ internal class ChatScrollCoordinator internal constructor(
         messages: State<List<ChatMessage>>,
         targetMessageId: String?,
         density: Density,
-        motionPolicy: AgoraMotionPolicy,
+        motionPolicy: AgentXMotionPolicy,
     ): Boolean {
         if (!awaitScrollTargetCommitted(messages, targetMessageId)) return false
         return animateToUserMessage(

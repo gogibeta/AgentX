@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">Пустой</string>
     <string name="prompts_template_blank_desc">Начать с пустого редактируемого системного промпта.</string>
     <string name="prompts_template_default">По умолчанию</string>
-    <string name="prompts_template_default_desc">Использовать промпт Agora по умолчанию с контекстом выполнения, памятью, веб-поиском, shell и правилами доступа к файлам устройства.</string>
+    <string name="prompts_template_default_desc">Использовать промпт AgentX по умолчанию с контекстом выполнения, памятью, веб-поиском, shell и правилами доступа к файлам устройства.</string>
     <string name="prompts_duplicate">Дублировать</string>
     <string name="prompts_duplicate_title">Копия %1$s</string>
     <string name="prompts_empty_preview">Пустой промпт</string>

@@ -31,8 +31,8 @@ import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.Participant
 import com.newoether.agora.model.isContextCompact
 import com.newoether.agora.ui.chat.message.hasActiveAnswerSegment
-import com.newoether.agora.ui.common.AgoraHaptics
-import com.newoether.agora.ui.motion.AgoraMotionPolicy
+import com.newoether.agora.ui.common.AgentXHaptics
+import com.newoether.agora.ui.motion.AgentXMotionPolicy
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +46,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val INLINE_SHARE_LIMIT_BYTES = 256 * 1024
-private const val SHARE_ERROR_DETAIL_TOKEN = "__AGORA_SHARE_ERROR_DETAIL__"
+private const val SHARE_ERROR_DETAIL_TOKEN = "__AGENTX_SHARE_ERROR_DETAIL__"
 private const val STREAM_SCROLL_RESUME_DELAY_MS = 160L
 internal const val DRAWER_COMPOSER_DISMISS_THRESHOLD = 0.5f
 
@@ -203,7 +203,7 @@ internal suspend fun launchConversationShare(
             }
         } else {
             val shareDirectory = File(context.cacheDir, "shared").apply { mkdirs() }
-            val file = File.createTempFile("agora_conversation_", ".md", shareDirectory).apply {
+            val file = File.createTempFile("agentx_conversation_", ".md", shareDirectory).apply {
                 writeBytes(utf8)
             }
             val uri = FileProvider.getUriForFile(
@@ -214,7 +214,7 @@ internal suspend fun launchConversationShare(
             Intent(Intent.ACTION_SEND).apply {
                 type = "text/markdown"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                clipData = ClipData.newRawUri("Agora conversation", uri)
+                clipData = ClipData.newRawUri("AgentX conversation", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
         }
@@ -285,7 +285,7 @@ internal fun ChatNavigationEffects(
     drawerState: ChatDrawerState,
     focusManager: FocusManager,
     scope: CoroutineScope,
-    motionPolicy: AgoraMotionPolicy,
+    motionPolicy: AgentXMotionPolicy,
     onNavigateBack: (() -> Unit)?,
     conversationInteraction: ConversationInteractionProjection,
     onCollapseComposer: () -> Unit,
@@ -322,7 +322,7 @@ internal fun ChatNavigationEffects(
 @Composable
 internal fun SendAcceptedHapticBindingEffect(
     viewModel: ChatViewModel,
-    haptics: AgoraHaptics,
+    haptics: AgentXHaptics,
     chatHapticActive: Boolean,
 ) {
     val latestChatHapticActive by rememberUpdatedState(chatHapticActive)
@@ -404,7 +404,7 @@ internal fun AnsweringHapticEffect(
     generationSnapshot: com.newoether.agora.viewmodel.ConversationGenerationSnapshot,
     topLevelPresentation: com.newoether.agora.TopLevelPresentation,
     hapticsEnabled: Boolean,
-    haptics: com.newoether.agora.ui.common.AgoraHaptics,
+    haptics: com.newoether.agora.ui.common.AgentXHaptics,
 ) {
     val answeringHapticActive = answeringHapticEligible(
         generationSnapshot,

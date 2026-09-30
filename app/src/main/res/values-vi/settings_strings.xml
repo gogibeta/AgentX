@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">Trống</string>
     <string name="prompts_template_blank_desc">Bắt đầu với một gợi ý hệ thống trống có thể chỉnh sửa.</string>
     <string name="prompts_template_default">Mặc định</string>
-    <string name="prompts_template_default_desc">Sử dụng gợi ý mặc định của Agora với ngữ cảnh thời gian chạy, bộ nhớ, tìm kiếm web, shell và hướng dẫn tệp thiết bị.</string>
+    <string name="prompts_template_default_desc">Sử dụng gợi ý mặc định của AgentX với ngữ cảnh thời gian chạy, bộ nhớ, tìm kiếm web, shell và hướng dẫn tệp thiết bị.</string>
     <string name="prompts_duplicate">Tạo bản sao</string>
     <string name="prompts_duplicate_title">Bản sao %1$s</string>
     <string name="prompts_empty_preview">Gợi ý trống</string>

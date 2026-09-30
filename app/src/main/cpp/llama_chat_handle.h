@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace agora::chat {
+namespace agentx::chat {
 
 struct ChatHandle {
     llama_model * model   = nullptr;
@@ -21,4 +21,4 @@ struct ChatHandle {
     mtmd_context * mtmd_ctx = nullptr;  // multimodal context (for vision models)
 };
 
-} // namespace agora::chat
+} // namespace agentx::chat

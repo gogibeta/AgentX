@@ -37,7 +37,7 @@ Ordinary chat retains its existing draft/import/submission owners. Remote connec
 data and delivery never enter ordinary Room, Provider or generation lifecycle owners.
 Remote must not copy message bubbles, Markdown rendering, input drawing or scroll logic.
 
-Application UI motion consumes the shared Agora motion policy. Spatial press, size, and scale motion
+Application UI motion consumes the shared AgentX motion policy. Spatial press, size, and scale motion
 must snap to the stable resting presentation when Reduced Motion disables spatial transitions.
 Opacity-only transitions may remain only where their owning component contract allows them.
 
@@ -394,7 +394,7 @@ deleted, recreated, migrated, or overridden; builder priority remains the pre-An
 
 Automation Settings places Exact Execution, Wake Lock, and Battery Optimization together in one
 localized Background Execution category, in that order. Wake Lock is an app-owned, persisted,
-portable, default-off switch. When enabled, one Agora-owned partial lock spans only the actual shared
+portable, default-off switch. When enabled, one AgentX-owned partial lock spans only the actual shared
 Task or Loop execution boundary and is released on success, early return, failure, and cancellation.
 The copy states that WorkManager already keeps normal scheduled work awake and that the extra lock may
 increase battery use.
@@ -428,7 +428,7 @@ flag, or represented as retained UI state. The Play flavor exposes an empty outc
 
 The Tasks Once date picker uses Material3's modal `DatePickerDialog` at its stable 568 dp container
 height. Material3 remains the sole owner of `DatePickerState.displayMode`, selected-date state,
-calendar/input `AnimatedContent`, focus, keyboard interaction, and the mode-toggle transition. Agora
+calendar/input `AnimatedContent`, focus, keyboard interaction, and the mode-toggle transition. AgentX
 does not mirror the mode, delay or retry keyboard handoff, or animate the Dialog window's
 wrap-content height. Confirmation, cancellation, selectable-date validation, formatting, colors, and
 schedule persistence remain unchanged.
@@ -447,7 +447,7 @@ is introduced for this test model.
 ## 23. Conversation-owned attachment import and pre-acceptance Send
 
 Every Composer attachment enters one durable, conversation-owned import lifecycle at selection
-time. The attachment tile appears immediately, Agora copies the source into app-private staging,
+time. The attachment tile appears immediately, AgentX copies the source into app-private staging,
 and all required image normalization, video frame extraction, PDF rendering, ordinary-file text
 reading, or Local Sandbox copying begins before Send. `PROCESSING`, `READY`, and `FAILED` are
 persisted with the draft for both ordinary conversations and the New Chat workspace. Navigating to
@@ -638,7 +638,7 @@ execution was opened, together with its existing numeric scroll position. When T
 during return, that task-bound snapshot seeds the first frame and the LazyColumn starts at the retained
 position. Room remains authoritative and continues collecting in parallel. While the overlay enters,
 live results are buffered; after entry completes, the page presents the latest Room list. Existing
-stable execution conversation IDs and Compose structural equality perform reconciliation. Agora adds
+stable execution conversation IDs and Compose structural equality perform reconciliation. AgentX adds
 no manual list-diff engine, durable history cache, duplicate repository flow, page-wide composition
 retention, or cross-task/process snapshot restoration. Switching tasks, clearing the editor session,
 or process death discards the snapshot.
@@ -704,8 +704,8 @@ search indicator shows exactly while the newest search runs: a cancelled search 
 The conversation switching overlay keeps its full-body background and centers its indicator between
 the top bar and the measured bottom bar, so it follows the IME like the welcome text.
 ## 30. Dropdown shape
-Every dropdown and exposed dropdown goes through `AgoraDropdownMenu`, `AgoraExposedDropdownMenu`, and
-`AgoraDropdownMenuItem` (`ui/components/AgoraDropdownMenu.kt`); raw Material menu calls are not used
+Every dropdown and exposed dropdown goes through `AgentXDropdownMenu`, `AgentXExposedDropdownMenu`, and
+`AgentXDropdownMenuItem` (`ui/components/AgentXDropdownMenu.kt`); raw Material menu calls are not used
 elsewhere. The wrappers own the geometry and take no shape parameter: every menu has a `24 dp`
 corner, and every item's press and hover highlight is clipped to a `24 dp` corner, which is a
 capsule at the `48 dp` item height. The highlight is inset `8 dp` from the menu sides, matching the
@@ -713,7 +713,7 @@ capsule at the `48 dp` item height. The highlight is inset `8 dp` from the menu 
 from `12 dp` to `4 dp` so item text stays where it was.
 ## 31. Dialog and sheet option highlight
 Option rows in dialogs and bottom sheets use the dropdown item highlight: `Modifier.optionClickable`
-(`ui/components/AgoraOptionHighlight.kt`) clips the press and hover ripple to the same `24 dp`
+(`ui/components/AgentXOptionHighlight.kt`) clips the press and hover ripple to the same `24 dp`
 corner, for one- and two-line rows alike. Dialog rows use it directly because dialog content is
 already inset from the container. Rows that span a bottom sheet's full width use
 `Modifier.sheetOptionClickable`, which also insets the highlight `8 dp` from both sides; those rows
@@ -789,7 +789,7 @@ reaches Running as soon as the server listens. The access group lists addresses 
 runs and otherwise says they appear then. A password has at least `8` characters; its field uses the
 section 33 secret-field owner. Changing the password signs out every browser. A port edit is saved
 only after typing pauses for `800 ms` (`PORT_COMMIT_DELAY_MILLIS`); an out-of-range value is not saved.
-The browser pages follow the app's look. Inside `AgoraTheme`, `PublishWebUiTheme` hands the resolved
+The browser pages follow the app's look. Inside `AgentXTheme`, `PublishWebUiTheme` hands the resolved
 Material color scheme (preset or wallpaper colors, light or dark, AMOLED) and the Appearance font to
 the controller; `GET /theme.css` serves them as `--md-<role>` variables and `--app-font`, and
 `GET /fonts/app` serves the bundled Mi Outfit or the imported font (none for the system font). The

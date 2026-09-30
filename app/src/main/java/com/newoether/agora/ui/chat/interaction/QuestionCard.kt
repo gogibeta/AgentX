@@ -60,7 +60,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.util.NoAutoScrollSelectionContainer
 import com.newoether.agora.viewmodel.AskUserController
 
@@ -204,7 +204,7 @@ private fun QuestionPage(
     draft: QuestionDraft,
 ) {
     val hasOptions = request.options.isNotEmpty()
-    val motion = LocalAgoraMotionPolicy.current
+    val motion = LocalAgentXMotionPolicy.current
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     // Choosing to type opens the field inside the scrolling content and focuses it for the

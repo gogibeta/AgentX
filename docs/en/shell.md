@@ -4,13 +4,13 @@ Open **Settings → Shell Devices** to configure Conch or SSH devices used by ag
 
 ## Conch
 
-Configure the server URL, optional API key, and command-confirmation policy. With an API key, Agora fetches the server's signed public key, derives an ephemeral shared key, and sends authenticated AES-GCM requests. With a blank key, the application payload is plain JSON and transport confidentiality depends on HTTPS.
+Configure the server URL, optional API key, and command-confirmation policy. With an API key, AgentX fetches the server's signed public key, derives an ephemeral shared key, and sends authenticated AES-GCM requests. With a blank key, the application payload is plain JSON and transport confidentiality depends on HTTPS.
 
-Foreground commands are created as durable server jobs and waited on for a bounded period. If the wait expires, the command is not killed or replayed: Agora returns a `job_id` that can be inspected, waited on, stopped, and acknowledged later. Conch tools also support remote read, write, edit, glob, grep, and image viewing.
+Foreground commands are created as durable server jobs and waited on for a bounded period. If the wait expires, the command is not killed or replayed: AgentX returns a `job_id` that can be inspected, waited on, stopped, and acknowledged later. Conch tools also support remote read, write, edit, glob, grep, and image viewing.
 
 ## SSH
 
-Configure host, port, user, authentication, and host-key verification/pinning. Direct SSH transport is separate from Agora's shared HTTP proxy.
+Configure host, port, user, authentication, and host-key verification/pinning. Direct SSH transport is separate from AgentX's shared HTTP proxy.
 
 ## Confirmation
 

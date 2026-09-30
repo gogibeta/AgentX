@@ -21,5 +21,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Agora"
+rootProject.name = "AgentX"
 include(":app")

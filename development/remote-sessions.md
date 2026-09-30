@@ -5,7 +5,7 @@ superseded UI decisions are retained in Git and the single active task log.
 
 ## Ownership and protocol
 
-Remote connects Agora to an independent Filo service. The current Codex adapter supports
+Remote connects AgentX to an independent Filo service. The current Codex adapter supports
 the original desktop owner for execution and bounded read-only native history for browsing.
 Isolated native helpers may handle peripheral operations such as model catalog, rename
 and archive. Filo's REDLINES.md and HARNESS.md govern ownership and qualification. Never patch Codex,
@@ -38,7 +38,7 @@ below; approval handling, transcript editing, branching and tool-execution contr
 
 ## Devices and local persistence
 
-Root Back must leave Agora through Android's normal activity behavior, never reopen
+Root Back must leave AgentX through Android's normal activity behavior, never reopen
 a retained page. Task-history return is available only while that exact preview is
 the displayed destination; pending, failed, stale and returning previews cannot
 intercept Back on the ordinary/new-chat home. Remote Back still unwinds the selected
@@ -347,8 +347,8 @@ FAB. Unknown usage stays unavailable. Reading usage never consumes reset credits
 Inline image blocks reserve the complete square plus 8 dp above and below before
 decoding, and keep exactly that geometry after decode.
 
-Owner release gate: all requested Agora features and the complete regression must
-pass before any further Agora deployment. Partial feature builds are development
+Owner release gate: all requested AgentX features and the complete regression must
+pass before any further AgentX deployment. Partial feature builds are development
 checkpoints only. The Filo runtime assembly, actual encrypted upload/native-input
 round trip and owner-visible phone acceptance remain separate required evidence.
 

@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.model.SelectedAttachment
 import com.newoether.agora.ui.chat.message.COMPOSER_ICON_CROSSFADE_DURATION_MS
-import com.newoether.agora.ui.common.LocalAgoraHaptics
+import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 import com.newoether.agora.viewmodel.ConversationComposerSnapshot
 import com.newoether.agora.viewmodel.ConversationComposerSubmissionController
@@ -69,7 +69,7 @@ internal fun ComposerSendButton(
     onStopGeneration: () -> Unit,
     onCollapse: () -> Unit,
 ) {
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
 
     val textIsEmpty = textFieldState.text.isBlank()
     val attachmentsIsEmpty = snapshot.attachments.isEmpty()

@@ -63,7 +63,7 @@
     <string name="loop_next_in">次回まで %1$s</string>
     <string name="loop_cycle">サイクル %1$d/%2$d</string>
     <string name="loop_stop">ループを停止</string>
-    <string name="automation_notification_channel_desc">Agoraの自動化を実行中に表示する常駐通知</string>
+    <string name="automation_notification_channel_desc">AgentXの自動化を実行中に表示する常駐通知</string>
     <string name="settings_automation">自動化</string>
     <string name="settings_automation_desc">タスク、ループ、スケジュール精度</string>
     <string name="automation_ai_tools">タスクとループへのアクセス</string>

@@ -49,7 +49,7 @@ import com.newoether.agora.data.providerDisplayName
 import com.newoether.agora.model.ModelId
 import com.newoether.agora.ui.components.clearFocusOnTap
 import com.newoether.agora.ui.components.providerIcon
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.util.Constants
 import com.newoether.agora.util.noOpBringIntoView
 import com.newoether.agora.viewmodel.ChatViewModel
@@ -79,7 +79,7 @@ private val RemoteModelProviders = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val enabledModels by viewModel.settings.enabledModels.collectAsState()
     val availableModels by viewModel.settings.availableModels.collectAsState()
     val customModels by viewModel.settings.customModels.collectAsState()

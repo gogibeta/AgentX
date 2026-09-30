@@ -3,13 +3,13 @@
     <string name="remote_failed">Die Remote-Aktion konnte nicht abgeschlossen werden. Siehe Fehlerdetails.</string>
     <string name="remote_unknown">Die Zustellung ist unbestätigt. Prüfe die Unterhaltung in Codex vor dem erneuten Senden.</string>
     <string name="remote_rejected">Codex hat die Nachricht nicht angenommen. Prüfe vor einem neuen Versuch die Fehlerdetails.</string>
-    <string name="remote_storage_failed">Agora kann nicht auf lokale Remote-Daten zugreifen. Prüfe den freien Speicher.</string>
+    <string name="remote_storage_failed">AgentX kann nicht auf lokale Remote-Daten zugreifen. Prüfe den freien Speicher.</string>
     <string name="remote_network_failed">Filo ist nicht erreichbar. Prüfe Zielcomputer, Dienstadresse und Netzwerk.</string>
     <string name="remote_auth_failed">Filo hat das Zugriffstoken abgelehnt. Verwende das Token des Zielcomputers.</string>
     <string name="remote_configuration_failed">Gib eine gültige Dienst-URL und ein Zugriffstoken mit 64 Zeichen ein.</string>
-    <string name="remote_protocol_failed">Agora kann die Filo-Antwort nicht prüfen oder lesen. Prüfe, ob beide Apps aktuell sind.</string>
+    <string name="remote_protocol_failed">AgentX kann die Filo-Antwort nicht prüfen oder lesen. Prüfe, ob beide Apps aktuell sind.</string>
     <string name="remote_service_failed">Codex konnte die Anfrage nicht abschließen.</string>
-    <string name="remote_save_failed">Agora konnte das Gerät nicht speichern. Prüfe den Speicher und speichere erneut.</string>
+    <string name="remote_save_failed">AgentX konnte das Gerät nicht speichern. Prüfe den Speicher und speichere erneut.</string>
     <string name="remote_session_busy">Ein anderer Codex-Prozess verwendet diese Unterhaltung. Warte auf die Freigabe.</string>
     <string name="remote_response_too_large">Die Antwort oder der Anhang überschreitet die unterstützte Größe.</string>
     <string name="remote_invalid_request">Filo kann die Anfrage nicht lesen. Prüfe die Eingaben.</string>

@@ -22,8 +22,8 @@ def load(name, relative):
     return module
 
 
-rating = load("rating_receiver", "rating/agora-rating-api.py")
-crash = load("crash_receiver", "crash/agora-crash.py")
+rating = load("rating_receiver", "rating/agentx-rating-api.py")
+crash = load("crash_receiver", "crash/agentx-crash.py")
 
 
 class SubmissionMessagesTest(unittest.TestCase):
@@ -31,7 +31,7 @@ class SubmissionMessagesTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.config = self.root / "messages.json"
-        self.env = patch.dict(os.environ, {"AGORA_SUBMISSION_MESSAGES": str(self.config)})
+        self.env = patch.dict(os.environ, {"AGENTX_SUBMISSION_MESSAGES": str(self.config)})
         self.env.start()
         self.message = {"id": "reply-1", "title": "Thank You", "body": "Received", "buttonText": "OK"}
         self.config.write_text(json.dumps({"org.example.mobile": self.message}), encoding="utf-8")

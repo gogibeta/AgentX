@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import com.newoether.agora.R
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import kotlin.math.roundToInt
 
 private val CardCorner = 24.dp
@@ -83,7 +83,7 @@ internal fun MorphingInteractionCard(
     onMinimizedChange: (Boolean) -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val motion = LocalAgoraMotionPolicy.current
+    val motion = LocalAgentXMotionPolicy.current
     val spec = if (motion.allowContinuousMotion) {
         tween<Float>(MorphDurationMs, easing = FastOutSlowInEasing)
     } else {

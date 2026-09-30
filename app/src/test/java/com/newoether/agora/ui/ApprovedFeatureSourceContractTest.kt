@@ -271,7 +271,7 @@ internal class ApprovedFeatureSourceContractTest : UiSourceContractFixture() {
         assertTrue(capture.contains("Icons.Default.MoreVert"))
         assertTrue(capture.contains("containerColor = MaterialTheme.colorScheme.surfaceContainer"))
         assertTrue(capture.contains("tonalElevation = 16.dp"))
-        assertTrue(capture.contains("AgoraDropdownMenu("))
+        assertTrue(capture.contains("AgentXDropdownMenu("))
         assertTrue(
             capture.contains("R.string.developer_options_clear_diagnostics_action"),
         )
@@ -312,7 +312,7 @@ internal class ApprovedFeatureSourceContractTest : UiSourceContractFixture() {
         assertTrue(eventCard.contains("shape = RoundedCornerShape(24.dp)"))
         assertTrue(
             eventCard.contains(
-                "LocalAgoraMotionPolicy.current.allowSpatialTransitions",
+                "LocalAgentXMotionPolicy.current.allowSpatialTransitions",
             ),
         )
         assertTrue(eventCard.contains("AnimatedContent("))

@@ -35,7 +35,7 @@ internal object AnthropicOutputLimits {
     )
 
     /**
-     * The documented ceiling for [modelId], or null when Agora has no documentation for it.
+     * The documented ceiling for [modelId], or null when AgentX has no documentation for it.
      *
      * Relay prefixes (`anthropic/…`) and dotted versions (`claude-opus-4.5`) are normalised first;
      * a prefix only matches at a version boundary, so `claude-opus-4` never claims `claude-opus-45`.

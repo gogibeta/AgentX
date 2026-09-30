@@ -1,10 +1,10 @@
 # Import & Export
 
-Open **Settings → Import & Export** to move or back up Agora data.
+Open **Settings → Import & Export** to move or back up AgentX data.
 
-## Agora Archives
+## AgentX Archives
 
-A `.agora` file is a versioned ZIP archive (currently format version 4). Depending on the selected categories it can contain:
+A `.agentx` file is a versioned ZIP archive (currently format version 4). Depending on the selected categories it can contain:
 
 - conversations, runs, messages, Tasks, Loops, and related graph data;
 - attachments, tool media, and draft media;
@@ -16,7 +16,7 @@ A `.agora` file is a versioned ZIP archive (currently format version 4). Dependi
 !!! warning "Protect archives that contain secrets"
     Included secrets are stored unencrypted inside the archive. Store and transfer that file as carefully as the original credentials.
 
-Before a native import, Agora loads a preview and lists the categories present. Choose **Merge**, **Replace**, or **Skip** independently for conversations, memories, system prompts, settings, and API keys. An archive version the installed app does not support displays an error and disables the Import confirmation.
+Before a native import, AgentX loads a preview and lists the categories present. Choose **Merge**, **Replace**, or **Skip** independently for conversations, memories, system prompts, settings, and API keys. An archive version the installed app does not support displays an error and disables the Import confirmation.
 
 Native preview loading, import, and export use non-cancelable circular progress dialogs labeled **Loading…**, **Importing…**, and **Exporting…** respectively.
 
@@ -25,7 +25,7 @@ Native preview loading, import, and export use non-cancelable circular progress 
 ChatGPT and Claude export ZIP files can be imported directly. Preview the export and choose which conversations to import.
 
 - **Merge** keeps other existing conversations and imports the selected conversations.
-- **Replace** deletes all existing conversations and keeps only the selected imported conversations. Agora shows a second destructive confirmation before it starts.
+- **Replace** deletes all existing conversations and keeps only the selected imported conversations. AgentX shows a second destructive confirmation before it starts.
 
 These imports use a non-cancelable percentage-based linear progress dialog. Claude attachment records may contain metadata without the original attachment bytes, depending on the source export.
 

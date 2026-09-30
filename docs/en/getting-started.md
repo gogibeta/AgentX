@@ -1,6 +1,6 @@
 # Getting Started
 
-Agora is an Android BYOK client: you provide a model provider, credentials, and model selection.
+AgentX is an Android BYOK client: you provide a model provider, credentials, and model selection.
 
 ## Install
 

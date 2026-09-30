@@ -9,7 +9,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.replaceCustomProviderIdsForDisplay
 import com.newoether.agora.util.DebugLog
@@ -31,7 +31,7 @@ class LoopWorker(
 
         return try {
             setForeground(AutomationForegroundInfo.forLoop(applicationContext, conversationId, id))
-            val container = (applicationContext as AgoraApplication)
+            val container = (applicationContext as AgentXApplication)
                 .awaitContainer()
                 ?: return Result.failure(workDataOf(KEY_ERROR to "Database unavailable"))
             customProviders = container.settingsRepository.customProviders.value
@@ -59,7 +59,7 @@ class LoopWorker(
                 Result.retry()
             } else {
                 runCatching {
-                    val container = (applicationContext as AgoraApplication).awaitContainer()
+                    val container = (applicationContext as AgentXApplication).awaitContainer()
                         ?: return@runCatching
                     customProviders = container.settingsRepository.customProviders.value
                     container.loopManager.deferAfterInfrastructureFailure(conversationId)

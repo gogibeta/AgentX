@@ -73,7 +73,7 @@ private fun typographyWithFont(family: FontFamily): Typography {
 }
 
 @Composable
-fun AgoraTheme(
+fun AgentXTheme(
     themeMode: ThemeMode = ThemeMode.FOLLOW_DEVICE,
     colorSchemePreset: ColorSchemePreset = ColorSchemePreset.FOREST,
     schemeStyle: SchemeStyle = SchemeStyle.TONAL_SPOT,

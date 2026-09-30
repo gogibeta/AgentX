@@ -1,13 +1,13 @@
 # Appearance
 
-Open **Settings → Appearance** to configure Agora's theme, motion, chat presentation, and font.
+Open **Settings → Appearance** to configure AgentX's theme, motion, chat presentation, and font.
 
 ## Theme & Color
 
 - **Theme Mode** follows the device or forces light or dark mode.
 - **AMOLED** uses a pure white background in light themes and pure black in dark themes. Cards and dialogs retain their color layers, while decorative background blobs and gradients are hidden. It is off by default, applies immediately, and is included in Settings backups.
-- **Dynamic Color** is available on Android 12 and newer. While it is enabled, Agora uses the system palette and disables the manual color-scheme and scheme-style selectors.
-- **Color Scheme** selects an Agora palette, and **Scheme Style** adjusts how that palette is applied.
+- **Dynamic Color** is available on Android 12 and newer. While it is enabled, AgentX uses the system palette and disables the manual color-scheme and scheme-style selectors.
+- **Color Scheme** selects an AgentX palette, and **Scheme Style** adjusts how that palette is applied.
 
 ## Motion & Feedback
 
@@ -25,4 +25,4 @@ Open **Settings → Appearance** to configure Agora's theme, motion, chat presen
 
 ## Font
 
-Choose Agora's bundled font, the system font, or a custom font. The custom-file picker appears only for **Custom**. Agora validates imported font files and rejects an invalid file; switching away from Custom removes the imported copy managed by Agora.
+Choose AgentX's bundled font, the system font, or a custom font. The custom-file picker appears only for **Custom**. AgentX validates imported font files and rejects an invalid file; switching away from Custom removes the imported copy managed by AgentX.

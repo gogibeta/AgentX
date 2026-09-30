@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">Vide</string>
     <string name="prompts_template_blank_desc">Commencer avec une instruction système modifiable vide.</string>
     <string name="prompts_template_default">Par défaut</string>
-    <string name="prompts_template_default_desc">Utiliser le prompt par défaut d’Agora avec le contexte d’exécution, la mémoire, la recherche web, le shell et les règles d’accès aux fichiers de l’appareil.</string>
+    <string name="prompts_template_default_desc">Utiliser le prompt par défaut d’AgentX avec le contexte d’exécution, la mémoire, la recherche web, le shell et les règles d’accès aux fichiers de l’appareil.</string>
     <string name="prompts_duplicate">Dupliquer</string>
     <string name="prompts_duplicate_title">Copie de %1$s</string>
     <string name="prompts_empty_preview">Prompt vide</string>

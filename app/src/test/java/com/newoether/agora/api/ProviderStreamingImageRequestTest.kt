@@ -183,7 +183,7 @@ class ProviderStreamingImageRequestTest {
     )
 
     private fun withImage(test: (File, String) -> Unit) {
-        val image = File.createTempFile("agora-stream-image-", ".png")
+        val image = File.createTempFile("agentx-stream-image-", ".png")
         try {
             val bytes = ByteArray(32_777) { index -> ((index * 17) and 0xff).toByte() }
             image.writeBytes(bytes)
@@ -209,7 +209,7 @@ class ProviderStreamingImageRequestTest {
 
         fun assertExactLength() {
             assertEquals(bytes.size.toLong(), contentLength)
-            assertTrue(bytes.decodeToString().contains("__AGORA_BASE64_").not())
+            assertTrue(bytes.decodeToString().contains("__AGENTX_BASE64_").not())
         }
     }
 

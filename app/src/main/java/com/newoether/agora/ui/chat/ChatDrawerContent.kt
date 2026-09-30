@@ -83,16 +83,16 @@ import com.newoether.agora.ui.chat.search.DrawerSearchBar
 import com.newoether.agora.ui.chat.search.SearchResultItem
 import com.newoether.agora.ui.chat.search.rememberDrawerSearchState
 import com.newoether.agora.ui.components.clearFocusOnTap
-import com.newoether.agora.ui.common.LocalAgoraHaptics
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.common.LocalAgentXHaptics
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.theme.ChatType
 import com.newoether.agora.util.verticalEdgeFade
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 internal enum class DrawerConversationIndicator {
     NONE,
@@ -154,8 +154,8 @@ internal fun ChatDrawerContent(
     onRequestRename: (String, String) -> Unit,
     onRequestDelete: (String) -> Unit,
 ) {
-    val haptics = LocalAgoraHaptics.current
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val haptics = LocalAgentXHaptics.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
     val windowHeightPx = LocalWindowInfo.current.containerSize.height.toFloat()
@@ -545,7 +545,7 @@ internal fun ChatDrawerContent(
                                             }
                                         }
 
-                                        AgoraDropdownMenu(
+                                        AgentXDropdownMenu(
                                             containerColor =
                                                 MaterialTheme.colorScheme.surfaceContainer,
                                             tonalElevation = 16.dp,
@@ -553,7 +553,7 @@ internal fun ChatDrawerContent(
                                             onDismissRequest = { showMenu = false },
                                             offset = pressOffset
                                         ) {
-                                            AgoraDropdownMenuItem(
+                                            AgentXDropdownMenuItem(
                                                 text = {
                                                     Text(stringResource(R.string.generate_title))
                                                 },
@@ -569,7 +569,7 @@ internal fun ChatDrawerContent(
                                                     viewModel.generateTitle(conversation.id)
                                                 }
                                             )
-                                            AgoraDropdownMenuItem(
+                                            AgentXDropdownMenuItem(
                                                 text = { Text(stringResource(R.string.rename)) },
                                                 leadingIcon = {
                                                     Icon(
@@ -586,7 +586,7 @@ internal fun ChatDrawerContent(
                                                     )
                                                 }
                                             )
-                                            AgoraDropdownMenuItem(
+                                            AgentXDropdownMenuItem(
                                                 text = {
                                                     Text(
                                                         stringResource(R.string.delete),

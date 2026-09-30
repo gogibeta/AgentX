@@ -19,24 +19,24 @@
 #include "llama_chat_parser.h"
 #include "llama_chat_template.h"
 
-using agora::chat::ChatHandle;
-using agora::chat::NativeChatCallbacks;
-using agora::chat::NativeChatParser;
-using agora::chat::TemplateSamplingMetadata;
-using agora::chat::CALLBACK_TOKEN_BATCH;
-using agora::chat::CALLBACK_BYTE_BATCH;
-using agora::chat::clear_text_cache;
-using agora::chat::prepare_text_cache;
-using agora::chat::token_to_piece;
-using agora::chat::init_chat_sampler;
-using agora::chat::is_preserved_token;
-using agora::chat::init_callbacks;
-using agora::chat::read_template_metadata;
-using agora::chat::report_error;
-using agora::chat::report_done;
-using agora::chat::utf8_complete_prefix_len;
-using agora::jni::read_java_path;
-using agora::jni::read_java_string;
+using agentx::chat::ChatHandle;
+using agentx::chat::NativeChatCallbacks;
+using agentx::chat::NativeChatParser;
+using agentx::chat::TemplateSamplingMetadata;
+using agentx::chat::CALLBACK_TOKEN_BATCH;
+using agentx::chat::CALLBACK_BYTE_BATCH;
+using agentx::chat::clear_text_cache;
+using agentx::chat::prepare_text_cache;
+using agentx::chat::token_to_piece;
+using agentx::chat::init_chat_sampler;
+using agentx::chat::is_preserved_token;
+using agentx::chat::init_callbacks;
+using agentx::chat::read_template_metadata;
+using agentx::chat::report_error;
+using agentx::chat::report_done;
+using agentx::chat::utf8_complete_prefix_len;
+using agentx::jni::read_java_path;
+using agentx::jni::read_java_string;
 
 static bool abort_callback(void * data) {
     ChatHandle * handle = (ChatHandle *)data;

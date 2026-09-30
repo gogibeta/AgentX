@@ -1,6 +1,6 @@
-# Agora rating submission API
+# AgentX rating submission API
 
-This dependency-free Python service implements only Agora's public rating submission endpoint:
+This dependency-free Python service implements only AgentX's public rating submission endpoint:
 
 ```text
 POST /api/rating
@@ -12,14 +12,14 @@ It stores accepted submissions in SQLite. It contains no read, listing, aggregat
 ## Installation
 
 ```sh
-sudo useradd --system --home /nonexistent --shell /usr/sbin/nologin agora-rating
-sudo install -d -o agora-rating -g agora-rating -m 0750 /var/lib/agora-rating
-sudo install -d -o root -g root -m 0755 /opt/agora-rating
-sudo install -o root -g root -m 0755 agora-rating-api.py /opt/agora-rating/
-sudo install -o root -g root -m 0644 agora-rating.service /etc/systemd/system/
-sudo install -o root -g root -m 0644 ../submission_messages.py /opt/agora-rating/
+sudo useradd --system --home /nonexistent --shell /usr/sbin/nologin agentx-rating
+sudo install -d -o agentx-rating -g agentx-rating -m 0750 /var/lib/agentx-rating
+sudo install -d -o root -g root -m 0755 /opt/agentx-rating
+sudo install -o root -g root -m 0755 agentx-rating-api.py /opt/agentx-rating/
+sudo install -o root -g root -m 0644 agentx-rating.service /etc/systemd/system/
+sudo install -o root -g root -m 0644 ../submission_messages.py /opt/agentx-rating/
 sudo systemctl daemon-reload
-sudo systemctl enable --now agora-rating
+sudo systemctl enable --now agentx-rating
 ```
 
 Copy `nginx-public.location` into the public TLS virtual host, validate the Nginx configuration, then reload Nginx.
@@ -28,16 +28,16 @@ Copy `nginx-public.location` into the public TLS virtual host, validate the Ngin
 
 | Variable | Default |
 | --- | --- |
-| `AGORA_RATING_DB` | `/var/lib/agora-rating/ratings.db` |
-| `AGORA_RATING_HOST` | `127.0.0.1` |
-| `AGORA_RATING_PORT` | `8091` |
+| `AGENTX_RATING_DB` | `/var/lib/agentx-rating/ratings.db` |
+| `AGENTX_RATING_HOST` | `127.0.0.1` |
+| `AGENTX_RATING_PORT` | `8091` |
 
 No database, submitted record, host identity, domain, certificate, token, or credential is included.
 
 ## Optional submission messages
 
 Install `../submission_messages.py` alongside this service's Python entry point.
-Set `AGORA_SUBMISSION_MESSAGES` in the service environment to an administrator-managed,
+Set `AGENTX_SUBMISSION_MESSAGES` in the service environment to an administrator-managed,
 UTF-8 JSON file outside the checkout. Leave it unset to retain the ordinary success response.
 
 The file maps exact runtime package names to a message object, or `null` to omit a message:

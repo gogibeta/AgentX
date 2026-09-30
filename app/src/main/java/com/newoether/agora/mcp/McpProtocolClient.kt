@@ -167,7 +167,7 @@ internal class McpProtocolClient(
                 put(
                     "clientInfo",
                     buildJsonObject {
-                        put("name", "Agora")
+                        put("name", "AgentX")
                         put("version", "1.3.7")
                     },
                 )

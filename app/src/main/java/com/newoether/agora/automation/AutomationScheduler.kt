@@ -263,7 +263,7 @@ class AutomationScheduler(
     private fun taskPendingIntent(taskId: String, scheduledAt: Long): PendingIntent =
         receiverPendingIntent(
             action = AutomationAlarmReceiver.ACTION_FIRE_TASK,
-            data = "agora://automation/task/$taskId".toUri(),
+            data = "agentx://automation/task/$taskId".toUri(),
             key = AutomationAlarmReceiver.EXTRA_TASK_ID,
             value = taskId,
             scheduledAt = scheduledAt,
@@ -272,7 +272,7 @@ class AutomationScheduler(
     private fun loopPendingIntent(conversationId: String, scheduledAt: Long): PendingIntent =
         receiverPendingIntent(
             action = AutomationAlarmReceiver.ACTION_FIRE_LOOP,
-            data = "agora://automation/loop/$conversationId".toUri(),
+            data = "agentx://automation/loop/$conversationId".toUri(),
             key = AutomationAlarmReceiver.EXTRA_CONVERSATION_ID,
             value = conversationId,
             scheduledAt = scheduledAt,

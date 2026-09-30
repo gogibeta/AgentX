@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">Leer</string>
     <string name="prompts_template_blank_desc">Mit einem leeren, bearbeitbaren System-Prompt beginnen.</string>
     <string name="prompts_template_default">Standard</string>
-    <string name="prompts_template_default_desc">Agoras Standard-Prompt mit Laufzeitkontext, Speicher, Websuche, Shell und Regeln für den Zugriff auf Gerätedateien verwenden.</string>
+    <string name="prompts_template_default_desc">AgentX-Standard-Prompt mit Laufzeitkontext, Speicher, Websuche, Shell und Regeln für den Zugriff auf Gerätedateien verwenden.</string>
     <string name="prompts_duplicate">Duplizieren</string>
     <string name="prompts_duplicate_title">%1$s Kopie</string>
     <string name="prompts_empty_preview">Leerer Prompt</string>

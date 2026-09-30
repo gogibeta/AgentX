@@ -51,7 +51,7 @@ class AnthropicProviderRequestSerializationTest {
 
     @Test
     fun undocumentedModelsKeepTheOffSwitchTheUserChose() = withServer { server ->
-        // No public reference documents these ids, so Agora must not force thinking on.
+        // No public reference documents these ids, so AgentX must not force thinking on.
         listOf("claude-fable-5", "claude-mythos-5", "claude-mythos-preview").forEach { model ->
             val body = server.capture(config(server, model).copy(thinkingEnabled = false))
             assertEquals("disabled", body["thinking"]!!.jsonObject["type"]!!.jsonPrimitive.content)

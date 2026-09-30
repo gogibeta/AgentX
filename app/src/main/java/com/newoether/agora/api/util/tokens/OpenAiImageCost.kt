@@ -11,7 +11,7 @@ import kotlin.math.sqrt
  * detail level's pixel-dimension limit, cover it with 32x32 patches, shrink proportionally when a
  * patch budget applies, then multiply the patch count by the model multiplier and round up.
  *
- * Agora never sets `detail`, so these values are the `auto` behaviour of each model family.
+ * AgentX never sets `detail`, so these values are the `auto` behaviour of each model family.
  */
 class OpenAiPatchImageCost(
     private val maxEdgePx: Int,

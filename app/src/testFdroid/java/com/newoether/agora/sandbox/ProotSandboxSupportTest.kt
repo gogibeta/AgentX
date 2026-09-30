@@ -42,7 +42,7 @@ class ProotSandboxSupportTest {
     @Test
     fun virtualPathsNormalizeAndPortableGlobMatchesRemainStable() {
         assertEquals("/", normalizeVirtualPath("  "))
-        assertEquals("/home/agora/file.txt", normalizeVirtualPath("home//agora/file.txt/"))
+        assertEquals("/home/agora/file.txt", normalizeVirtualPath("home//agentx/file.txt/"))
         assertEquals(
             listOf("/home/agora/readme.md"),
             globMatch(
@@ -114,7 +114,7 @@ class ProotSandboxSupportTest {
 
     @Test
     fun localSandboxFileSearchMatchesConchBaseline() = runBlocking {
-        val filesDir = Files.createTempDirectory("agora-shell-search").toFile()
+        val filesDir = Files.createTempDirectory("agentx-shell-search").toFile()
         val context = mockk<Context>()
         every { context.filesDir } returns filesDir
         val manager = ProotSandboxManager(
@@ -166,7 +166,7 @@ class ProotSandboxSupportTest {
 
     @Test
     fun localSandboxFileWritePublishesCompleteContentByAtomicRename() = runBlocking {
-        val filesDir = Files.createTempDirectory("agora-shell-write").toFile()
+        val filesDir = Files.createTempDirectory("agentx-shell-write").toFile()
         val context = mockk<Context>()
         every { context.filesDir } returns filesDir
         val manager = ProotSandboxManager(
@@ -211,7 +211,7 @@ class ProotSandboxSupportTest {
 
     @Test
     fun localSandboxFileWritePreservesExistingMode() = runBlocking {
-        val filesDir = Files.createTempDirectory("agora-shell-write-mode").toFile()
+        val filesDir = Files.createTempDirectory("agentx-shell-write-mode").toFile()
         val context = mockk<Context>()
         every { context.filesDir } returns filesDir
         val manager = ProotSandboxManager(

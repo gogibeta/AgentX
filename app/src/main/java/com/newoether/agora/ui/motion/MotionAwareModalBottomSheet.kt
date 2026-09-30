@@ -45,7 +45,7 @@ fun MotionAwareModalBottomSheet(
     containerColor: Color = BottomSheetDefaults.ContainerColor,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
-    if (LocalAgoraMotionPolicy.current.allowSpatialTransitions) {
+    if (LocalAgentXMotionPolicy.current.allowSpatialTransitions) {
         MaterialModalBottomSheet(
             onDismissRequest = onDismissRequest,
             modifier = modifier.widthIn(max = BottomSheetMaxWidth),

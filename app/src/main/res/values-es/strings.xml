@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><resources>
     <string name="app_name">AgentX</string>
-    <string name="agora_responded">Agora respondió</string>
+    <string name="agentx_responded">AgentX respondió</string>
 
     <!-- Chat Bottom Bar -->
     <string name="add_attachment">Añadir adjunto</string>
@@ -19,7 +19,7 @@
     <string name="openai_search">Búsqueda de OpenAI</string>
     <string name="thinking">Razonamiento</string>
     <string name="web_search">Búsqueda web</string>
-    <string name="ask_agora">Pregunta lo que quieras a Agora...</string>
+    <string name="ask_agentx">Pregunta lo que quieras a AgentX...</string>
     <string name="send">Enviar</string>
 
     <!-- Tool Display -->
@@ -262,9 +262,9 @@
     <string name="play">Reproducir</string>
     <string name="video_preview">Vista previa del vídeo</string>
     <string name="total_tokens">Total: %1$d tokens</string>
-    <string name="welcome_to_agora">Bienvenido a Agora.</string>
+    <string name="welcome_to_agentx">Bienvenido a AgentX.</string>
     <string name="database_incompatible">Base de datos incompatible</string>
-    <string name="database_incompatible_desc">La base de datos es incompatible con esta versión de Agora. Borra la base de datos y reinicia la aplicación.</string>
+    <string name="database_incompatible_desc">La base de datos es incompatible con esta versión de AgentX. Borra la base de datos y reinicia la aplicación.</string>
     <string name="quit">Salir</string>
     <string name="clear_database">Borrar base de datos</string>
     <string name="generate_title">Generar título</string>
@@ -350,10 +350,10 @@
     <string name="about_update_available">Actualización disponible: v%1$s</string>
     <string name="about_up_to_date">Estás al día (v%1$s)</string>
     <string name="about_checking">Comprobando...</string>
-    <string name="about_available_body">Hay una nueva versión de Agora disponible en GitHub.</string>
+    <string name="about_available_body">Hay una nueva versión de AgentX disponible en GitHub.</string>
     <string name="about_view_release">Ver versión</string>
     <string name="about_later">Más tarde</string>
-    <string name="rating_title">Valorar Agora</string>
+    <string name="rating_title">Valorar AgentX</string>
     <string name="rating_star">%1$d estrella(s)</string>
     <string name="rating_your_name">Tu nombre (opcional)</string>
     <string name="rating_your_email">Tu correo (opcional)</string>
@@ -370,7 +370,7 @@
     <string name="data_export_title">Exportar datos</string>
     <string name="data_export_subtitle">Guarda conversaciones, memorias, instrucciones y ajustes en un archivo.</string>
     <string name="data_import_title">Importar datos</string>
-    <string name="data_import_subtitle">Restaura desde un archivo de exportación .agora anterior.</string>
+    <string name="data_import_subtitle">Restaura desde un archivo de exportación .agentx anterior.</string>
     <string name="export_category_conversations">Conversaciones y mensajes</string>
     <string name="export_category_memories">Memorias</string>
     <string name="export_category_system_prompts">Instrucciones del sistema</string>
@@ -386,7 +386,7 @@
 
     <string name="export_failed">Error al exportar: %1$s</string>
     <string name="import_preview_title">Importar datos</string>
-    <string name="import_from">Exportado el %1$s\nDesde Agora v%2$s</string>
+    <string name="import_from">Exportado el %1$s\nDesde AgentX v%2$s</string>
     <string name="import_unsupported_backup_version">El formato de copia v%1$d no es compatible. Esta aplicación admite hasta v%2$d.</string>
     <string name="import_strategy_merge">Combinar</string>
     <string name="import_strategy_replace">Reemplazar</string>
@@ -400,7 +400,7 @@
     <string name="loading_label">Cargando…</string>
     <string name="import_success">Importación completada: %1$s</string>
     <string name="import_failed">Error al importar: %1$s</string>
-    <string name="import_invalid_file">Archivo .agora no válido. Selecciona una exportación válida.</string>
+    <string name="import_invalid_file">Archivo .agentx no válido. Selecciona una exportación válida.</string>
     <string name="import_no_data">Este archivo de exportación no contiene datos importables.</string>
 
     <!-- Claude Chat Import -->
@@ -479,7 +479,7 @@
     <string name="show_documentation_links_desc">Mostrar el botón de documentación en las páginas de ajustes</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_title">Bienvenido a Agora</string>
+    <string name="onboarding_welcome_title">Bienvenido a AgentX</string>
     <string name="onboarding_welcome_desc">Una app BYOK que recupera la soberanía de tus datos.</string>
     <string name="onboarding_byok_title">Trae tu propia clave</string>
     <string name="onboarding_byok_desc">Configura tus claves de API o importa un modelo GGUF para desbloquear la inferencia en el dispositivo.</string>
@@ -563,7 +563,7 @@
     <string name="shell_confirm_setting">Confirmar acciones de shell remoto</string>
     <string name="shell_confirm_setting_desc">Preguntar antes de que el asistente ejecute comandos o escriba archivos en servidores SSH/Conch remotos</string>
     <string name="shell_confirm_notification_channel">Aprobación de comandos</string>
-    <string name="shell_confirm_notification_desc">Pide permitir o denegar un comando remoto mientras Agora está en segundo plano</string>
+    <string name="shell_confirm_notification_desc">Pide permitir o denegar un comando remoto mientras AgentX está en segundo plano</string>
 
     <string name="ask_user_title">El asistente pregunta</string>
     <string name="ask_user_send">Enviar</string>
@@ -574,11 +574,11 @@
     <string name="interaction_expand">Expandir</string>
     <string name="ask_user_custom_answer">Responde con tus palabras</string>
     <string name="ask_user_skip">Omitir</string>
-    <string name="ask_user_notification_channel">Pregunta de Agora</string>
+    <string name="ask_user_notification_channel">Pregunta de AgentX</string>
     <string name="ask_user_notification_desc">Te pide responder una pregunta del asistente cuando el chat no está abierto</string>
 
     <!-- Crash reporting -->
-    <string name="crash_title">Agora se cerró inesperadamente</string>
+    <string name="crash_title">AgentX se cerró inesperadamente</string>
     <string name="crash_message">Lo sentimos. Puedes ayudar a solucionarlo enviando un informe de fallos anónimo.</string>
     <string name="crash_submit">Enviar informe</string>
     <string name="crash_dismiss">No enviar</string>
@@ -731,7 +731,7 @@
     <string name="developer_options_disable_confirm">Desactivar</string>
     <string name="developer_options_clear_diagnostics">¿Borrar la sesión de diagnóstico?</string>
     <string name="developer_options_clear_diagnostics_action">Borrar la sesión de diagnóstico</string>
-    <string name="developer_options_export_share_title">Compartir paquete de diagnóstico de Agora</string>
+    <string name="developer_options_export_share_title">Compartir paquete de diagnóstico de AgentX</string>
     <string name="developer_options_export_failed">No se pudo crear el paquete de diagnóstico.</string>
     <string name="responses_api">Responses API</string>
     <string name="responses_api_desc">Usar el endpoint /responses del proveedor en lugar de Chat Completions.</string>

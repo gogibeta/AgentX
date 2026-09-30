@@ -34,7 +34,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -48,7 +48,7 @@ internal fun ZoomableImageItem(
     consumeConditionally: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val density = LocalDensity.current
     val viewConfiguration = LocalViewConfiguration.current
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">ブラウザから Agora を操作</string>
+    <string name="settings_webui_desc">ブラウザから AgentX を操作</string>
     <string name="webui_enable">WebUI を有効にする</string>
     <string name="webui_status_stopped">オフ。オンにすると、このスマートフォンで Web サーバーを実行し、通知を表示します。</string>
     <string name="webui_status_starting">起動中…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">ネットワークアドレスが見つかりません。</string>
     <string name="webui_http_warning">HTTP は暗号化されません。同じネットワーク上の誰でもパスワードと会話を読めます。Tailscale など、信頼できるネットワークでのみ使用してください。</string>
     <string name="webui_notification_channel">WebUI サーバー</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">起動中…</string>
     <string name="webui_notification_running">%1$s を開く</string>
     <string name="webui_notification_failed">停止しました: %1$s</string>

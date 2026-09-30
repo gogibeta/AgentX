@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">Control Agora from a browser</string>
+    <string name="settings_webui_desc">Control AgentX from a browser</string>
     <string name="webui_enable">Enable WebUI</string>
     <string name="webui_status_stopped">Off. Runs a web server on this phone with a notification while on.</string>
     <string name="webui_status_starting">Starting…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">No network address found.</string>
     <string name="webui_http_warning">HTTP is not encrypted. Anyone on the same network can read the password and the conversations. Use it only on networks you trust, such as Tailscale.</string>
     <string name="webui_notification_channel">WebUI server</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">Starting…</string>
     <string name="webui_notification_running">Open %1$s</string>
     <string name="webui_notification_failed">Stopped: %1$s</string>

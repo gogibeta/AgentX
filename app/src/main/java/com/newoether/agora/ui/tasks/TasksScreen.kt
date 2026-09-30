@@ -67,8 +67,8 @@ import com.newoether.agora.viewmodel.tasks
 import kotlinx.coroutines.delay
 import java.util.Locale
 import java.util.UUID
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 /**
  * Tasks feature root: a saved prompt + model you can run on demand or on a schedule.
@@ -448,17 +448,17 @@ private fun TaskCard(
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = null)
                     }
-                    AgoraDropdownMenu(
+                    AgentXDropdownMenu(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
-                        AgoraDropdownMenuItem(
+                        AgentXDropdownMenuItem(
                             text = { Text(stringResource(R.string.task_run_now)) },
                             leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
                             onClick = { menuOpen = false; onRun() },
                         )
-                        AgoraDropdownMenuItem(
+                        AgentXDropdownMenuItem(
                             text = { Text(stringResource(R.string.task_delete), color = MaterialTheme.colorScheme.error) },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = { menuOpen = false; onDelete() },

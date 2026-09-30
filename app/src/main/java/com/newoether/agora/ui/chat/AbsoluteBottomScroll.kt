@@ -7,7 +7,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
 
-internal const val AbsoluteBottomSentinelKey = "agora:absolute-bottom"
+internal const val AbsoluteBottomSentinelKey = "agentx:absolute-bottom"
 
 internal enum class AbsoluteBottomScrollPhase {
     IDLE,

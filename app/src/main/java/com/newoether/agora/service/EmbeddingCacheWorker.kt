@@ -9,7 +9,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.await
 import androidx.work.workDataOf
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.api.EmbeddingClient
 import com.newoether.agora.api.LlamaEngine
 import com.newoether.agora.api.ProviderDefaults
@@ -89,7 +89,7 @@ class EmbeddingCacheWorker(
             DebugLog.w(TAG, "No model_id in input data")
             return@withContext Result.failure()
         }
-        val container = (applicationContext as AgoraApplication).awaitContainer()
+        val container = (applicationContext as AgentXApplication).awaitContainer()
             ?: return@withContext Result.retry()
 
         cacheModel(modelId, container.database, container.settingsManager)

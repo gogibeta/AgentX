@@ -41,7 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.R
 import com.newoether.agora.ui.components.SecretVisibilityToggle
 import com.newoether.agora.ui.components.rememberSecretVisible
@@ -58,7 +58,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsWebUiPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
-    val webUi = remember { (context.applicationContext as AgoraApplication).requireContainer().webUi }
+    val webUi = remember { (context.applicationContext as AgentXApplication).requireContainer().webUi }
     val enabled by webUi.enabled.collectAsState(initial = false)
     val port by webUi.port.collectAsState(initial = WebUiSettingsStore.DEFAULT_PORT)
     val hasPassword by webUi.hasPassword.collectAsState(initial = false)

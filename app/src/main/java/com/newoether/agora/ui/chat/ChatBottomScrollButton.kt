@@ -17,7 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 
 @Composable
 internal fun BoxScope.ChatBottomScrollButton(
@@ -25,7 +25,7 @@ internal fun BoxScope.ChatBottomScrollButton(
     bottomBarHeight: Dp,
     onClick: () -> Unit,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val fabElevation by animateDpAsState(
         targetValue = if (showButton) 4.dp else 0.dp,
         animationSpec = if (motionPolicy.allowSpatialTransitions) {

@@ -7,7 +7,7 @@ MAX_CONFIG_BYTES = 1024 * 1024
 
 
 def message_for(package_name):
-    path = os.environ.get("AGORA_SUBMISSION_MESSAGES")
+    path = os.environ.get("AGENTX_SUBMISSION_MESSAGES")
     if not path or not isinstance(package_name, str) or not package_name:
         return None
     try:

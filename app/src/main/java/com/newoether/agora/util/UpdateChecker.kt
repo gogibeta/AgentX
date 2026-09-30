@@ -36,13 +36,14 @@ object UpdateChecker {
     suspend fun check(currentVersion: String): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
-                .url("https://api.github.com/repos/newo-ether/Agora/releases/latest")
+                .url("https://api.github.com/repos/gogibeta/AgentX/releases/latest")
                 .header("Accept", "application/vnd.github+json")
                 .build()
 
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 response.close()
+                logResult(currentVersion, null, "http_${response.code}")
                 return@withContext null
             }
 
@@ -53,16 +54,33 @@ object UpdateChecker {
             val latestVersion = release.tag_name.removePrefix("v")
 
             if (compareVersions(latestVersion, currentVersion) > 0) {
+                logResult(currentVersion, latestVersion, "available")
                 UpdateInfo(
                     version = latestVersion,
                     url = release.html_url,
                     body = release.body.orEmpty()
                 )
             } else {
+                logResult(currentVersion, latestVersion, "up_to_date")
                 null
             }
         } catch (_: Exception) {
+            logResult(currentVersion, null, "error")
             null
+        }
+    }
+
+    private fun logResult(currentVersion: String, latestVersion: String?, outcome: String) {
+        runCatching {
+            com.newoether.agora.util.DebugLog.event(
+                "UpdateCheck",
+                buildMap {
+                    put("current", currentVersion)
+                    put("outcome", outcome)
+                    if (latestVersion != null) put("latest", latestVersion)
+                },
+                "update check",
+            )
         }
     }
 

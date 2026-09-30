@@ -42,7 +42,7 @@ internal object CustomProviderIdentityPolicy {
 
     /** Stable only for upgrading a legacy name-keyed config; persisted IDs never change on rename. */
     fun legacyId(name: String): String = PREFIX + UUID.nameUUIDFromBytes(
-        ("agora/custom-provider/legacy/" + name.trim().lowercase(Locale.ROOT))
+        ("agentx/custom-provider/legacy/" + name.trim().lowercase(Locale.ROOT))
             .toByteArray(StandardCharsets.UTF_8),
     ).toString()
 

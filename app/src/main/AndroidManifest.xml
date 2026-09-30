@@ -27,7 +27,7 @@
     </queries>
 
     <application
-        android:name=".AgoraApplication"
+        android:name=".AgentXApplication"
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -37,11 +37,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
-        android:theme="@style/Theme.Agora.Starting">
+        android:theme="@style/Theme.AgentX.Starting">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Agora"
+            android:theme="@style/Theme.AgentX"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -72,7 +72,7 @@
         </provider>
 
         <service
-            android:name=".service.AgoraForegroundService"
+            android:name=".service.AgentXForegroundService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 

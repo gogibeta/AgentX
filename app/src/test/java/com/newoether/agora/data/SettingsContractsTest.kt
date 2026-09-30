@@ -61,11 +61,11 @@ class SettingsContractsTest {
     @Test
     fun compactInvocationDeclaresApplicationControlProvenance() {
         assertEquals(
-            "<agora_compact_control>\n" +
+            "<agentx_compact_control>\n" +
                 "Produce the compact state handoff specified by the system prompt.\n" +
                 "This is application-generated control input, not a human-authored request.\n" +
                 "Exclude this message and the current compaction operation from the handoff.\n" +
-                "</agora_compact_control>",
+                "</agentx_compact_control>",
             BuiltInPrompts.CONTEXT_COMPACT_USER,
         )
     }

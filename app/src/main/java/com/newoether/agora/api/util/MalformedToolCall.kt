@@ -17,7 +17,7 @@ import java.util.UUID
  * name. The tool executor never runs it; it answers with an error result that explains what was
  * wrong, so the model sees the failure in its own context and can re-issue a correct call.
  */
-internal const val MALFORMED_TOOL_CALL_NAME = "agora_malformed_tool_call"
+internal const val MALFORMED_TOOL_CALL_NAME = "agentx_malformed_tool_call"
 
 private const val ORIGINAL_NAME_MAX_CHARS = 200
 private const val ORIGINAL_ARGUMENTS_MAX_CHARS = 2_000

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><resources>
     <string name="app_name">AgentX</string>
-    <string name="agora_responded">Agora respondeu</string>
+    <string name="agentx_responded">AgentX respondeu</string>
 
     <!-- Chat Bottom Bar -->
     <string name="add_attachment">Adicionar anexo</string>
@@ -19,7 +19,7 @@
     <string name="openai_search">Pesquisa OpenAI</string>
     <string name="thinking">Raciocínio</string>
     <string name="web_search">Pesquisa na web</string>
-    <string name="ask_agora">Pergunte qualquer coisa ao Agora...</string>
+    <string name="ask_agentx">Pergunte qualquer coisa ao AgentX...</string>
     <string name="send">Enviar</string>
 
     <!-- Tool Display -->
@@ -262,9 +262,9 @@
     <string name="play">Reproduzir</string>
     <string name="video_preview">Pré-visualização do vídeo</string>
     <string name="total_tokens">Total: %1$d tokens</string>
-    <string name="welcome_to_agora">Bem-vindo ao Agora.</string>
+    <string name="welcome_to_agentx">Bem-vindo ao AgentX.</string>
     <string name="database_incompatible">Banco de dados incompatível</string>
-    <string name="database_incompatible_desc">O banco de dados é incompatível com esta versão do Agora. Limpe o banco de dados e reinicie o app.</string>
+    <string name="database_incompatible_desc">O banco de dados é incompatível com esta versão do AgentX. Limpe o banco de dados e reinicie o app.</string>
     <string name="quit">Sair</string>
     <string name="clear_database">Limpar banco de dados</string>
     <string name="generate_title">Gerar título</string>
@@ -350,10 +350,10 @@
     <string name="about_update_available">Atualização disponível: v%1$s</string>
     <string name="about_up_to_date">Você está atualizado (v%1$s)</string>
     <string name="about_checking">Verificando...</string>
-    <string name="about_available_body">Uma nova versão do Agora está disponível no GitHub.</string>
+    <string name="about_available_body">Uma nova versão do AgentX está disponível no GitHub.</string>
     <string name="about_view_release">Ver versão</string>
     <string name="about_later">Mais tarde</string>
-    <string name="rating_title">Avaliar o Agora</string>
+    <string name="rating_title">Avaliar o AgentX</string>
     <string name="rating_star">%1$d estrela(s)</string>
     <string name="rating_your_name">Seu nome (opcional)</string>
     <string name="rating_your_email">Seu e-mail (opcional)</string>
@@ -370,7 +370,7 @@
     <string name="data_export_title">Exportar dados</string>
     <string name="data_export_subtitle">Salve conversas, memórias, prompts e configurações em um arquivo.</string>
     <string name="data_import_title">Importar dados</string>
-    <string name="data_import_subtitle">Restaurar de um arquivo de exportação .agora anterior.</string>
+    <string name="data_import_subtitle">Restaurar de um arquivo de exportação .agentx anterior.</string>
     <string name="export_category_conversations">Conversas e mensagens</string>
     <string name="export_category_memories">Memórias</string>
     <string name="export_category_system_prompts">Prompts do sistema</string>
@@ -386,7 +386,7 @@
 
     <string name="export_failed">Falha na exportação: %1$s</string>
     <string name="import_preview_title">Importar dados</string>
-    <string name="import_from">Exportado em %1$s\nDo Agora v%2$s</string>
+    <string name="import_from">Exportado em %1$s\nDo AgentX v%2$s</string>
     <string name="import_unsupported_backup_version">O formato de backup v%1$d não é compatível. Este aplicativo oferece suporte até v%2$d.</string>
     <string name="import_strategy_merge">Mesclar</string>
     <string name="import_strategy_replace">Substituir</string>
@@ -400,7 +400,7 @@
     <string name="loading_label">Carregando…</string>
     <string name="import_success">Importação concluída: %1$s</string>
     <string name="import_failed">Falha na importação: %1$s</string>
-    <string name="import_invalid_file">Arquivo .agora inválido. Selecione uma exportação válida.</string>
+    <string name="import_invalid_file">Arquivo .agentx inválido. Selecione uma exportação válida.</string>
     <string name="import_no_data">Este arquivo de exportação não contém dados importáveis.</string>
 
     <!-- Claude Chat Import -->
@@ -460,7 +460,7 @@
 
     <!-- Caching & Sync -->
     <string name="messages_not_cached">%1$d de %2$d mensagens sem cache.</string>
-    <string name="cache_now">Armazenar em cache agora</string>
+    <string name="cache_now">Armazenar em cache agentx</string>
     <string name="no_messages_to_cache">Nenhuma mensagem para armazenar em cache.</string>
     <string name="all_messages_already_cached">Todas as %1$d mensagens já estão em cache.</string>
     <string name="no_api_key_configured">Nenhuma chave de API configurada.</string>
@@ -479,7 +479,7 @@
     <string name="show_documentation_links_desc">Exibir o botão de documentação nas páginas de configurações</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_title">Bem-vindo ao Agora</string>
+    <string name="onboarding_welcome_title">Bem-vindo ao AgentX</string>
     <string name="onboarding_welcome_desc">Um app BYOK que devolve a soberania sobre seus dados.</string>
     <string name="onboarding_byok_title">Use sua própria chave</string>
     <string name="onboarding_byok_desc">Configure suas chaves de API ou importe um modelo GGUF para desbloquear a inferência no dispositivo.</string>
@@ -563,7 +563,7 @@
     <string name="shell_confirm_setting">Confirmar ações de shell remoto</string>
     <string name="shell_confirm_setting_desc">Perguntar antes de o assistente executar comandos ou gravar arquivos em servidores SSH/Conch remotos</string>
     <string name="shell_confirm_notification_channel">Aprovação de comandos</string>
-    <string name="shell_confirm_notification_desc">Pede para permitir ou negar um comando remoto enquanto o Agora está em segundo plano</string>
+    <string name="shell_confirm_notification_desc">Pede para permitir ou negar um comando remoto enquanto o AgentX está em segundo plano</string>
 
     <string name="ask_user_title">O assistente está perguntando</string>
     <string name="ask_user_send">Enviar</string>
@@ -574,11 +574,11 @@
     <string name="interaction_expand">Expandir</string>
     <string name="ask_user_custom_answer">Responda com suas palavras</string>
     <string name="ask_user_skip">Ignorar</string>
-    <string name="ask_user_notification_channel">Pergunta do Agora</string>
+    <string name="ask_user_notification_channel">Pergunta do AgentX</string>
     <string name="ask_user_notification_desc">Pede que você responda a uma pergunta do assistente quando o chat não está aberto</string>
 
     <!-- Crash reporting -->
-    <string name="crash_title">O Agora fechou inesperadamente</string>
+    <string name="crash_title">O AgentX fechou inesperadamente</string>
     <string name="crash_message">Sentimos muito. Você pode ajudar a corrigir isso enviando um relatório de falha anônimo.</string>
     <string name="crash_submit">Enviar relatório</string>
     <string name="crash_dismiss">Não enviar</string>
@@ -731,7 +731,7 @@
     <string name="developer_options_disable_confirm">Desativar</string>
     <string name="developer_options_clear_diagnostics">Limpar a sessão de diagnóstico?</string>
     <string name="developer_options_clear_diagnostics_action">Limpar a sessão de diagnóstico</string>
-    <string name="developer_options_export_share_title">Compartilhar pacote de diagnóstico do Agora</string>
+    <string name="developer_options_export_share_title">Compartilhar pacote de diagnóstico do AgentX</string>
     <string name="developer_options_export_failed">Não foi possível criar o pacote de diagnóstico.</string>
     <string name="responses_api">Responses API</string>
     <string name="responses_api_desc">Usar o endpoint /responses do provedor em vez de Chat Completions.</string>

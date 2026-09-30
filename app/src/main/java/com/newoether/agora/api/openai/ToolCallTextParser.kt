@@ -110,7 +110,7 @@ internal object ToolCallTextParser {
         // XML in ordinary assistant text. Recover both the bare and namespaced forms:
         //   <invoke name="tool"><parameter name="arg">value</parameter></invoke>
         //   <antml:invoke ...><antml:parameter ...>...</antml:parameter></antml:invoke>
-        // Without this branch the model believes it called a tool while Agora renders the markup
+        // Without this branch the model believes it called a tool while AgentX renders the markup
         // as answer text and executes nothing.
         XML_INVOKE_BLOCK.findAll(content).forEach { match ->
             parseXmlInvoke(match)?.let(results::add)

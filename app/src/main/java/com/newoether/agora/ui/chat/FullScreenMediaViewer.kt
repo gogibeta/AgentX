@@ -54,9 +54,9 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.newoether.agora.R
-import com.newoether.agora.ui.common.AgoraHaptics
-import com.newoether.agora.ui.common.NoOpAgoraHaptics
-import com.newoether.agora.ui.common.rememberAgoraHaptics
+import com.newoether.agora.ui.common.AgentXHaptics
+import com.newoether.agora.ui.common.NoOpAgentXHaptics
+import com.newoether.agora.ui.common.rememberAgentXHaptics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -102,7 +102,7 @@ fun FullScreenMediaViewer(
     hapticsEnabled: Boolean = true
 ) {
     val url = urls.getOrNull(initialIndex) ?: return
-    val haptics = rememberAgoraHaptics(hapticsEnabled)
+    val haptics = rememberAgentXHaptics(hapticsEnabled)
     if (pdfPages.isNotEmpty()) {
         PdfPager(pdfPages, initialIndex, pdfSelectedPages, onTogglePdfPage, onClose, onNavigate)
         return
@@ -268,7 +268,7 @@ private fun MediaPager(
     onClose: () -> Unit,
     onNavigate: (Int) -> Unit,
     onMessage: (String) -> Unit = {},
-    haptics: AgoraHaptics = NoOpAgoraHaptics
+    haptics: AgentXHaptics = NoOpAgentXHaptics
 ) {
     var currentScale by remember { mutableFloatStateOf(1f) }
     var showOverlay by remember { mutableStateOf(true) }
@@ -369,7 +369,7 @@ private fun SingleImage(
     url: String,
     onClose: () -> Unit,
     onMessage: (String) -> Unit = {},
-    haptics: AgoraHaptics = NoOpAgoraHaptics
+    haptics: AgentXHaptics = NoOpAgentXHaptics
 ) {
     var showOverlay by remember { mutableStateOf(true) }
     var showActions by remember { mutableStateOf(false) }

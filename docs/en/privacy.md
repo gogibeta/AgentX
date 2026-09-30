@@ -1,10 +1,10 @@
 # Privacy & Security
 
-Agora is a BYOK client. It does not operate a relay for chat completions: requests go from your device to the provider, model server, or tool endpoint you configure.
+AgentX is a BYOK client. It does not operate a relay for chat completions: requests go from your device to the provider, model server, or tool endpoint you configure.
 
 ## Data stored on the device
 
-Conversations, message trees, tasks, loops, memories, prompts, attachments, and tool media are stored in Agora-managed databases/files. Ordinary settings use Android preferences. Secret settings normally use an AES-256-GCM envelope backed by the Android Keystore; legacy plaintext remains readable and encryption failure deliberately stores plaintext rather than losing the value.
+Conversations, message trees, tasks, loops, memories, prompts, attachments, and tool media are stored in AgentX-managed databases/files. Ordinary settings use Android preferences. Secret settings normally use an AES-256-GCM envelope backed by the Android Keystore; legacy plaintext remains readable and encryption failure deliberately stores plaintext rather than losing the value.
 
 Deleting app data or uninstalling the app removes app-managed data unless Android backup or an exported archive preserves it.
 
@@ -20,11 +20,11 @@ Only features you use create their corresponding traffic:
 - the optional rating form sends only the rating, name, email, and comment you submit to `https://newoether.com/api/rating`
 - after a crash, one report is stored locally; on next launch you may explicitly send its stack trace, app/Android version, device manufacturer/model, timestamp, and bounded diagnostic tags to `https://newoether.com/crash`
 
-Crash reports are never uploaded automatically and do not contain conversation text, credentials, or device identifiers. Agora has no general analytics/telemetry path.
+Crash reports are never uploaded automatically and do not contain conversation text, credentials, or device identifiers. AgentX has no general analytics/telemetry path.
 
 ## Backups and secrets
 
-A `.agora` export is a ZIP archive. If you explicitly include API keys/secrets, those values are unencrypted inside the archive. Keep that file private and delete copies you no longer need.
+A `.agentx` export is a ZIP archive. If you explicitly include API keys/secrets, those values are unencrypted inside the archive. Keep that file private and delete copies you no longer need.
 
 ## Proxy and transport
 

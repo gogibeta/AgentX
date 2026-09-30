@@ -5,7 +5,7 @@ import java.io.File
 internal class AlpinePackageMetadataStore(
     private val rootfsDir: File,
 ) {
-    private val metadataDir: File = File(rootfsDir, "etc/agora")
+    private val metadataDir: File = File(rootfsDir, "etc/agentx")
     private val baseWorldFile: File = File(metadataDir, "base-world")
     private val explicitPackagesFile: File = File(metadataDir, "explicit-packages")
     private val defaultBaseWorld = linkedSetOf("alpine-baselayout", "alpine-keys", "apk-tools", "busybox", "libc-utils")

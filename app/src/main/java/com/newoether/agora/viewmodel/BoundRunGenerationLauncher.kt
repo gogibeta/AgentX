@@ -143,7 +143,7 @@ internal class BoundRunGenerationLauncher(
             throw e
         } catch (e: Exception) {
             DebugLog.e(
-                "AgoraVM",
+                "AgentXVM",
                 "Generation failed in ${request.requestKind} " +
                     "errorType=${e.javaClass.simpleName}",
             )

@@ -463,7 +463,7 @@ class GeminiProvider(
                     requiredArrayFields = setOf("contents"),
                 )
                 DebugLog.d(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "[$name] request model=$cleanModelName messages=${requestBody.contents.size} " +
                         "thinking=${config.thinkingEnabled} tools=${tools.size}",
                 )
@@ -672,7 +672,7 @@ class GeminiProvider(
                                 if (streamError != null || finishReason != null) break
                             } catch (e: Exception) {
                                 DebugLog.e(
-                                    "AgoraAPI",
+                                    "AgentXAPI",
                                     "[$name] malformed stream payload exception=${e.javaClass.simpleName}",
                                 )
                                 streamError = GenerationError.SseParse(
@@ -696,7 +696,7 @@ class GeminiProvider(
                                 ?.toGeminiCitations(answerText.toString())
                                 ?.forEach { citation -> emit(StreamEvent.CitationUpdate(citation)) }
                         }
-                        DebugLog.d("AgoraSSE", "[$name] ${termination.describe()}")
+                        DebugLog.d("AgentXSSE", "[$name] ${termination.describe()}")
                         if (termination.isRetryable && attempt < maxAttempts) {
                             emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
                             delay(ProviderRetryPolicy.delayMillis(attempt))
@@ -708,7 +708,7 @@ class GeminiProvider(
                         val errorRaw = handle.errorBody.orEmpty()
                         val responseBytes = errorRaw.toByteArray(Charsets.UTF_8).size
                         DebugLog.e(
-                            "AgoraAPI",
+                            "AgentXAPI",
                             "[$name] HTTP ${handle.code} responseBytes=$responseBytes",
                         )
                         val retryable = ProviderRetryPolicy.shouldRetryHttp(
@@ -732,7 +732,7 @@ class GeminiProvider(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: RequestFormatException) {
-            DebugLog.e("AgoraAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
+            DebugLog.e("AgentXAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
             emit(StreamEvent.Error(GenerationError.RequestFormat(name, e.violations.joinToString())))
         } catch (e: java.net.SocketTimeoutException) {
             emit(StreamEvent.Error(GenerationError.Timeout))

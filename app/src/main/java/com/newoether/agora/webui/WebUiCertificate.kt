@@ -121,7 +121,7 @@ internal class WebUiCertificateStore(
 
     companion object {
         const val ALIAS = "webui"
-        const val COMMON_NAME = "Agora WebUI"
+        const val COMMON_NAME = "AgentX WebUI"
         private const val KEYSTORE_TYPE = "PKCS12"
         private const val KEYSTORE_FILE = "webui-tls.p12"
         private const val PASSWORD_FILE = "webui-tls.pass"

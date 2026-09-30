@@ -20,15 +20,27 @@ object DiagnosticBundleExporter {
         snapshot: DiagnosticSnapshot,
         format: DiagnosticExportFormat,
         generatedAtMillis: Long = System.currentTimeMillis(),
-    ): String = when (format) {
-        DiagnosticExportFormat.REDACTED_JSON -> exportJson(
-            snapshot = snapshot,
-            generatedAtMillis = generatedAtMillis,
-        )
-        DiagnosticExportFormat.SUMMARY_TEXT -> exportSummary(
-            snapshot = snapshot,
-            generatedAtMillis = generatedAtMillis,
-        )
+    ): String {
+        runCatching {
+            com.newoether.agora.util.DebugLog.event(
+                "Diagnostics",
+                mapOf(
+                    "action" to "bundle_export",
+                    "format" to format.name,
+                ),
+                "diagnostics bundle exported",
+            )
+        }
+        return when (format) {
+            DiagnosticExportFormat.REDACTED_JSON -> exportJson(
+                snapshot = snapshot,
+                generatedAtMillis = generatedAtMillis,
+            )
+            DiagnosticExportFormat.SUMMARY_TEXT -> exportSummary(
+                snapshot = snapshot,
+                generatedAtMillis = generatedAtMillis,
+            )
+        }
     }
 
     private fun exportJson(
@@ -73,7 +85,7 @@ object DiagnosticBundleExporter {
         snapshot: DiagnosticSnapshot,
         generatedAtMillis: Long,
     ): String = buildString {
-        appendLine("Agora Diagnostic Capture Summary")
+        appendLine("AgentX Diagnostic Capture Summary")
         appendLine("schemaVersion=1")
         appendLine("generatedAtMillis=$generatedAtMillis")
         appendLine("format=${DiagnosticExportFormat.SUMMARY_TEXT.name}")

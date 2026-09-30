@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">브라우저에서 Agora 제어</string>
+    <string name="settings_webui_desc">브라우저에서 AgentX 제어</string>
     <string name="webui_enable">WebUI 사용</string>
     <string name="webui_status_stopped">꺼짐. 켜면 이 휴대전화에서 웹 서버를 실행하고 알림을 표시합니다.</string>
     <string name="webui_status_starting">시작하는 중…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">네트워크 주소를 찾을 수 없습니다.</string>
     <string name="webui_http_warning">HTTP는 암호화되지 않습니다. 같은 네트워크의 누구나 비밀번호와 대화를 볼 수 있습니다. Tailscale처럼 신뢰할 수 있는 네트워크에서만 사용하세요.</string>
     <string name="webui_notification_channel">WebUI 서버</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">시작하는 중…</string>
     <string name="webui_notification_running">%1$s 열기</string>
     <string name="webui_notification_failed">중지됨: %1$s</string>

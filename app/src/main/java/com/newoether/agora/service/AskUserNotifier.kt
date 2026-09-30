@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 /**
  * Keeps an unanswered `ask_user` question actionable while the interaction bar is not on screen.
  *
- * The bar lives in the chat screen, so a question asked while Agora is backgrounded, or while
+ * The bar lives in the chat screen, so a question asked while AgentX is backgrounded, or while
  * another screen is open, would wait invisibly and the tool call would never return. This mirrors
  * the oldest waiting question into a notification and clears it as soon as the chat screen is
  * showing or nothing is waiting.
@@ -144,7 +144,7 @@ object AskUserNotifier {
             NOTIFICATION_ID,
             Intent(action, null, context, AskUserReceiver::class.java)
                 .setData(
-                    android.net.Uri.parse("agora-ask-user://$sessionId/$requestId/$optionIndex")
+                    android.net.Uri.parse("agentx-ask-user://$sessionId/$requestId/$optionIndex")
                 )
                 .putExtra(EXTRA_SESSION_ID, sessionId)
                 .putExtra(EXTRA_REQUEST_ID, requestId)

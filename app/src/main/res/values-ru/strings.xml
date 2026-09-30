@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><resources>
     <string name="app_name">AgentX</string>
-    <string name="agora_responded">Agora ответила</string>
+    <string name="agentx_responded">AgentX ответила</string>
 
     <!-- Chat Bottom Bar -->
     <string name="add_attachment">Добавить вложение</string>
@@ -19,7 +19,7 @@
     <string name="openai_search">Поиск OpenAI</string>
     <string name="thinking">Размышление</string>
     <string name="web_search">Веб-поиск</string>
-    <string name="ask_agora">Спросите Agora о чём угодно...</string>
+    <string name="ask_agentx">Спросите AgentX о чём угодно...</string>
     <string name="send">Отправить</string>
 
     <!-- Tool Display -->
@@ -262,9 +262,9 @@
     <string name="play">Воспроизвести</string>
     <string name="video_preview">Предпросмотр видео</string>
     <string name="total_tokens">Всего: %1$d токенов</string>
-    <string name="welcome_to_agora">Добро пожаловать в Agora.</string>
+    <string name="welcome_to_agentx">Добро пожаловать в AgentX.</string>
     <string name="database_incompatible">Несовместимая база данных</string>
-    <string name="database_incompatible_desc">База данных несовместима с этой версией Agora. Очистите базу данных и перезапустите приложение.</string>
+    <string name="database_incompatible_desc">База данных несовместима с этой версией AgentX. Очистите базу данных и перезапустите приложение.</string>
     <string name="quit">Выйти</string>
     <string name="clear_database">Очистить базу данных</string>
     <string name="generate_title">Сгенерировать заголовок</string>
@@ -350,10 +350,10 @@
     <string name="about_update_available">Доступно обновление: v%1$s</string>
     <string name="about_up_to_date">У вас последняя версия (v%1$s)</string>
     <string name="about_checking">Проверка...</string>
-    <string name="about_available_body">На GitHub доступна новая версия Agora.</string>
+    <string name="about_available_body">На GitHub доступна новая версия AgentX.</string>
     <string name="about_view_release">Посмотреть выпуск</string>
     <string name="about_later">Позже</string>
-    <string name="rating_title">Оценить Agora</string>
+    <string name="rating_title">Оценить AgentX</string>
     <string name="rating_star">%1$d звёзд</string>
     <string name="rating_your_name">Ваше имя (необязательно)</string>
     <string name="rating_your_email">Ваш e-mail (необязательно)</string>
@@ -370,7 +370,7 @@
     <string name="data_export_title">Экспорт данных</string>
     <string name="data_export_subtitle">Сохраните беседы, память, промпты и настройки в файл.</string>
     <string name="data_import_title">Импорт данных</string>
-    <string name="data_import_subtitle">Восстановить из предыдущего файла экспорта .agora.</string>
+    <string name="data_import_subtitle">Восстановить из предыдущего файла экспорта .agentx.</string>
     <string name="export_category_conversations">Беседы и сообщения</string>
     <string name="export_category_memories">Память</string>
     <string name="export_category_system_prompts">Системные промпты</string>
@@ -386,7 +386,7 @@
 
     <string name="export_failed">Не удалось экспортировать: %1$s</string>
     <string name="import_preview_title">Импорт данных</string>
-    <string name="import_from">Экспортировано %1$s\nИз Agora v%2$s</string>
+    <string name="import_from">Экспортировано %1$s\nИз AgentX v%2$s</string>
     <string name="import_unsupported_backup_version">Формат резервной копии v%1$d не поддерживается. Приложение поддерживает версии до v%2$d.</string>
     <string name="import_strategy_merge">Объединить</string>
     <string name="import_strategy_replace">Заменить</string>
@@ -400,7 +400,7 @@
     <string name="loading_label">Загрузка…</string>
     <string name="import_success">Импорт завершён: %1$s</string>
     <string name="import_failed">Не удалось импортировать: %1$s</string>
-    <string name="import_invalid_file">Недопустимый файл .agora. Выберите корректный экспорт.</string>
+    <string name="import_invalid_file">Недопустимый файл .agentx. Выберите корректный экспорт.</string>
     <string name="import_no_data">Этот файл экспорта не содержит данных для импорта.</string>
 
     <!-- Claude Chat Import -->
@@ -479,7 +479,7 @@
     <string name="show_documentation_links_desc">Отображать кнопку документации на страницах настроек</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_title">Добро пожаловать в Agora</string>
+    <string name="onboarding_welcome_title">Добро пожаловать в AgentX</string>
     <string name="onboarding_welcome_desc">Приложение BYOK, возвращающее вам суверенитет над данными.</string>
     <string name="onboarding_byok_title">Используйте свой ключ</string>
     <string name="onboarding_byok_desc">Настройте свои API-ключи или импортируйте модель GGUF, чтобы разблокировать вывод на устройстве.</string>
@@ -563,7 +563,7 @@
     <string name="shell_confirm_setting">Подтверждать действия удалённой оболочки</string>
     <string name="shell_confirm_setting_desc">Спрашивать перед тем, как ассистент выполнит команды или запишет файлы на удалённых серверах SSH/Conch</string>
     <string name="shell_confirm_notification_channel">Подтверждение команд</string>
-    <string name="shell_confirm_notification_desc">Запрашивает разрешение или запрет удалённой команды, пока Agora в фоновом режиме</string>
+    <string name="shell_confirm_notification_desc">Запрашивает разрешение или запрет удалённой команды, пока AgentX в фоновом режиме</string>
 
     <string name="ask_user_title">Ассистент спрашивает</string>
     <string name="ask_user_send">Отправить</string>
@@ -574,11 +574,11 @@
     <string name="interaction_expand">Развернуть</string>
     <string name="ask_user_custom_answer">Ответьте своими словами</string>
     <string name="ask_user_skip">Пропустить</string>
-    <string name="ask_user_notification_channel">Вопрос от Agora</string>
+    <string name="ask_user_notification_channel">Вопрос от AgentX</string>
     <string name="ask_user_notification_desc">Просит ответить на вопрос ассистента, когда экран чата закрыт</string>
 
     <!-- Crash reporting -->
-    <string name="crash_title">Agora неожиданно завершилась</string>
+    <string name="crash_title">AgentX неожиданно завершилась</string>
     <string name="crash_message">Приносим извинения. Вы можете помочь исправить это, отправив анонимный отчёт о сбое.</string>
     <string name="crash_submit">Отправить отчёт</string>
     <string name="crash_dismiss">Не отправлять</string>
@@ -731,7 +731,7 @@
     <string name="developer_options_disable_confirm">Отключить</string>
     <string name="developer_options_clear_diagnostics">Очистить сеанс диагностики?</string>
     <string name="developer_options_clear_diagnostics_action">Очистить сеанс диагностики</string>
-    <string name="developer_options_export_share_title">Поделиться пакетом диагностики Agora</string>
+    <string name="developer_options_export_share_title">Поделиться пакетом диагностики AgentX</string>
     <string name="developer_options_export_failed">Не удалось создать пакет диагностики.</string>
     <string name="responses_api">Responses API</string>
     <string name="responses_api_desc">Использовать конечную точку /responses провайдера вместо Chat Completions.</string>

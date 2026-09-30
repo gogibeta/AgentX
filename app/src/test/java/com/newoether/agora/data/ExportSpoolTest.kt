@@ -6,7 +6,7 @@ import org.junit.Test
 class ExportSpoolTest {
     @Test
     fun slicesRoundTripMultibyteRecordsAndWatermarks() {
-        val spool = File.createTempFile("agora-spool-test-", ".jsonl")
+        val spool = File.createTempFile("agentx-spool-test-", ".jsonl")
         try {
             val index = ExportSpoolWriter(spool).use { writer ->
                 writer.writeConversation("one", 11L, """{"id":"one","title":"中文 🎨"}""")

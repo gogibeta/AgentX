@@ -211,7 +211,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                         base64Files,
                     )
                     DebugLog.d(
-                        "AgoraAPI",
+                        "AgentXAPI",
                         "[$name] request transport=" +
                             "${if (config.responsesApiEnabled) "responses" else "chat"} " +
                             "model=${config.modelId} messages=${apiMessages.size} " +
@@ -239,7 +239,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                         if (retryable != null && attempt < maxAttempts) {
                             val retryDelayMs = retryDelayMillis(attempt)
                             DebugLog.w(
-                                "AgoraAPI",
+                                "AgentXAPI",
                                 "[$name] Transport failure opening stream on attempt " +
                                     "$attempt/$maxAttempts (${e.javaClass.simpleName}), " +
                                     "retrying in ${retryDelayMs}ms",
@@ -263,14 +263,14 @@ abstract class BaseOpenAiProvider : LlmProvider {
                                 consumeSuccessfulStream(handle, config) { emit(it) }
                             }
                             DebugLog.d(
-                                "AgoraSSE",
+                                "AgentXSSE",
                                 "[$name] stream_end ${termination.describe()} " +
                                     "attempt=$attempt/$maxAttempts",
                             )
                             if (termination.isRetryable && attempt < maxAttempts) {
                                 // Nothing was surfaced yet, so a replay cannot duplicate output.
                                 DebugLog.w(
-                                    "AgoraAPI",
+                                    "AgentXAPI",
                                     "[$name] Incomplete stream on attempt $attempt/$maxAttempts, retrying",
                                 )
                                 val retryDelayMs = retryDelayMillis(attempt)
@@ -286,7 +286,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                             val hasV1Fallback = endpointIndex + 1 < endpointUrls.size
                             if (hasV1Fallback) {
                                 DebugLog.w(
-                                    "AgoraAPI",
+                                    "AgentXAPI",
                                     "[$name] HTTP ${handle.code}; trying endpoint candidate " +
                                         "${endpointIndex + 2}/${endpointUrls.size}",
                                 )
@@ -296,7 +296,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
 
                             val responseBytes = errorRaw.toByteArray(Charsets.UTF_8).size
                             DebugLog.e(
-                                "AgoraAPI",
+                                "AgentXAPI",
                                 "[$name] HTTP ${handle.code} responseBytes=$responseBytes",
                             )
 
@@ -308,7 +308,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                                 ) && attempt < maxAttempts
                             ) {
                                 val retryDelayMs = retryDelayMillis(attempt)
-                                DebugLog.w("AgoraAPI", "[$name] Transient error ${handle.code} on attempt $attempt/$maxAttempts, retrying in ${retryDelayMs}ms...")
+                                DebugLog.w("AgentXAPI", "[$name] Transient error ${handle.code} on attempt $attempt/$maxAttempts, retrying in ${retryDelayMs}ms...")
                                 emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
                                 delay(retryDelayMs)
                                 retryScheduled = true
@@ -325,7 +325,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
         } catch (e: CancellationException) {
             throw e
         } catch (e: RequestFormatException) {
-            DebugLog.e("AgoraAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
+            DebugLog.e("AgentXAPI", "[$name] blocked invalid request: ${e.violations.joinToString()}")
             emit(StreamEvent.Error(GenerationError.RequestFormat(name, e.violations.joinToString())))
         } catch (e: SocketTimeoutException) {
             emit(StreamEvent.Error(GenerationError.Timeout))
@@ -377,7 +377,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                 router.route(json.decodeFromString<OpenAiResponseStreamEvent>(payload))
             } catch (error: Exception) {
                 DebugLog.e(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "[$name] malformed Responses payload exception=${error.javaClass.simpleName}",
                 )
                 streamError = GenerationError.SseParse(
@@ -607,7 +607,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                 }
             } catch (e: Exception) {
                 DebugLog.e(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "[$name] malformed stream payload exception=${e.javaClass.simpleName}",
                 )
                 streamError = GenerationError.SseParse(
@@ -677,7 +677,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
             } catch (error: Exception) {
                 if (pageIndex == 0) throw error
                 DebugLog.w(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "Stopped paginating $name models after $pageIndex completed pages; " +
                         "returning ${modelIds.size} models",
                 )
@@ -691,7 +691,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                 ?: page.data.lastOrNull()?.id?.takeIf(String::isNotBlank)
             if (cursor == null) {
                 DebugLog.w(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "$name model list reported has_more without a usable cursor; " +
                         "returning ${modelIds.size} models",
                 )
@@ -699,7 +699,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
             }
             if (!seenCursors.add(cursor)) {
                 DebugLog.w(
-                    "AgoraAPI",
+                    "AgentXAPI",
                     "$name model list repeated a cursor; " +
                         "returning ${modelIds.size} models",
                 )
@@ -710,7 +710,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
         }
 
         DebugLog.w(
-            "AgoraAPI",
+            "AgentXAPI",
             "$name model list exceeded $MAX_MODEL_LIST_PAGES pages; " +
                 "returning ${modelIds.size} models",
         )
@@ -738,7 +738,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                 lastFailure = error
                 if (index < endpointUrls.lastIndex) {
                     DebugLog.w(
-                        "AgoraAPI",
+                        "AgentXAPI",
                         "Failed to fetch $name models; trying endpoint candidate " +
                             "${index + 2}/${endpointUrls.size}",
                     )
@@ -748,7 +748,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
 
         val failure = lastFailure ?: ModelFetchEmptyResultException()
         DebugLog.e(
-            "AgoraAPI",
+            "AgentXAPI",
             "Failed to fetch $name models exception=${failure.javaClass.simpleName}",
         )
         throw failure

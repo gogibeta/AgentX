@@ -75,8 +75,6 @@ class DataControlImportStrategySourceContractTest {
             "values-pt-rBR",
             "values-ru",
             "values-vi",
-            "values-zh",
-            "values-zh-rTW",
         )
 
         directories.forEach { directory ->
@@ -190,8 +188,7 @@ class DataControlImportStrategySourceContractTest {
     fun nativeLoadingTitleHasSupportedLocaleParity() {
         val directories = listOf(
             "values", "values-ar", "values-de", "values-es", "values-fr", "values-ja",
-            "values-ko", "values-pt-rBR", "values-ru", "values-vi", "values-zh",
-            "values-zh-rTW",
+            "values-ko", "values-pt-rBR", "values-ru", "values-vi",
         )
 
         directories.forEach { directory ->
@@ -262,8 +259,7 @@ class DataControlImportStrategySourceContractTest {
         )
         val directories = listOf(
             "values", "values-ar", "values-de", "values-es", "values-fr", "values-ja",
-            "values-ko", "values-pt-rBR", "values-ru", "values-vi", "values-zh",
-            "values-zh-rTW",
+            "values-ko", "values-pt-rBR", "values-ru", "values-vi",
         )
 
         directories.forEach { directory ->
@@ -305,7 +301,7 @@ class DataControlImportStrategySourceContractTest {
             if (candidate.exists()) return candidate
             directory = directory.parentFile ?: return@repeat
         }
-        error("Unable to locate Agora source: $relativePath")
+        error("Unable to locate AgentX source: $relativePath")
     }
 
     private fun String.normalizeLines(): String = replace("\r\n", "\n")

@@ -45,7 +45,7 @@ import kotlinx.coroutines.launch
  * Centralized dependency container (manual DI).
  *
  * Replaces the ad-hoc dependency creation previously spread across MainActivity.
- * The validated database is injected by AgoraApplication's startup gate; all shared
+ * The validated database is injected by AgentXApplication's startup gate; all shared
  * dependencies are then created once and reused.
  *
  * This is a stepping stone toward a full DI framework (Hilt/Koin);

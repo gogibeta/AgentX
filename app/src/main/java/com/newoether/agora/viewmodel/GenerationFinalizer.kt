@@ -56,8 +56,8 @@ class GenerationFinalizer(
             if (!finalized) {
                 val message =
                     "Failed to persist stopped generation after ${retryDelaysMs.size} attempts"
-                if (lastFailure != null) DebugLog.e("AgoraVM", message, lastFailure)
-                else DebugLog.e("AgoraVM", message)
+                if (lastFailure != null) DebugLog.e("AgentXVM", message, lastFailure)
+                else DebugLog.e("AgentXVM", message)
             }
             onFinalized(
                 ConversationCommand.PersistenceSettled(

@@ -19,7 +19,7 @@ import org.junit.Test
 class WebUiServerTest {
     private val hasher = WebUiPasswordHasher(iterations = 1_000)
     private val assets = mapOf(
-        "index.html" to "<!doctype html><title>Agora</title>".toByteArray(),
+        "index.html" to "<!doctype html><title>AgentX</title>".toByteArray(),
         "app.js" to "export {}".toByteArray(),
     )
 

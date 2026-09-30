@@ -14,7 +14,7 @@ import java.io.File
 import java.nio.file.Files
 
 class DiagnosticEventBufferTest {
-    private val root = Files.createTempDirectory("agora-diagnostic-buffer").toFile()
+    private val root = Files.createTempDirectory("agentx-diagnostic-buffer").toFile()
     private val eventJson = Json {
         classDiscriminator = "payloadType"
         encodeDefaults = true

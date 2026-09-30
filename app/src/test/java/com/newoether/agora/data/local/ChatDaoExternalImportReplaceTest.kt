@@ -217,6 +217,6 @@ class ChatDaoExternalImportReplaceTest {
             if (candidate.isFile) return candidate
             directory = directory.parentFile ?: return@repeat
         }
-        error("Unable to locate Agora main source: $relativePath")
+        error("Unable to locate AgentX main source: $relativePath")
     }
 }

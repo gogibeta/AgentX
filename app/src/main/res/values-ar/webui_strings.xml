@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">التحكم في Agora من المتصفح</string>
+    <string name="settings_webui_desc">التحكم في AgentX من المتصفح</string>
     <string name="webui_enable">تفعيل WebUI</string>
     <string name="webui_status_stopped">متوقف. عند التفعيل يشغّل هذا الهاتف خادم ويب مع إشعار.</string>
     <string name="webui_status_starting">جارٍ البدء…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">لم يُعثر على عنوان شبكة.</string>
     <string name="webui_http_warning">اتصال HTTP غير مشفّر. يمكن لأي شخص على الشبكة نفسها قراءة كلمة المرور والمحادثات. استخدمه فقط على شبكات موثوقة مثل Tailscale.</string>
     <string name="webui_notification_channel">خادم WebUI</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">جارٍ البدء…</string>
     <string name="webui_notification_running">افتح %1$s</string>
     <string name="webui_notification_failed">توقّف: %1$s</string>

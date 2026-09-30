@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.app.AlarmManager
 import android.content.Context
 import android.content.Intent
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +28,7 @@ class BootReceiver : BroadcastReceiver() {
                 val pendingResult = goAsync()
                 CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                     try {
-                        val container = (context.applicationContext as AgoraApplication)
+                        val container = (context.applicationContext as AgentXApplication)
                             .awaitContainer()
                         if (container == null) {
                             DebugLog.w(

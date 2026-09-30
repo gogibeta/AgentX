@@ -44,7 +44,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import com.newoether.agora.R
 import com.newoether.agora.api.HttpClient
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareModalBottomSheet as ModalBottomSheet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -127,17 +127,17 @@ private fun countImageBytes(context: Context, url: String): Long? =
         total
     }
 
-/** Save the image into the device gallery (Pictures/Agora). Returns true on success. */
+/** Save the image into the device gallery (Pictures/AgentX). Returns true on success. */
 suspend fun saveImageToGallery(context: Context, url: String): Boolean = withContext(Dispatchers.IO) {
     val resolver = context.contentResolver
     var destination: Uri? = null
     try {
-        val name = "agora_${System.currentTimeMillis()}.jpg"
+        val name = "agentx_${System.currentTimeMillis()}.jpg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Agora")
+                put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/AgentX")
                 put(MediaStore.Images.Media.IS_PENDING, 1)
             }
         }
@@ -167,7 +167,7 @@ suspend fun saveImageToGallery(context: Context, url: String): Boolean = withCon
 suspend fun shareImage(context: Context, url: String): Boolean = withContext(Dispatchers.IO) {
     try {
         val dir = File(context.cacheDir, "shared").apply { mkdirs() }
-        val file = File(dir, "agora_${System.currentTimeMillis()}.jpg")
+        val file = File(dir, "agentx_${System.currentTimeMillis()}.jpg")
         val imageSource = openImageSource(context, url) ?: return@withContext false
         imageSource.use { source ->
             file.outputStream().use { sink -> source.input.copyTo(sink) }
@@ -226,7 +226,7 @@ fun ImageActionsSheet(url: String, onMessage: (String) -> Unit, onDismiss: () ->
     var imageInfoLoading by remember(url) { mutableStateOf(false) }
     var sheetVisible by remember(url) { mutableStateOf(true) }
     var actionInFlight by remember(url) { mutableStateOf(false) }
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val sheetState = rememberModalBottomSheetState()
 
     // Dispose the sheet window before opening another modal. Keeping a hidden sheet Dialog alive
@@ -311,7 +311,7 @@ private fun StableImageInfoDialog(
     loading: Boolean,
     onDismissed: () -> Unit,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val currentOnDismissed by rememberUpdatedState(onDismissed)
     var visible by remember { mutableStateOf(false) }
     val transition = updateTransition(visible, label = "imageInfoDialog")

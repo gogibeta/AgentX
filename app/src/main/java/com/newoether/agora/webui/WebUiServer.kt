@@ -183,7 +183,7 @@ internal class WebUiServer(
     )
 
     companion object {
-        const val SESSION_COOKIE = "agora_session"
+        const val SESSION_COOKIE = "agentx_session"
         const val INDEX = "index.html"
         private const val MAX_LOGIN_BODY_BYTES = 4_096L
         private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?><resources>
     <string name="app_name">AgentX</string>
-    <string name="agora_responded">ردّت Agora</string>
+    <string name="agentx_responded">ردّت AgentX</string>
 
     <!-- Chat Bottom Bar -->
     <string name="add_attachment">إضافة مرفق</string>
@@ -19,7 +19,7 @@
     <string name="openai_search">بحث OpenAI</string>
     <string name="thinking">التفكير</string>
     <string name="web_search">بحث الويب</string>
-    <string name="ask_agora">اسأل Agora أي شيء...</string>
+    <string name="ask_agentx">اسأل AgentX أي شيء...</string>
     <string name="send">إرسال</string>
 
     <!-- Tool Display -->
@@ -262,9 +262,9 @@
     <string name="play">تشغيل</string>
     <string name="video_preview">معاينة الفيديو</string>
     <string name="total_tokens">الإجمالي: %1$d رمز</string>
-    <string name="welcome_to_agora">مرحبًا بك في Agora.</string>
+    <string name="welcome_to_agentx">مرحبًا بك في AgentX.</string>
     <string name="database_incompatible">قاعدة البيانات غير متوافقة</string>
-    <string name="database_incompatible_desc">قاعدة البيانات غير متوافقة مع هذا الإصدار من Agora. يرجى مسح قاعدة البيانات وإعادة تشغيل التطبيق.</string>
+    <string name="database_incompatible_desc">قاعدة البيانات غير متوافقة مع هذا الإصدار من AgentX. يرجى مسح قاعدة البيانات وإعادة تشغيل التطبيق.</string>
     <string name="quit">خروج</string>
     <string name="clear_database">مسح قاعدة البيانات</string>
     <string name="generate_title">توليد العنوان</string>
@@ -350,10 +350,10 @@
     <string name="about_update_available">يتوفر تحديث: v%1$s</string>
     <string name="about_up_to_date">أنت محدّث (v%1$s)</string>
     <string name="about_checking">جارٍ التحقق...</string>
-    <string name="about_available_body">يتوفر إصدار جديد من Agora على GitHub.</string>
+    <string name="about_available_body">يتوفر إصدار جديد من AgentX على GitHub.</string>
     <string name="about_view_release">عرض الإصدار</string>
     <string name="about_later">لاحقًا</string>
-    <string name="rating_title">قيّم Agora</string>
+    <string name="rating_title">قيّم AgentX</string>
     <string name="rating_star">%1$d نجمة</string>
     <string name="rating_your_name">اسمك (اختياري)</string>
     <string name="rating_your_email">بريدك الإلكتروني (اختياري)</string>
@@ -370,7 +370,7 @@
     <string name="data_export_title">تصدير البيانات</string>
     <string name="data_export_subtitle">احفظ المحادثات والذكريات والموجّهات والإعدادات في ملف.</string>
     <string name="data_import_title">استيراد البيانات</string>
-    <string name="data_import_subtitle">الاستعادة من ملف تصدير .agora سابق.</string>
+    <string name="data_import_subtitle">الاستعادة من ملف تصدير .agentx سابق.</string>
     <string name="export_category_conversations">المحادثات والرسائل</string>
     <string name="export_category_memories">الذكريات</string>
     <string name="export_category_system_prompts">موجّهات النظام</string>
@@ -386,7 +386,7 @@
 
     <string name="export_failed">فشل التصدير: %1$s</string>
     <string name="import_preview_title">استيراد البيانات</string>
-    <string name="import_from">تم التصدير في %1$s\nمن Agora v%2$s</string>
+    <string name="import_from">تم التصدير في %1$s\nمن AgentX v%2$s</string>
     <string name="import_unsupported_backup_version">تنسيق النسخة الاحتياطية v%1$d غير مدعوم. يدعم هذا التطبيق حتى v%2$d.</string>
     <string name="import_strategy_merge">دمج</string>
     <string name="import_strategy_replace">استبدال</string>
@@ -400,7 +400,7 @@
     <string name="loading_label">جارٍ التحميل…</string>
     <string name="import_success">اكتمل الاستيراد: %1$s</string>
     <string name="import_failed">فشل الاستيراد: %1$s</string>
-    <string name="import_invalid_file">ملف .agora غير صالح. يرجى اختيار تصدير صالح.</string>
+    <string name="import_invalid_file">ملف .agentx غير صالح. يرجى اختيار تصدير صالح.</string>
     <string name="import_no_data">لا يحتوي ملف التصدير هذا على بيانات قابلة للاستيراد.</string>
 
     <!-- Claude Chat Import -->
@@ -479,7 +479,7 @@
     <string name="show_documentation_links_desc">عرض زر الوثائق في صفحات الإعدادات</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome_title">مرحبًا بك في Agora</string>
+    <string name="onboarding_welcome_title">مرحبًا بك في AgentX</string>
     <string name="onboarding_welcome_desc">تطبيق BYOK يعيد إليك سيادتك على بياناتك.</string>
     <string name="onboarding_byok_title">أحضر مفتاحك الخاص</string>
     <string name="onboarding_byok_desc">أعدّ مفاتيح API الخاصة بك أو استورد نموذج GGUF لتفعيل الاستدلال على الجهاز.</string>
@@ -563,7 +563,7 @@
     <string name="shell_confirm_setting">تأكيد إجراءات الصدفة البعيدة</string>
     <string name="shell_confirm_setting_desc">الطلب قبل أن يشغّل المساعد أوامر أو يكتب ملفات على خوادم SSH/Conch البعيدة</string>
     <string name="shell_confirm_notification_channel">الموافقة على الأوامر</string>
-    <string name="shell_confirm_notification_desc">يطلب السماح بأمر عن بُعد أو رفضه عندما يكون Agora في الخلفية</string>
+    <string name="shell_confirm_notification_desc">يطلب السماح بأمر عن بُعد أو رفضه عندما يكون AgentX في الخلفية</string>
 
     <string name="ask_user_title">المساعد يسأل</string>
     <string name="ask_user_send">إرسال</string>
@@ -574,11 +574,11 @@
     <string name="interaction_expand">توسيع</string>
     <string name="ask_user_custom_answer">أجب بكلماتك</string>
     <string name="ask_user_skip">تخطي</string>
-    <string name="ask_user_notification_channel">سؤال من Agora</string>
+    <string name="ask_user_notification_channel">سؤال من AgentX</string>
     <string name="ask_user_notification_desc">يطلب منك الإجابة على سؤال المساعد عندما لا تكون شاشة المحادثة مفتوحة</string>
 
     <!-- Crash reporting -->
-    <string name="crash_title">أُغلق Agora بشكل غير متوقع</string>
+    <string name="crash_title">أُغلق AgentX بشكل غير متوقع</string>
     <string name="crash_message">نعتذر عن ذلك. يمكنك المساعدة في إصلاح هذا بإرسال تقرير تعطّل مجهول.</string>
     <string name="crash_submit">إرسال التقرير</string>
     <string name="crash_dismiss">عدم الإرسال</string>
@@ -731,7 +731,7 @@
     <string name="developer_options_disable_confirm">إيقاف</string>
     <string name="developer_options_clear_diagnostics">مسح جلسة التشخيص؟</string>
     <string name="developer_options_clear_diagnostics_action">مسح جلسة التشخيص</string>
-    <string name="developer_options_export_share_title">مشاركة حزمة تشخيص Agora</string>
+    <string name="developer_options_export_share_title">مشاركة حزمة تشخيص AgentX</string>
     <string name="developer_options_export_failed">تعذر إنشاء حزمة التشخيص.</string>
     <string name="responses_api">Responses API</string>
     <string name="responses_api_desc">استخدم نقطة نهاية /responses الخاصة بالموفّر بدلاً من Chat Completions.</string>

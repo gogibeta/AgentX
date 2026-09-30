@@ -44,7 +44,7 @@ import com.newoether.agora.model.ToolImageAttachment
 import com.newoether.agora.ui.chat.MEDIA_STATE_CROSSFADE_MILLIS
 import com.newoether.agora.ui.chat.MediaLoadPresentation
 import com.newoether.agora.ui.chat.toMediaLoadPresentation
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 
 @Composable
 internal fun GeneratedImageThumbnail(
@@ -182,7 +182,7 @@ private fun GeneratedImagePendingDots(
     animationKey: String,
     modifier: Modifier = Modifier,
 ) {
-    val allowContinuousMotion = LocalAgoraMotionPolicy.current.allowContinuousMotion
+    val allowContinuousMotion = LocalAgentXMotionPolicy.current.allowContinuousMotion
     val density = LocalDensity.current
     val progress = remember(animationKey) { Animatable(0f) }
     val random = remember(animationKey) { kotlin.random.Random(animationKey.hashCode()) }

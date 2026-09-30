@@ -1,8 +1,8 @@
 # Frequently Asked Questions
 
-## Does Agora operate a chat relay?
+## Does AgentX operate a chat relay?
 
-No. Conversations are stored locally and chat requests go from the device to the provider or endpoint you configure. Agora does make other optional/direct network requests—for example update checks, explicitly submitted ratings or crash reports, web search, MCP, embeddings, image services, and remote shell. See [Privacy & Security](privacy.md).
+No. Conversations are stored locally and chat requests go from the device to the provider or endpoint you configure. AgentX does make other optional/direct network requests—for example update checks, explicitly submitted ratings or crash reports, web search, MCP, embeddings, image services, and remote shell. See [Privacy & Security](privacy.md).
 
 ## Where are API keys stored?
 
@@ -30,4 +30,4 @@ The Alpine sandbox is build-dependent. The F-Droid flavor exposes the sandbox fe
 
 ## How do I back up data?
 
-Use **Settings → Import & Export**. The `.agora` file is a ZIP archive, with selectable categories and optional secrets. See [Import & Export](import-export.md).
+Use **Settings → Import & Export**. The `.agentx` file is a ZIP archive, with selectable categories and optional secrets. See [Import & Export](import-export.md).

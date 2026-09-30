@@ -66,13 +66,13 @@ import com.newoether.agora.automation.ScheduleType
 import com.newoether.agora.automation.TaskSchedule
 import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.ModelId
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.settings.SettingsItem
 import java.text.DateFormatSymbols
 import java.util.Calendar
 import java.util.TimeZone
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 import com.newoether.agora.ui.components.optionClickable
 
 internal fun daysInYearlyMonth(month: Int): Int = when (month) {
@@ -95,7 +95,7 @@ internal fun TaskMonthDayPickerDialog(
         mutableIntStateOf(schedule.dayOfMonth.coerceIn(1, daysInYearlyMonth(selectedMonth)))
     }
     var showMonthMenu by remember { mutableStateOf(false) }
-    val allowSelectionAnimation = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSelectionAnimation = LocalAgentXMotionPolicy.current.allowSpatialTransitions
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -119,14 +119,14 @@ internal fun TaskMonthDayPickerDialog(
                         )
                         Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                     }
-                    AgoraDropdownMenu(
+                    AgentXDropdownMenu(
                         expanded = showMonthMenu,
                         onDismissRequest = { showMonthMenu = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ) {
                         monthNames.forEachIndexed { index, monthName ->
                             val month = index + 1
-                            AgoraDropdownMenuItem(
+                            AgentXDropdownMenuItem(
                                 text = { Text(monthName) },
                                 leadingIcon = {
                                     if (month == selectedMonth) {
@@ -542,13 +542,13 @@ internal fun ExecutionRow(
                             contentDescription = stringResource(R.string.options),
                         )
                     }
-                    AgoraDropdownMenu(
+                    AgentXDropdownMenu(
                         expanded = menuOpen,
                         onDismissRequest = { menuOpen = false },
                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                         tonalElevation = 16.dp,
                     ) {
-                        AgoraDropdownMenuItem(
+                        AgentXDropdownMenuItem(
                             text = {
                                 Text(
                                     stringResource(R.string.delete),

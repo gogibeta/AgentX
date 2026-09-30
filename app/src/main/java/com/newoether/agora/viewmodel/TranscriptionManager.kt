@@ -16,7 +16,7 @@ import com.newoether.agora.model.MessageSegment
 import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.Participant
 import com.newoether.agora.model.ToolImageAttachment
-import com.newoether.agora.service.AgoraForegroundService
+import com.newoether.agora.service.AgentXForegroundService
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -304,7 +304,7 @@ class TranscriptionManager(
             if (!currentCoroutineContext().isActive) throw CancellationException("Transcription cancelled")
 
             withContext(Dispatchers.Main) {
-                AgoraForegroundService.updateText(context.getString(R.string.transcription_progress, processed + 1, total))
+                AgentXForegroundService.updateText(context.getString(R.string.transcription_progress, processed + 1, total))
             }
 
             val currentSegment = MessageSegment(

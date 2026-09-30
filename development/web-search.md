@@ -2,12 +2,12 @@
 
 Status: authoritative, 2026-08-14.
 
-This contract owns Agora's generic Web Search provider settings and execution, plus the boundary
+This contract owns AgentX's generic Web Search provider settings and execution, plus the boundary
 between that feature and provider-hosted native web search.
 
 ## 1. Terms and product boundary
 
-Agora has two distinct capabilities:
+AgentX has two distinct capabilities:
 
 - Generic Web Search is a tool executed by `WebSearchToolProvider` using the provider selected on
   the Web Search settings page.

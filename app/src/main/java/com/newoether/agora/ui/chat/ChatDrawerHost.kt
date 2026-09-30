@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.newoether.agora.ui.motion.AgoraMotionPolicy
+import com.newoether.agora.ui.motion.AgentXMotionPolicy
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -125,7 +125,7 @@ internal class ChatDrawerState internal constructor(
         anchoredState.anchoredDrag(MutatePriority.UserInput) { }
     }
 
-    suspend fun settle(velocity: Float, motionPolicy: AgoraMotionPolicy) {
+    suspend fun settle(velocity: Float, motionPolicy: AgentXMotionPolicy) {
         if (!drawerEnabled || sideBySide || drawerWidthPx <= 0f) return
         animateTo(
             resolveDrawerSettleTarget(
@@ -137,7 +137,7 @@ internal class ChatDrawerState internal constructor(
         )
     }
 
-    suspend fun toggle(motionPolicy: AgoraMotionPolicy) {
+    suspend fun toggle(motionPolicy: AgentXMotionPolicy) {
         if (!drawerEnabled) return
         val target = if (anchoredState.targetValue == DrawerValue.Open) {
             DrawerValue.Closed
@@ -147,22 +147,22 @@ internal class ChatDrawerState internal constructor(
         animateTo(target, motionPolicy)
     }
 
-    suspend fun closeFromContent(motionPolicy: AgoraMotionPolicy) {
+    suspend fun closeFromContent(motionPolicy: AgentXMotionPolicy) {
         if (!sideBySide) animateTo(DrawerValue.Closed, motionPolicy)
     }
 
-    suspend fun closeFromBack(motionPolicy: AgoraMotionPolicy) {
+    suspend fun closeFromBack(motionPolicy: AgentXMotionPolicy) {
         if (shouldHandleBack) animateTo(DrawerValue.Closed, motionPolicy)
     }
 
-    suspend fun forceClosed(motionPolicy: AgoraMotionPolicy) {
+    suspend fun forceClosed(motionPolicy: AgentXMotionPolicy) {
         animateTo(DrawerValue.Closed, motionPolicy)
     }
     suspend fun openImmediately() {
         if (drawerEnabled) anchoredState.snapTo(DrawerValue.Open)
     }
 
-    private suspend fun animateTo(target: DrawerValue, motionPolicy: AgoraMotionPolicy) {
+    private suspend fun animateTo(target: DrawerValue, motionPolicy: AgentXMotionPolicy) {
         if (target == DrawerValue.Open && !drawerEnabled) return
         if (motionPolicy.allowSpatialTransitions) {
             anchoredState.animateTo(
@@ -187,7 +187,7 @@ internal fun rememberChatDrawerState(): ChatDrawerState = remember {
 internal fun ChatDrawerHost(
     state: ChatDrawerState,
     drawerEnabled: Boolean,
-    motionPolicy: AgoraMotionPolicy,
+    motionPolicy: AgentXMotionPolicy,
     onDrawerProgress: (Float) -> Unit,
     drawerContent: @Composable (drawerWidth: Dp, closeFromContent: suspend () -> Unit) -> Unit,
     content: @Composable () -> Unit,

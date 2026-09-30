@@ -28,7 +28,7 @@ import org.junit.Test
 class PortableSettingsArchiveTest {
     @Test
     fun cacheArchiveRoundTripAndLegacyStrategiesUseRealSettingsStorage() = runTest {
-        val directory = java.nio.file.Files.createTempDirectory("agora-cache-settings").toFile()
+        val directory = java.nio.file.Files.createTempDirectory("agentx-cache-settings").toFile()
         val context = mockk<android.content.Context>()
         every { context.applicationContext } returns context
         every { context.filesDir } returns directory
@@ -295,8 +295,6 @@ class PortableSettingsArchiveTest {
             "values-pt-rBR",
             "values-ru",
             "values-vi",
-            "values-zh",
-            "values-zh-rTW",
         ).forEach { directory ->
             val strings = File(resourceRoot, "$directory/strings.xml").readLocaleStringResourceSources()
             assertTrue("Missing title in $directory", strings.contains("name=\"show_uncached_notification\""))

@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.file.Files
 
 class DiagnosticCaptureStoreTest {
-    private val root = Files.createTempDirectory("agora-diagnostic-store").toFile()
+    private val root = Files.createTempDirectory("agentx-diagnostic-store").toFile()
     private val eventJson = Json {
         classDiscriminator = "payloadType"
         encodeDefaults = true

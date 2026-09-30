@@ -1,4 +1,4 @@
-Agora is an open-source BYOK Android LLM client. Conversations are stored on your device and model requests go directly to the provider or endpoint you configure.
+AgentX is an open-source BYOK Android LLM client. Conversations are stored on your device and model requests go directly to the provider or endpoint you configure.
 
 Features:
 * Nine provider types: OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen/DashScope, OpenRouter, Groq, Ollama, and local GGUF models; custom OpenAI-compatible, Google, and Anthropic endpoints
@@ -7,7 +7,7 @@ Features:
 * Agentic tools for web search, memory, conversation RAG, image generation, MCP servers, Tasks/Loops, and remote shell/file operations
 * Durable Conch jobs plus SSH devices; Conch uses application-layer encryption when an API key is configured
 * On-device llama.cpp inference and local embeddings
-* Versioned .agora ZIP import/export, ChatGPT/Claude import, and automatic backups
+* Versioned .agentx ZIP import/export, ChatGPT/Claude import, and automatic backups
 * Material 3 UI with configurable thinking/tool presentation, fonts, haptics, and 12 interface languages
 
 External providers and tools receive data only when you use their feature. After a crash, an anonymous diagnostic report is stored locally and sent only if you explicitly confirm on the next launch. See the in-app/user-manual privacy documentation for exact destinations and backup security.

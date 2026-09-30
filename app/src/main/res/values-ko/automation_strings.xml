@@ -63,7 +63,7 @@
     <string name="loop_next_in">%1$s 후 다음 실행</string>
     <string name="loop_cycle">주기 %1$d/%2$d</string>
     <string name="loop_stop">루프 중지</string>
-    <string name="automation_notification_channel_desc">Agora 자동화가 실행되는 동안 표시되는 지속 알림</string>
+    <string name="automation_notification_channel_desc">AgentX 자동화가 실행되는 동안 표시되는 지속 알림</string>
     <string name="settings_automation">자동화</string>
     <string name="settings_automation_desc">작업, 루프 및 일정 정밀도</string>
     <string name="automation_ai_tools">작업 및 루프에 접근</string>

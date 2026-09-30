@@ -174,7 +174,7 @@ class GenerationToolBatchEffectExecutorTest {
             false,
             overlay.upsertHosted(
                 active.copy(
-                    arguments = """{"type":"search","query":"latest Agora"}""",
+                    arguments = """{"type":"search","query":"latest AgentX"}""",
                     result = """{"type":"web_search_call","status":"completed"}""",
                 ),
             ),

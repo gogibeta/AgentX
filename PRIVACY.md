@@ -2,7 +2,7 @@
 
 **Last updated: August 10, 2026**
 
-Agora is a BYOK Android client. It does not operate a relay for chat completions: model requests go from your device to the provider or endpoint you configure.
+AgentX is a BYOK Android client. It does not operate a relay for chat completions: model requests go from your device to the provider or endpoint you configure.
 
 ## Local data
 
@@ -23,15 +23,15 @@ Data leaves the device only through features you use:
 - the optional rating form sends only the rating, name, email, and comment you explicitly submit to `https://newoether.com/api/rating`;
 - after a crash, one pending report is stored locally and the next launch asks whether to send it to `https://newoether.com/crash`. It contains the stack trace, app/Android version, device manufacturer/model, timestamp, and bounded diagnostic event tags, but no conversation text, credentials, or device identifiers.
 
-Crash reports are never submitted automatically. Agora does not include a general analytics path. Third-party endpoints have their own privacy and retention policies.
+Crash reports are never submitted automatically. AgentX does not include a general analytics path. Third-party endpoints have their own privacy and retention policies.
 
 ## Backups and exports
 
-A `.agora` export is a ZIP archive. If you explicitly include API keys or other secrets, those values are unencrypted inside the archive. Protect and delete exported copies as appropriate.
+A `.agentx` export is a ZIP archive. If you explicitly include API keys or other secrets, those values are unencrypted inside the archive. Protect and delete exported copies as appropriate.
 
 ## Transport and proxy
 
-The configured proxy applies to Agora's shared HTTP-client traffic, not direct SSH, local inference, or processes inside the Alpine sandbox. Conch application-layer encryption requires an API key; a blank-key endpoint uses plain JSON and relies on HTTPS for transport confidentiality.
+The configured proxy applies to AgentX's shared HTTP-client traffic, not direct SSH, local inference, or processes inside the Alpine sandbox. Conch application-layer encryption requires an API key; a blank-key endpoint uses plain JSON and relies on HTTPS for transport confidentiality.
 
 ## Permissions
 
@@ -42,4 +42,4 @@ The configured proxy applies to Agora's shared HTTP-client traffic, not direct S
 
 ## Children, changes, and contact
 
-Agora is not directed to children under 13. This policy may be updated with the repository/application. Questions can be opened at [github.com/newo-ether/Agora](https://github.com/newo-ether/Agora).
+AgentX is not directed to children under 13. This policy may be updated with the repository/application. Questions can be opened at [github.com/newo-ether/AgentX](https://github.com/gogibeta/AgentX).

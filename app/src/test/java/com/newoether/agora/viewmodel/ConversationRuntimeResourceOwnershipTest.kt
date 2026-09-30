@@ -165,8 +165,8 @@ class ConversationRuntimeResourceOwnershipTest {
     @Test
     fun disposalCleansPendingAndFailedInflightGuidanceOwnership() {
         val store = GuidanceLeaseStore { "lease" }
-        val pendingFile = java.nio.file.Files.createTempFile("agora-pending", ".tmp").toFile()
-        val claimedFile = java.nio.file.Files.createTempFile("agora-claimed", ".tmp").toFile()
+        val pendingFile = java.nio.file.Files.createTempFile("agentx-pending", ".tmp").toFile()
+        val claimedFile = java.nio.file.Files.createTempFile("agentx-claimed", ".tmp").toFile()
         try {
             val pending = queued("pending", "pending", pendingFile.absolutePath)
             val claimed = queued("claimed", "claimed", claimedFile.absolutePath)
@@ -189,7 +189,7 @@ class ConversationRuntimeResourceOwnershipTest {
     @Test
     fun durableGuidanceLeaseTransfersFilesToRoomEvenAfterDisposal() {
         val store = GuidanceLeaseStore { "lease" }
-        val durableFile = java.nio.file.Files.createTempFile("agora-durable", ".tmp").toFile()
+        val durableFile = java.nio.file.Files.createTempFile("agentx-durable", ".tmp").toFile()
         store.enqueue(queued("durable", "durable", durableFile.absolutePath))
         val lease = store.claim()!!
         store.disposePending()

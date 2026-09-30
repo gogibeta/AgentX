@@ -31,8 +31,8 @@ android {
         applicationId = "com.newoether.agora"
         minSdk = 26
         targetSdk = 36
-        versionCode = 31
-        versionName = "2.1.0"
+        versionCode = 32
+        versionName = "2.2.0"
 
 
         ndk {
@@ -62,8 +62,9 @@ android {
     }
 
     val hasKeystore = keystoreProperties.getProperty("storeFile", ".").let { it != "." }
-    val releaseSigning = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
-
+    // Fail closed: a release build must always use the permanent release key.
+    // Never fall back to the debug key — an ephemeral debug key would make
+    // every CI build uninstallable over the previous one.
     buildTypes {
         debug {
             applicationIdSuffix = ".screenshots"
@@ -74,12 +75,30 @@ android {
             }
         }
         release {
-            signingConfig = releaseSigning
+            signingConfig = signingConfigs.getByName("release")
             // R8 shrinks and optimizes release code; keep rules live in proguard-rules.pro.
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+            )
+        }
+    }
+
+    // Enforced only when a release artifact is actually being built, so unit
+    // tests and debug builds keep working without the keystore present.
+    gradle.taskGraph.whenReady {
+        val buildsRelease = allTasks.any { task ->
+            task.name.contains("Release", ignoreCase = true) &&
+                (task.name.startsWith("assemble") || task.name.startsWith("bundle") ||
+                    task.name.startsWith("package"))
+        }
+        if (buildsRelease && !hasKeystore) {
+            throw GradleException(
+                "Release signing keystore is not configured. Refusing to sign a release " +
+                    "build with the debug key: provide storeFile/storePassword/keyAlias/" +
+                    "keyPassword in local.properties (CI restores them from the " +
+                    "KEYSTORE_BASE64 / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD secrets)."
             )
         }
     }

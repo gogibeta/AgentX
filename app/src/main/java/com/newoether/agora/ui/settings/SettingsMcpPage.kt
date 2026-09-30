@@ -59,8 +59,8 @@ import com.newoether.agora.mcp.McpServerSnapshot
 import com.newoether.agora.util.noOpBringIntoView
 import com.newoether.agora.viewmodel.ChatViewModel
 import java.util.UUID
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 import com.newoether.agora.ui.components.SecretVisibilityToggle
 import com.newoether.agora.ui.components.rememberSecretVisible
 import com.newoether.agora.ui.components.secretVisualTransformation
@@ -216,7 +216,7 @@ fun SettingsMcpPage(
                                                                 stringResource(R.string.options),
                                                             )
                                                         }
-                                                        AgoraDropdownMenu(
+                                                        AgentXDropdownMenu(
                                                             expanded = menuExpanded,
                                                             onDismissRequest = {
                                                                 menuExpanded = false
@@ -224,7 +224,7 @@ fun SettingsMcpPage(
                                                             containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                                             tonalElevation = 16.dp,
                                                         ) {
-                                                            AgoraDropdownMenuItem(
+                                                            AgentXDropdownMenuItem(
                                                                 text = {
                                                                     Text(stringResource(R.string.mcp_refresh))
                                                                 },
@@ -239,7 +239,7 @@ fun SettingsMcpPage(
                                                                     viewModel.refreshMcpServer(server.id)
                                                                 },
                                                             )
-                                                            AgoraDropdownMenuItem(
+                                                            AgentXDropdownMenuItem(
                                                                 text = {
                                                                     Text(
                                                                         stringResource(R.string.delete),

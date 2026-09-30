@@ -70,8 +70,7 @@ internal class ApplicationUiSourceContractTest : UiSourceContractFixture() {
     fun `singular transcription ellipsis exists in every locale`() {
         val directories = listOf(
             "values", "values-ar", "values-de", "values-es", "values-fr", "values-ja",
-            "values-ko", "values-pt-rBR", "values-ru", "values-vi", "values-zh",
-            "values-zh-rTW",
+            "values-ko", "values-pt-rBR", "values-ru", "values-vi",
         )
 
         directories.forEach { directory ->
@@ -107,8 +106,7 @@ internal class ApplicationUiSourceContractTest : UiSourceContractFixture() {
     fun `Skills UI strings keep locale and delete placeholder parity`() {
         val directories = listOf(
             "values", "values-ar", "values-de", "values-es", "values-fr", "values-ja",
-            "values-ko", "values-pt-rBR", "values-ru", "values-vi", "values-zh",
-            "values-zh-rTW",
+            "values-ko", "values-pt-rBR", "values-ru", "values-vi",
         )
 
         directories.forEach { directory ->
@@ -174,8 +172,6 @@ internal class ApplicationUiSourceContractTest : UiSourceContractFixture() {
             "values-pt-rBR" to "Parâmetros do LLM",
             "values-ru" to "Параметры LLM",
             "values-vi" to "Tham số LLM",
-            "values-zh" to "LLM 参数",
-            "values-zh-rTW" to "LLM 參數",
         )
 
         expected.forEach { (directory, value) ->
@@ -359,14 +355,6 @@ internal class ApplicationUiSourceContractTest : UiSourceContractFixture() {
                 "Ngữ cảnh", "Quản lý ngữ cảnh", "Phân đoạn suy luận",
                 "Chọn nơi mở các phân đoạn suy luận", "Thẻ",
                 "Bảng dưới", "Phân đoạn suy luận",
-            ),
-            "values-zh" to listOf(
-                "上下文", "上下文管理", "思考片段",
-                "选择思考片段的打开位置", "卡片", "底部面板", "思考片段",
-            ),
-            "values-zh-rTW" to listOf(
-                "上下文", "上下文管理", "思考片段",
-                "選擇思考片段的開啟位置", "卡片", "底部面板", "思考片段",
             ),
         )
 
@@ -727,8 +715,7 @@ internal class ApplicationUiSourceContractTest : UiSourceContractFixture() {
 
         val directories = listOf(
             "values", "values-ar", "values-de", "values-es", "values-fr", "values-ja",
-            "values-ko", "values-pt-rBR", "values-ru", "values-vi", "values-zh",
-            "values-zh-rTW",
+            "values-ko", "values-pt-rBR", "values-ru", "values-vi",
         )
         val keys = listOf(
             "automation_background_execution",

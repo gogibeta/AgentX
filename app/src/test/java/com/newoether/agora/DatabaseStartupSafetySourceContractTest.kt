@@ -26,7 +26,7 @@ class DatabaseStartupSafetySourceContractTest {
             .toSet()
         assertEquals(
             setOf(
-                "com/newoether/agora/AgoraApplication.kt",
+                "com/newoether/agora/AgentXApplication.kt",
                 "com/newoether/agora/data/ConversationExportSnapshotReader.kt",
             ),
             directBuilders,
@@ -37,10 +37,10 @@ class DatabaseStartupSafetySourceContractTest {
     fun `quit is non destructive and clean delegates to the process gate`() {
         val root = locateMainSourceRoot()
         val activity = File(root, "com/newoether/agora/MainActivity.kt").readText()
-        val application = File(root, "com/newoether/agora/AgoraApplication.kt").readText()
+        val application = File(root, "com/newoether/agora/AgentXApplication.kt").readText()
 
         assertTrue(activity.contains("TextButton(onClick = { activity?.finish() })"))
-        assertTrue(activity.contains("agoraApplication.clearIncompatibleDatabase()"))
+        assertTrue(activity.contains("agentxApplication.clearIncompatibleDatabase()"))
         assertFalse(activity.contains("deleteDatabase("))
         assertEquals(1, Regex("""deleteDatabase\(ChatDatabase\.DB_NAME\)""")
             .findAll(application).count())
@@ -66,7 +66,7 @@ class DatabaseStartupSafetySourceContractTest {
     fun `diagnostic capture restores before the database startup gate`() {
         val application = File(
             locateMainSourceRoot(),
-            "com/newoether/agora/AgoraApplication.kt",
+            "com/newoether/agora/AgentXApplication.kt",
         ).readText()
         val diagnosticsInitialize = application.indexOf("DeveloperDiagnostics.initialize(")
         val databaseInitialize = application.indexOf("startupGate.initialize()")
@@ -81,7 +81,7 @@ class DatabaseStartupSafetySourceContractTest {
     fun `database ready publishes before process maintenance and list release owns startup`() {
         val root = locateMainSourceRoot()
         val gate = File(root, "com/newoether/agora/DatabaseStartupGate.kt").readText()
-        val application = File(root, "com/newoether/agora/AgoraApplication.kt").readText()
+        val application = File(root, "com/newoether/agora/AgentXApplication.kt").readText()
         val container = File(root, "com/newoether/agora/di/AppContainer.kt").readText()
         val viewModel = File(root, "com/newoether/agora/viewmodel/ChatViewModel.kt").readText()
         val rag = File(root, "com/newoether/agora/viewmodel/RagManager.kt").readText()

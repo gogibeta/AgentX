@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.remote.RemoteUsage
 import com.newoether.agora.remote.RemoteViewModel
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareModalBottomSheet
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator
 import java.util.Locale
@@ -37,7 +37,7 @@ internal fun RemoteUsageSheet(vm: RemoteViewModel, onDismiss: () -> Unit) {
     var loading by remember(vm) { mutableStateOf(true) }
     var appeared by remember { mutableStateOf(false) }
     val opacity by animateFloatAsState(if (appeared) 1f else 0f, tween(250), label = "usageAppearance")
-    val spatialMotion = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val spatialMotion = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val locale = LocalConfiguration.current.locales[0]
     LaunchedEffect(Unit) { appeared = true }
     LaunchedEffect(vm) { usage = vm.usage(); loading = false }

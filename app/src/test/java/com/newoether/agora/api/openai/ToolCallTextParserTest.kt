@@ -24,7 +24,7 @@ internal class ToolCallTextParserTest : ResponsesEventFixture() {
             I will inspect it.
             <invoke name="file_grep">
               <parameter name="pattern">notifySendAccepted|acquireForSend()</parameter>
-              <parameter name="path">F:\workspace\repo\Agora\MessageGenerationController.kt</parameter>
+              <parameter name="path">F:\workspace\repo\AgentX\MessageGenerationController.kt</parameter>
               <parameter name="server">Quantum</parameter>
             </invoke>
         """.trimIndent()

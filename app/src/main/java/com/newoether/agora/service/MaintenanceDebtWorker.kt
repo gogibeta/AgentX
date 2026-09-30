@@ -6,7 +6,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.data.local.MaintenanceDebtDao
 import com.newoether.agora.data.local.MaintenanceDebtEntity
 import com.newoether.agora.util.DebugLog
@@ -21,7 +21,7 @@ class MaintenanceDebtWorker(
     params: WorkerParameters,
 ) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
-        val container = (applicationContext as AgoraApplication).awaitContainer()
+        val container = (applicationContext as AgentXApplication).awaitContainer()
             ?: return@withContext Result.retry()
         val debtDao = container.database.maintenanceDebtDao()
         val attachmentSweeper = AttachmentOrphanSweeper(

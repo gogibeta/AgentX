@@ -7,7 +7,7 @@
 
 struct common_chat_tool_call;
 
-namespace agora::chat {
+namespace agentx::chat {
 
 struct NativeChatCallbacks {
     jclass clazz = nullptr;
@@ -64,4 +64,4 @@ bool report_tool_calls_complete(
     const NativeChatCallbacks & methods
 );
 
-} // namespace agora::chat
+} // namespace agentx::chat

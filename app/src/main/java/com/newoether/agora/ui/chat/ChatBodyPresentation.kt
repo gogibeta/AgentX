@@ -30,14 +30,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
-import com.newoether.agora.ui.common.AgoraHaptics
+import com.newoether.agora.ui.common.AgentXHaptics
 import com.newoether.agora.ui.components.TypewriterMode
 import com.newoether.agora.ui.components.TypewriterText
-import com.newoether.agora.ui.motion.AgoraMotionPolicy
+import com.newoether.agora.ui.motion.AgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
 
 internal fun AnimatedContentTransitionScope<Pair<Boolean, Boolean>>.chatMainContentTransition(
-    motionPolicy: AgoraMotionPolicy,
+    motionPolicy: AgentXMotionPolicy,
     pivotY: Float,
 ): ContentTransform {
     val targetNewChat = targetState.first
@@ -93,7 +93,7 @@ internal fun ChatWelcomeContent(
                 .verticalScroll(rememberScrollState()),
             contentAlignment = Alignment.TopCenter
         ) {
-            val welcomeText = stringResource(R.string.welcome_to_agora)
+            val welcomeText = stringResource(R.string.welcome_to_agentx)
             val availableWelcomeHeight =
                 windowHeightDp +
                     topBarH.value / 2f -
@@ -120,12 +120,12 @@ internal fun ChatWelcomeContent(
 @Composable
 internal fun BoxScope.ChatSelectionOverlay(
     shareSelectionActive: Boolean,
-    motionPolicy: AgoraMotionPolicy,
+    motionPolicy: AgentXMotionPolicy,
     bottomBarHeight: Dp,
     selectableShareMessageIds: Set<String>,
     selectedShareMessageIds: Set<String>,
     conversationInteraction: ConversationInteractionProjection,
-    haptics: AgoraHaptics,
+    haptics: AgentXHaptics,
     onShareMessages: (Set<String>) -> Unit,
 ) {
     AnimatedVisibility(

@@ -64,7 +64,7 @@
     <string name="loop_next_in">Next in %1$s</string>
     <string name="loop_cycle">Cycle %1$d/%2$d</string>
     <string name="loop_stop">Stop loop</string>
-    <string name="automation_notification_channel_desc">Ongoing notification while an Agora automation is running</string>
+    <string name="automation_notification_channel_desc">Ongoing notification while an AgentX automation is running</string>
 
     <string name="settings_automation">Automation</string>
     <string name="settings_automation_desc">Tasks, loops, and scheduling precision</string>

@@ -1,6 +1,6 @@
-# Agora User Manual
+# AgentX User Manual
 
-Agora is an Android BYOK client for provider-hosted and on-device language models. Conversations are stored locally, while configured providers and tools are contacted directly from the device.
+AgentX is an Android BYOK client for provider-hosted and on-device language models. Conversations are stored locally, while configured providers and tools are contacted directly from the device.
 
 ## Start here
 
@@ -18,7 +18,7 @@ Agora is an Android BYOK client for provider-hosted and on-device language model
 - [Image Generation](image-generation.md)
 - [System Prompts](system-prompts.md)
 
-## Extend Agora
+## Extend AgentX
 
 - [Agentic Tools](tools.md)
 - [MCP Servers](mcp.md)

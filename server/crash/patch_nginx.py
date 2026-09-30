@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Idempotently insert the Agora /crash location into the newoether.com nginx site.
+"""Idempotently insert the AgentX /crash location into the newoether.com nginx site.
 
 Adds a `location = /crash { ... }` block immediately before each `location / {` in the
 config (once per :80 and :443 server block). Safe to re-run: does nothing if /crash is

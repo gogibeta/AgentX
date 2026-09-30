@@ -234,6 +234,6 @@ class NativeConversationGraphSourceTest {
     }
 
     private fun spoolNames(cacheDir: File): List<String> =
-        (cacheDir.listFiles { file -> file.name.startsWith("agora-import-v5-") })
+        (cacheDir.listFiles { file -> file.name.startsWith("agentx-import-v5-") })
             .orEmpty().map { it.name }.sorted()
 }

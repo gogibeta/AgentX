@@ -49,9 +49,9 @@ import com.newoether.agora.model.ThinkingSegmentDisplayModes
 import com.newoether.agora.model.citationRecords
 import com.newoether.agora.ui.chat.GenerationActivityDot
 import com.newoether.agora.ui.chat.shouldShowStreamingTailIndicator
-import com.newoether.agora.ui.common.LocalAgoraHaptics
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.common.LocalAgentXHaptics
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 
 internal val AssistantMessageHorizontalInset = 8.dp
 private val FormerAssistantStatusSpacerHeight = 6.dp
@@ -104,7 +104,7 @@ internal fun AssistantMessageContent(
 ) {
     @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
-    val haptics = LocalAgoraHaptics.current
+    val haptics = LocalAgentXHaptics.current
     val uriHandler = LocalUriHandler.current
     val citations = remember(message.text, message.segments) {
         message.citationRecords()
@@ -711,13 +711,13 @@ internal fun AssistantMessageContent(
                                     tint = enabledActionTint,
                                 )
                             }
-                            AgoraDropdownMenu(
+                            AgentXDropdownMenu(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 16.dp,
                                 expanded = showMenu && actionAvailability.informationVisible,
                                 onDismissRequest = { showMenu = false },
                             ) {
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = { Text(stringResource(R.string.info)) },
                                     onClick = {
                                         showMenu = false
@@ -726,7 +726,7 @@ internal fun AssistantMessageContent(
                                     enabled = actionAvailability.informationEnabled,
                                     leadingIcon = { Icon(Icons.Default.Info, null) },
                                 )
-                                AgoraDropdownMenuItem(
+                                AgentXDropdownMenuItem(
                                     text = {
                                         Text(
                                             stringResource(R.string.delete),

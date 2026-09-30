@@ -2,7 +2,7 @@
 
 Status: authoritative, 2026-08-14.
 
-This contract owns Agora's complete citation lifecycle. It applies to structured citations from
+This contract owns AgentX's complete citation lifecycle. It applies to structured citations from
 Providers, compatible relays, supported conversation imports, durable message storage, streaming
 projection, message reload, copy/search/selection, and answer rendering.
 
@@ -11,7 +11,7 @@ call, a tool result, or Provider-history content.
 
 ## 1. Product boundary
 
-Agora normalizes proven structured Provider citation protocols into one durable representation.
+AgentX normalizes proven structured Provider citation protocols into one durable representation.
 Provider-private marker syntax and IDs are inputs to that normalization only. The generic Markdown
 renderer must not learn an OpenAI-, Gemini-, Anthropic-, ChatGPT-, or Claude-private citation
 dialect.
@@ -42,7 +42,7 @@ citation-language implementation.
   must never append synthetic Markdown links or citation labels to that durable text.
 - Citation segments survive ordinary Room reload, branch/fork projection, native graph export and
   import, and backup restore through the existing segment field.
-- Older Agora versions may ignore the unknown segment type. New decoding must drop an individually
+- Older AgentX versions may ignore the unknown segment type. New decoding must drop an individually
   malformed citation segment without failing the message or other segments.
 - Provider request/history projection, token accounting, Compact input, and tool protocol replay
   exclude citation segments. The original answer text remains the Provider-visible assistant text.
@@ -196,7 +196,7 @@ ordinary Unicode text or standard Markdown links.
   `FastOutSlowInEasing`; the color-only feedback remains enabled under Reduced Motion.
   Link labels, targets, safe-activation rules, and ordinary Markdown semantics remain unchanged.
   Non-URL file/document sources remain normal text and open the in-app detail surface.
-- A safe HTTP(S) source opens through Agora's existing safe-link interaction path. A non-URL
+- A safe HTTP(S) source opens through AgentX's existing safe-link interaction path. A non-URL
   file/document source opens an in-app detail surface showing available title/file name, location,
   and cited excerpt without inventing a URL.
 - Every single-source inline capsule exposes its existing source accessibility label. A grouped
@@ -218,7 +218,7 @@ ordinary Unicode text or standard Markdown links.
 - Selection operates on visible rendered content. Inline capsule alternate text remains
   `[<capsule label>]`; the dedicated Copy action remains the authoritative portable
   answer-plus-Sources export.
-- Native Agora export/import preserves citation segments losslessly subject to the existing bounded
+- Native AgentX export/import preserves citation segments losslessly subject to the existing bounded
   message policy.
 - ChatGPT and Claude importers normalize resolvable exported citations into citation segments.
   Unresolvable private markers are removed without deleting surrounding answer text. Ordinary

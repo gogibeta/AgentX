@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">Controle o Agora pelo navegador</string>
+    <string name="settings_webui_desc">Controle o AgentX pelo navegador</string>
     <string name="webui_enable">Ativar WebUI</string>
     <string name="webui_status_stopped">Desativada. Quando ativada, este telefone executa um servidor web com uma notificação.</string>
     <string name="webui_status_starting">Iniciando…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">Nenhum endereço de rede encontrado.</string>
     <string name="webui_http_warning">HTTP não é criptografado. Qualquer pessoa na mesma rede pode ler a senha e as conversas. Use apenas em redes confiáveis, como o Tailscale.</string>
     <string name="webui_notification_channel">Servidor WebUI</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">Iniciando…</string>
     <string name="webui_notification_running">Abrir %1$s</string>
     <string name="webui_notification_failed">Parado: %1$s</string>

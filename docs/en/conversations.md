@@ -1,6 +1,6 @@
 # Conversations
 
-Agora stores conversations as message trees. Editing an earlier message or regenerating a reply creates another branch without deleting the other branch.
+AgentX stores conversations as message trees. Editing an earlier message or regenerating a reply creates another branch without deleting the other branch.
 
 ## Create and navigate
 

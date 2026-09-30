@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 
 /**
- * Where an attachment's owned bytes live, and whether Agora is still allowed to reclaim them.
+ * Where an attachment's owned bytes live, and whether AgentX is still allowed to reclaim them.
  *
  * Local Sandbox files stop belonging to the composer immediately before their first Send
  * submission. Keeping that transfer explicit prevents message, queue, draft, and fork cleanup from

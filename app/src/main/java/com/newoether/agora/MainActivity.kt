@@ -39,18 +39,18 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.newoether.agora.data.SettingsManager
-import com.newoether.agora.service.AgoraForegroundService
+import com.newoether.agora.service.AgentXForegroundService
 import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.ui.chat.ChatApp
 import com.newoether.agora.ui.chat.FullScreenMediaPreviewDialog
 import com.newoether.agora.ui.chat.MediaPreviewTarget
 import com.newoether.agora.ui.onboarding.WelcomeScreen
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
-import com.newoether.agora.ui.motion.ProvideAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
+import com.newoether.agora.ui.motion.ProvideAgentXMotionPolicy
 import com.newoether.agora.ui.settings.SettingsScreen
 import com.newoether.agora.ui.tasks.TaskEditorSessionViewModel
 import com.newoether.agora.ui.tasks.TaskHistoryPreviewPhase
-import com.newoether.agora.ui.theme.AgoraTheme
+import com.newoether.agora.ui.theme.AgentXTheme
 import com.newoether.agora.util.snackbarTimeoutMillis
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.*
@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
             SettingsManager(newBase).appLanguage.first()
         }
         val locale = when (langCode) {
-            "zh" -> java.util.Locale("zh", "CN")
+            // Removed languages (e.g. "zh") fall through to null → system default.
             "en" -> java.util.Locale("en")
             "es" -> java.util.Locale("es")
             "fr" -> java.util.Locale("fr")
@@ -83,7 +83,6 @@ class MainActivity : ComponentActivity() {
             "ko" -> java.util.Locale("ko")
             "ar" -> java.util.Locale("ar")
             "vi" -> java.util.Locale("vi")
-            "zh-Hant" -> java.util.Locale.forLanguageTag("zh-Hant")
             else -> null
         }
         if (locale != null) {
@@ -106,16 +105,16 @@ class MainActivity : ComponentActivity() {
         com.newoether.agora.util.DebugLog.init(this)
 
         val settingsManager = SettingsManager(applicationContext)
-        val agoraApplication = application as AgoraApplication
+        val agentxApplication = application as AgentXApplication
         lifecycleScope.launch {
-            val databaseStartupState = agoraApplication.awaitDatabaseStartup()
+            val databaseStartupState = agentxApplication.awaitDatabaseStartup()
             val needsErrorDialog = databaseStartupState is DatabaseStartupState.Blocked
             withContext(Dispatchers.IO) {
                 intent?.getStringExtra(EXTRA_SCREENSHOT_DESTINATION)?.let { destination ->
                     runCatching {
                         Class.forName("com.newoether.agora.screenshot.ScreenshotFixture")
-                            .getMethod("seed", AgoraApplication::class.java, String::class.java)
-                            .invoke(null, agoraApplication, destination)
+                            .getMethod("seed", AgentXApplication::class.java, String::class.java)
+                            .invoke(null, agentxApplication, destination)
                     }.onFailure { error ->
                         if (error !is ClassNotFoundException) {
                             com.newoether.agora.util.DebugLog.e(
@@ -172,7 +171,7 @@ class MainActivity : ComponentActivity() {
                 insetsController.isAppearanceLightNavigationBars = !isDark
             }
 
-            AgoraTheme(
+            AgentXTheme(
                 themeMode = themeModeEnum,
                 amoledEnabled = amoledEnabled,
                 colorSchemePreset = colorSchemePreset,
@@ -181,7 +180,7 @@ class MainActivity : ComponentActivity() {
                 fontPreference = fontPreference,
                 customFontPath = customFontPath
             ) {
-                ProvideAgoraMotionPolicy(appReduceMotion = appReduceMotion) {
+                ProvideAgentXMotionPolicy(appReduceMotion = appReduceMotion) {
                 val activity = LocalActivity.current
 
                 if (needsErrorDialog) {
@@ -200,7 +199,7 @@ class MainActivity : ComponentActivity() {
                                     if (!clearingDatabase) {
                                         clearingDatabase = true
                                         databaseScope.launch {
-                                            val cleared = agoraApplication.clearIncompatibleDatabase()
+                                            val cleared = agentxApplication.clearIncompatibleDatabase()
                                             if (cleared) {
                                                 activity?.recreate()
                                             } else {
@@ -221,9 +220,9 @@ class MainActivity : ComponentActivity() {
                         showOnboarding = !settingsManager.onboardingCompleted.first()
                     }
 
-                    // Create ViewModel via the process-scoped DI container (owned by AgoraApplication),
+                    // Create ViewModel via the process-scoped DI container (owned by AgentXApplication),
                     // so the same shared singletons back both the UI and background task execution.
-                    val container = agoraApplication.requireContainer()
+                    val container = agentxApplication.requireContainer()
                     // The WebUI mirrors the app's resolved colors and font.
                     com.newoether.agora.webui.PublishWebUiTheme(container.webUi, fontPreference, customFontPath)
                     val factory = remember { container.chatViewModelFactory() }
@@ -268,7 +267,7 @@ class MainActivity : ComponentActivity() {
         AppForegroundTracker.setInForeground(true)
         // A foreground service may only start from the foreground; restore an enabled WebUI here.
         lifecycleScope.launch {
-            (application as AgoraApplication).awaitContainer()?.webUi?.startIfEnabled()
+            (application as AgentXApplication).awaitContainer()?.webUi?.startIfEnabled()
         }
     }
 
@@ -287,7 +286,7 @@ class MainActivity : ComponentActivity() {
         notificationConversationId.value = intent?.getStringExtra(EXTRA_CONVERSATION_ID)
             ?.takeIf { it.isNotBlank() }
             ?: intent?.data?.takeIf { uri ->
-                uri.scheme == "agora" && uri.host == "conversation"
+                uri.scheme == "agentx" && uri.host == "conversation"
             }?.lastPathSegment?.takeIf { it.isNotBlank() }
     }
 }
@@ -302,7 +301,7 @@ fun MainNavigation(
     screenshotDestination: String? = null,
 ) {
     val appContext = LocalContext.current.applicationContext
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val shouldRequestNotificationPermission =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         appContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
@@ -316,7 +315,7 @@ fun MainNavigation(
         initialComposerFocusReady = true
     }
     LaunchedEffect(Unit) {
-        AgoraForegroundService.createChannels(appContext)
+        AgentXForegroundService.createChannels(appContext)
         if (shouldRequestNotificationPermission) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -366,7 +365,7 @@ fun MainNavigation(
         val id = notificationTarget ?: return@LaunchedEffect
         try {
             val exists = withContext(Dispatchers.IO) {
-                (appContext as AgoraApplication).requireContainer().conversationRepository
+                (appContext as AgentXApplication).requireContainer().conversationRepository
                     .getConversation(id) != null
             }
             if (exists) {

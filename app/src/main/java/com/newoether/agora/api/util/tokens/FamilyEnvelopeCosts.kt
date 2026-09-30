@@ -4,7 +4,7 @@ package com.newoether.agora.api.util.tokens
  * Anthropic charges a documented tool-use system prompt whenever a request carries tools.
  *
  * From the tool-use overview (docs.claude.com, read 2026-09-27), the `auto, none` column, which is
- * the tool choice Agora sends. The values are per model and not monotonic, so they are a table, not
+ * the tool choice AgentX sends. The values are per model and not monotonic, so they are a table, not
  * a formula. The same page states that a request with no tools pays nothing extra, which is why this
  * is a tool-set overhead rather than a per-request one.
  *

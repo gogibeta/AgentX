@@ -29,7 +29,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.ui.chat.message.AssistantMessageHorizontalInset
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 
 internal val StreamingTailAnchorHeight = 24.dp
 internal val StreamingTailVisualLift = 56.dp
@@ -210,7 +210,7 @@ internal fun StreamingTailIndicator(
     retainLayout: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val allowSpatialTransitions = LocalAgoraMotionPolicy.current.allowSpatialTransitions
+    val allowSpatialTransitions = LocalAgentXMotionPolicy.current.allowSpatialTransitions
     val density = LocalDensity.current
     val visualLiftPx = with(density) { StreamingTailVisualLift.toPx() }
     val visibilityTransition = updateTransition(
@@ -265,7 +265,7 @@ internal fun StreamingTailIndicator(
 /** One breathing-scale sample used by every direct generation-dot source. */
 @Composable
 internal fun rememberGenerationActivityDotBreathingScale(): Float {
-    val allowContinuousMotion = LocalAgoraMotionPolicy.current.allowContinuousMotion
+    val allowContinuousMotion = LocalAgentXMotionPolicy.current.allowContinuousMotion
     return if (allowContinuousMotion) {
         val breathing = rememberInfiniteTransition(label = "GenerationActivityBreathing")
         val animatedScale by breathing.animateFloat(

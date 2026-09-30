@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_webui">WebUI</string>
-    <string name="settings_webui_desc">Điều khiển Agora từ trình duyệt</string>
+    <string name="settings_webui_desc">Điều khiển AgentX từ trình duyệt</string>
     <string name="webui_enable">Bật WebUI</string>
     <string name="webui_status_stopped">Đang tắt. Khi bật, điện thoại này chạy một máy chủ web kèm thông báo.</string>
     <string name="webui_status_starting">Đang khởi động…</string>
@@ -24,7 +24,7 @@
     <string name="webui_access_none">Không tìm thấy địa chỉ mạng.</string>
     <string name="webui_http_warning">HTTP không được mã hóa. Bất kỳ ai trong cùng mạng đều có thể đọc mật khẩu và các cuộc trò chuyện. Chỉ dùng trên mạng đáng tin cậy, chẳng hạn Tailscale.</string>
     <string name="webui_notification_channel">Máy chủ WebUI</string>
-    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_title">AgentX WebUI</string>
     <string name="webui_notification_starting">Đang khởi động…</string>
     <string name="webui_notification_running">Mở %1$s</string>
     <string name="webui_notification_failed">Đã dừng: %1$s</string>

@@ -30,7 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.model.ContextBudget
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 
 private val BarHeight = 12.dp
 private val LegendDotSize = 10.dp
@@ -133,7 +133,7 @@ private fun SegmentedBar(
     reservedFraction: Float,
     reservedColor: Color,
 ) {
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val animated = fractions.mapIndexed { index, fraction ->
         val value by animateFloatAsState(
             targetValue = fraction.coerceIn(0f, 1f),

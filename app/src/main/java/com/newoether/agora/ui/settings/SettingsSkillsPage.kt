@@ -50,15 +50,15 @@ import com.newoether.agora.R
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.readSkillMarkdown
 import com.newoether.agora.ui.components.clearFocusOnTap
-import com.newoether.agora.ui.motion.LocalAgoraMotionPolicy
+import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.ui.motion.MotionAwareModalBottomSheet as ModalBottomSheet
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXDropdownMenu
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
 import com.newoether.agora.ui.components.sheetOptionClickable
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +72,7 @@ fun SettingsSkillsPage(
     val showDocumentationFab by viewModel.settings.showDocumentationFab.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val motionPolicy = LocalAgoraMotionPolicy.current
+    val motionPolicy = LocalAgentXMotionPolicy.current
     val addSkillSheetState = rememberModalBottomSheetState()
     val unknownError = stringResource(R.string.unknown_error)
 
@@ -286,14 +286,14 @@ fun SettingsSkillsPage(
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
-                                            AgoraDropdownMenu(
+                                            AgentXDropdownMenu(
                                                 containerColor =
                                                     MaterialTheme.colorScheme.surfaceContainer,
                                                 tonalElevation = 16.dp,
                                                 expanded = showFileMenu,
                                                 onDismissRequest = { showFileMenu = false },
                                             ) {
-                                                AgoraDropdownMenuItem(
+                                                AgentXDropdownMenuItem(
                                                     text = {
                                                         Text(
                                                             stringResource(
@@ -338,7 +338,7 @@ fun SettingsSkillsPage(
                                                         }
                                                     },
                                                 )
-                                                AgoraDropdownMenuItem(
+                                                AgentXDropdownMenuItem(
                                                     text = {
                                                         Text(
                                                             stringResource(

@@ -1,6 +1,6 @@
 # Agentic Tools
 
-Agora can let a model call tools across multiple generation passes.
+AgentX can let a model call tools across multiple generation passes.
 
 ## Available capabilities
 

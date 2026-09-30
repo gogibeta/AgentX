@@ -3,7 +3,7 @@ package com.newoether.agora.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.newoether.agora.AgoraApplication
+import com.newoether.agora.AgentXApplication
 import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +34,7 @@ class ShellConfirmationReceiver : BroadcastReceiver() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val container = withTimeoutOrNull(CONTAINER_WAIT_MS) {
-                    (context.applicationContext as? AgoraApplication)?.awaitContainer()
+                    (context.applicationContext as? AgentXApplication)?.awaitContainer()
                 }
                 if (container == null) {
                     DebugLog.w(TAG, "Dropped notification decision: confirmation queue unavailable")

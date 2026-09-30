@@ -84,7 +84,7 @@
     <string name="prompts_template_blank">En blanco</string>
     <string name="prompts_template_blank_desc">Empezar con una instrucción del sistema editable vacía.</string>
     <string name="prompts_template_default">Predeterminado</string>
-    <string name="prompts_template_default_desc">Usar la instrucción predeterminada de Agora con contexto de ejecución, memoria, búsqueda web, shell y reglas de acceso a archivos del dispositivo.</string>
+    <string name="prompts_template_default_desc">Usar la instrucción predeterminada de AgentX con contexto de ejecución, memoria, búsqueda web, shell y reglas de acceso a archivos del dispositivo.</string>
     <string name="prompts_duplicate">Duplicar</string>
     <string name="prompts_duplicate_title">Copia de %1$s</string>
     <string name="prompts_empty_preview">Instrucción vacía</string>

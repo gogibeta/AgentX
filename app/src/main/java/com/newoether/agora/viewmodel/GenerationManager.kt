@@ -19,7 +19,7 @@ import com.newoether.agora.model.Participant
 import com.newoether.agora.model.RunEffectIdentity
 import com.newoether.agora.model.ToolCallData
 import com.newoether.agora.R
-import com.newoether.agora.service.AgoraForegroundService
+import com.newoether.agora.service.AgentXForegroundService
 import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.api.util.ContextTokenEstimator
 import com.newoether.agora.api.util.tokens.FixedContextComposition
@@ -82,7 +82,7 @@ class GenerationManager(
     )
     private val completionEffects = GenerationCompletionEffectsExecutor(
         isAppInForeground = { AppForegroundTracker.isInForeground },
-        releaseForegroundLease = AgoraForegroundService::release,
+        releaseForegroundLease = AgentXForegroundService::release,
         notify = ::showTerminalNotification,
     )
 
@@ -97,7 +97,7 @@ class GenerationManager(
         conversationId: String,
         status: MessageStatus,
     ) {
-        AgoraForegroundService.showTerminalNotification(
+        AgentXForegroundService.showTerminalNotification(
             context = app,
             responseText = replaceCustomProviderIdsForDisplay(text, customProviders()),
             conversationId = conversationId,
@@ -195,8 +195,11 @@ class GenerationManager(
         callbacks: GenerationCallbacks,
         streamScope: StreamScope? = null,
         requestTrace: com.newoether.agora.api.HttpClient.RequestTrace? = null,
-    ): GenerationExecutionResult =
-        com.newoether.agora.api.HttpClient.withStreamScope(streamScope, requestTrace) {
+    ): GenerationExecutionResult {
+        val startNanos =
+            generationStartEvent(runId, conversationId, config.providerName, modelName, pass)
+        return try {
+            com.newoether.agora.api.HttpClient.withStreamScope(streamScope, requestTrace) {
         // Bind every provider/tool stream opened by this generation to its coroutine-local
         // StreamScope. Parallel conversations therefore cannot overwrite one another's Stop
         // ownership, while child dispatcher hops inherit the same context element.
@@ -222,7 +225,7 @@ class GenerationManager(
                 conversations.updateStreamingMessageCheckpoint(message)
             },
             onFailure = { error ->
-                DebugLog.e("AgoraVM", "Failed to persist streaming checkpoint", error)
+                DebugLog.e("AgentXVM", "Failed to persist streaming checkpoint", error)
             },
         )
         var terminalPersisted = false
@@ -270,7 +273,7 @@ class GenerationManager(
                 managedExternally = ctx.foregroundServiceManagedExternally,
                 acquire = {
                     withContext(Dispatchers.Main) {
-                        AgoraForegroundService.acquire(app, modelMessageId, conversationId)
+                        AgentXForegroundService.acquire(app, modelMessageId, conversationId)
                     }
                 },
             )
@@ -751,13 +754,13 @@ class GenerationManager(
                                 val message =
                                     "Terminal generation effect failed after ${outcome.durableResult.attempts} attempts: " +
                                         "message=$modelMessageId run=$runId status=${output.currentStatus}"
-                                if (failure != null) DebugLog.e("AgoraVM", message, failure)
-                                else DebugLog.e("AgoraVM", message)
+                                if (failure != null) DebugLog.e("AgentXVM", message, failure)
+                                else DebugLog.e("AgentXVM", message)
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    DebugLog.e("AgoraVM", "Failed to execute terminal generation effect", e)
+                    DebugLog.e("AgentXVM", "Failed to execute terminal generation effect", e)
                     throw e
                 }
             }
@@ -784,5 +787,11 @@ class GenerationManager(
         GenerationExecutionResult(
             followUpParentMessageId = followUpParentMessageId,
         )
+        }
+        } catch (e: Throwable) {
+            val outcome = if (e is CancellationException) "cancelled" else "error"
+            generationEndEvent(runId, startNanos, outcome)
+            throw e
+        }.also { generationEndEvent(runId, startNanos, "ok") }
     }
 }

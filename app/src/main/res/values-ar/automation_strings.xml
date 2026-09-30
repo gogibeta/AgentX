@@ -63,7 +63,7 @@
     <string name="loop_next_in">التالي خلال %1$s</string>
     <string name="loop_cycle">الدورة %1$d/%2$d</string>
     <string name="loop_stop">إيقاف الحلقة</string>
-    <string name="automation_notification_channel_desc">إشعار مستمر أثناء تشغيل أتمتة Agora</string>
+    <string name="automation_notification_channel_desc">إشعار مستمر أثناء تشغيل أتمتة AgentX</string>
     <string name="settings_automation">الأتمتة</string>
     <string name="settings_automation_desc">المهام والحلقات ودقة الجدولة</string>
     <string name="automation_ai_tools">الوصول إلى المهام والحلقات</string>

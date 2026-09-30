@@ -55,7 +55,7 @@ object MonidClient {
 
     private fun authHeaders(apiKey: String): Map<String, String> = mapOf(
         "Authorization" to "Bearer $apiKey",
-        "X-Monid-Client" to "agora",
+        "X-Monid-Client" to "agentx",
     )
 
     /**

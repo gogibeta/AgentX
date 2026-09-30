@@ -38,6 +38,19 @@ class AutoBackupManager(
         private val backupMutex = Mutex()
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "auto_backup"
+
+        /**
+         * Matches current (`AgentX_backup_*.agentx`) and legacy (`Agora_backup_*.agora`)
+         * backup files so pre-rebrand backups stay usable as baselines and are still
+         * pruned by retention. New backups are always written with the current name.
+         */
+        internal fun isBackupFileName(name: String): Boolean =
+            (name.startsWith("AgentX_backup_") && name.endsWith(".agentx")) ||
+                (name.startsWith("Agora_backup_") && name.endsWith(".agora"))
+
+        internal fun isBackupTmpFileName(name: String): Boolean =
+            (name.startsWith("AgentX_backup_") && name.endsWith(".agentx.tmp")) ||
+                (name.startsWith("Agora_backup_") && name.endsWith(".agora.tmp"))
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -109,14 +122,12 @@ class AutoBackupManager(
             if (!dir.exists() && !dir.mkdirs()) return@withContext null
 
             val sdf = SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.US)
-            val filename = "Agora_backup_${sdf.format(Date())}.agora"
+            val filename = "AgentX_backup_${sdf.format(Date())}.agentx"
             val file = File(dir, filename)
             val tmpFile = File(dir, "$filename.tmp")
             cleanupTarget = tmpFile
             val baselineFile = dir.listFiles { candidate ->
-                candidate.isFile &&
-                    candidate.name.startsWith("Agora_backup_") &&
-                    candidate.name.endsWith(".agora")
+                candidate.isFile && isBackupFileName(candidate.name)
             }?.maxByOrNull(File::lastModified)
 
             val categoryKeys = settingsManager.autoBackupCategories.safeRead("conversations,memories,system_prompts,settings")
@@ -168,7 +179,7 @@ class AutoBackupManager(
     }
 
     private suspend fun resolveBackupDir(): File? {
-        val stored = settingsManager.autoBackupDirectory.safeRead("Download/Agora/Backup")
+        val stored = settingsManager.autoBackupDirectory.safeRead("Download/AgentX/Backup")
 
         // Filesystem path
         if (!stored.startsWith("content://")) {
@@ -191,7 +202,7 @@ class AutoBackupManager(
     private fun defaultBackupDir(): File {
         return File(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "Agora/Backup"
+            "AgentX/Backup"
         )
     }
 
@@ -209,7 +220,7 @@ class AutoBackupManager(
         val dir = resolveBackupDir() ?: return
 
         dir.listFiles { f ->
-            f.isFile && f.name.startsWith("Agora_backup_") && f.name.endsWith(".agora")
+            f.isFile && isBackupFileName(f.name)
         }?.forEach { file ->
             if (file.lastModified() < cutoffTime) {
                 runCatching { file.delete() }
@@ -218,7 +229,7 @@ class AutoBackupManager(
 
         // Clean orphaned .tmp files from interrupted backups
         dir.listFiles { f ->
-            f.isFile && f.name.startsWith("Agora_backup_") && f.name.endsWith(".agora.tmp")
+            f.isFile && isBackupTmpFileName(f.name)
         }?.forEach { tmpFile ->
             runCatching { tmpFile.delete() }
         }

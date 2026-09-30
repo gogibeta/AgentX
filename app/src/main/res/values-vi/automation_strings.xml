@@ -63,7 +63,7 @@
     <string name="loop_next_in">Lần tiếp theo sau %1$s</string>
     <string name="loop_cycle">Chu kỳ %1$d/%2$d</string>
     <string name="loop_stop">Dừng vòng lặp</string>
-    <string name="automation_notification_channel_desc">Thông báo liên tục khi một tự động hóa Agora đang chạy</string>
+    <string name="automation_notification_channel_desc">Thông báo liên tục khi một tự động hóa AgentX đang chạy</string>
     <string name="settings_automation">Tự động hóa</string>
     <string name="settings_automation_desc">Tác vụ, vòng lặp và độ chính xác của lịch</string>
     <string name="automation_ai_tools">Truy cập tác vụ và vòng lặp</string>
