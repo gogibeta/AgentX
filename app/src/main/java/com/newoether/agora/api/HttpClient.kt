@@ -137,14 +137,15 @@ object HttpClient {
     }
 
     /**
-     * Privacy-safe URL for the diagnostics log: scheme + host + path only.
-     * Query strings and fragments are dropped — they routinely carry API keys
-     * and other secrets. Never log the raw URL.
+     * Privacy-safe URL for the diagnostics log: scheme + authority (host and
+     * port) + path only. Query strings and fragments are dropped — they
+     * routinely carry API keys and other secrets. Never log the raw URL.
      */
     internal fun sanitizeUrlForLog(url: String): String = runCatching {
         val uri = java.net.URI(url)
         val path = uri.path?.takeIf { it.isNotBlank() } ?: "/"
-        "${uri.scheme}://${uri.host}$path"
+        val authority = uri.authority ?: uri.host ?: "unknown-host"
+        "${uri.scheme}://$authority$path"
     }.getOrDefault("unparseable-url")
 
     /**
