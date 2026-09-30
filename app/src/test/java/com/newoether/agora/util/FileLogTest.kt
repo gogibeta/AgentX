@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -18,6 +19,13 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class FileLogTest {
+
+    @Before
+    fun resetFileLogSingleton() {
+        // Other test classes start the FileLog singleton with mock contexts.
+        // Reset it so this test owns the session log directory.
+        FileLog.resetForTest()
+    }
 
     private fun logFile(): File {
         val context = ApplicationProvider.getApplicationContext<Context>()

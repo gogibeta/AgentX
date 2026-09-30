@@ -79,6 +79,19 @@ object FileLog {
     fun logFilePath(context: Context): String =
         File(File(context.filesDir, DIR), FILE).absolutePath
 
+    /**
+     * Test-only: releases the singleton so a test can re-initialize [FileLog]
+     * with its own context. Production code never calls this — the session log
+     * is meant to be started once per process.
+     */
+    internal fun resetForTest() {
+        writer?.interrupt()
+        writer = null
+        logDir = null
+        queue.clear()
+        started.set(false)
+    }
+
     /** Structured event: level + tag + key/value fields + free message. */
     fun event(level: String, tag: String, fields: Map<String, String>, message: String) {
         if (!started.get()) return
