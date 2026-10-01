@@ -172,13 +172,16 @@ class JevPreferenceStoreTest {
     }
 
     private fun mockSecretCrypto() {
+        // Idempotent: unmock first in case a previous test leaked the mock
+        // (MockK object mocks are JVM-global and can conflict under parallel runs).
+        runCatching { io.mockk.unmockkObject(com.newoether.agora.util.SecretCrypto) }
         io.mockk.mockkObject(com.newoether.agora.util.SecretCrypto)
         io.mockk.every { com.newoether.agora.util.SecretCrypto.encrypt(any()) } answers { firstArg<String>() }
         io.mockk.every { com.newoether.agora.util.SecretCrypto.decrypt(any()) } answers { firstArg<String>() }
     }
 
     private fun unmockSecretCrypto() {
-        io.mockk.unmockkObject(com.newoether.agora.util.SecretCrypto)
+        runCatching { io.mockk.unmockkObject(com.newoether.agora.util.SecretCrypto) }
     }
 
     private class InMemoryPrefs(
