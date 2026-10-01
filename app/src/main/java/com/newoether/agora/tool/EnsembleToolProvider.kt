@@ -19,9 +19,11 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
@@ -59,13 +61,19 @@ class EnsembleToolProvider(
         return listOf(
             ToolDefinition(function = ToolFunction(
                 name = "ask_models",
-                description = "Ask ${ctx.agentModels.size} selected models the same question in parallel " +
+                description = "Ask several models the same question in parallel " +
                     "and get their labeled answers back. Use for hard questions, deep research, " +
-                    "or when models disagree — then synthesize the best final answer yourself. " +
-                    "Each answer is capped; failures come back as per-model errors.",
+                    "verification passes (e.g. have two models independently check a document for " +
+                    "errors), or when models disagree — then synthesize the best final answer yourself. " +
+                    "Each answer is capped; failures come back as per-model errors with details.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "question" to ToolProperty("string", "The self-contained question to ask every model (include all needed context)."),
+                        "models" to ToolProperty(
+                            "array",
+                            "Optional: exact model IDs to ask for THIS call only (e.g. two specific " +
+                                "models for a verification pass). Overrides the preset ensemble when set.",
+                        ),
                     ),
                     required = listOf("question"),
                 ),
@@ -91,7 +99,12 @@ class EnsembleToolProvider(
                 put("type", "ensemble")
                 put("error", "no_question")
             }.toString()
-        val models = ctx.agentModels.take(5)
+        // Per-call override: "use these models only". Falls back to the preset ensemble.
+        val requested = (args?.get("models") as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.content?.takeIf { s -> s.isNotBlank() } }
+            ?.distinct()
+            .orEmpty()
+        val models = (if (requested.isNotEmpty()) requested else ctx.agentModels).take(5)
         if (models.isEmpty()) {
             return@withContext buildJsonObject {
                 put("type", "ensemble")
@@ -158,7 +171,9 @@ class EnsembleToolProvider(
         provider.generateResponse(messages, config).collect { event ->
             when (event) {
                 is StreamEvent.TextChunk -> text.append(event.text)
-                is StreamEvent.Error -> failure = "provider_error"
+                // Surface the real provider message (truncated) instead of an opaque
+                // "provider_error" so misconfigured models can actually be diagnosed.
+                is StreamEvent.Error -> failure = event.message.take(300).ifBlank { "provider_error" }
                 else -> Unit
             }
             if (failure != null) return@collect

@@ -1,15 +1,25 @@
 package com.newoether.agora.tool
 
+import android.app.Application
+import com.newoether.agora.api.LlmProvider
+import com.newoether.agora.api.ProviderConfig
+import com.newoether.agora.api.StreamEvent
 import com.newoether.agora.viewmodel.GenerationContext
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 class AgentModesTest {
 
@@ -147,5 +157,127 @@ class AgentModesTest {
         assertEquals(listOf("a", "c"), CompactAssistToolProvider.partitionKept(keys, listOf(0.9, 0.1, 0.5), 0.5))
         assertEquals(keys, CompactAssistToolProvider.partitionKept(keys, listOf(0.9), 0.5))
         assertEquals(emptyList<String>(), CompactAssistToolProvider.partitionKept(keys, listOf(0.1, 0.2, 0.3), 0.5))
+    }
+
+    @Test
+    fun artifactTool_sourcePath_rejectsTraversalAndMissing() {
+        val tmp = Files.createTempDirectory("agentx-artifact-test2").toFile()
+        try {
+            val app: Application = mockk(relaxed = true)
+            every { app.filesDir } returns tmp
+            val provider = ArtifactToolProvider(app)
+            val ctx = GenerationContext(agentMode = "build")
+            runBlocking {
+                for (bad in listOf("../evil.pdf", "/abs/report.pdf", "sub/dir.pdf", "..")) {
+                    val r = Json.parseToJsonElement(
+                        provider.execute("save_artifact", """{"title":"T","source_path":"$bad"}""", ctx),
+                    ).jsonObject
+                    assertEquals("bad_source_path", r.getValue("error").jsonPrimitive.content)
+                }
+                val missing = Json.parseToJsonElement(
+                    provider.execute("save_artifact", """{"title":"T","source_path":"ghost.pdf"}""", ctx),
+                ).jsonObject
+                assertEquals("source_not_found", missing.getValue("error").jsonPrimitive.content)
+            }
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun artifactTool_sourcePath_registersPrebuiltFile() {
+        val tmp = Files.createTempDirectory("agentx-artifact-test").toFile()
+        try {
+            val dir = File(tmp, "artifacts").also { it.mkdirs() }
+            File(dir, "report.pdf").writeBytes(ByteArray(2048) { it.toByte() })
+            val app: Application = mockk(relaxed = true)
+            every { app.filesDir } returns tmp
+            val provider = ArtifactToolProvider(app)
+            val res = runBlocking {
+                Json.parseToJsonElement(
+                    provider.execute(
+                        "save_artifact",
+                        """{"title":"R","source_path":"report.pdf"}""",
+                        GenerationContext(agentMode = "build"),
+                    ),
+                ).jsonObject
+            }
+            assertEquals("artifact", res.getValue("type").jsonPrimitive.content)
+            assertEquals("pdf", res.getValue("format").jsonPrimitive.content)
+            assertEquals(2048, res.getValue("sizeBytes").jsonPrimitive.int)
+            assertEquals("source_path", res.getValue("source").jsonPrimitive.content)
+            assertTrue(res.getValue("saved_to").jsonPrimitive.content.startsWith("app storage"))
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun ensembleTool_modelsParam_overridesPreset() {
+        val asked = mutableListOf<String>()
+        val fake: LlmProvider = mockk()
+        every { fake.generateResponse(any(), any()) } answers {
+            asked.add(secondArg<ProviderConfig>().modelId)
+            flowOf(StreamEvent.TextChunk("ok"))
+        }
+        val provider = EnsembleToolProvider(
+            providerForModel = { "OpenAI" },
+            getProvider = { fake },
+            activeKey = { "k" },
+            baseUrl = { null },
+            apiModelName = { it },
+        )
+        val ctx = GenerationContext(
+            agentMode = "build",
+            agentModels = listOf("OpenAI:a", "OpenAI:b", "OpenAI:c"),
+        )
+        val res = runBlocking {
+            Json.parseToJsonElement(
+                provider.execute(
+                    "ask_models",
+                    """{"question":"verify this","models":["OpenAI:b","OpenAI:c"]}""",
+                    ctx,
+                ),
+            ).jsonObject
+        }
+        val answers = res.getValue("answers").jsonArray
+        assertEquals(2, answers.size)
+        // Fan-out is concurrent, so the order the provider is *called* is not
+        // deterministic; both requested models must be asked exactly once, and the
+        // answers array must follow the requested order.
+        assertEquals(setOf("OpenAI:b", "OpenAI:c"), asked.toSet())
+        assertEquals(
+            listOf("OpenAI:b", "OpenAI:c"),
+            answers.map { it.jsonObject.getValue("model").jsonPrimitive.content },
+        )
+    }
+
+    @Test
+    fun ensembleTool_surfacesProviderErrorMessage() {
+        val fake: LlmProvider = mockk()
+        every { fake.generateResponse(any(), any()) } answers {
+            flowOf(
+                StreamEvent.Error(
+                    com.newoether.agora.api.GenerationError.Api(null, null, "boom-detail"),
+                ),
+            )
+        }
+        val provider = EnsembleToolProvider(
+            providerForModel = { "OpenAI" },
+            getProvider = { fake },
+            activeKey = { "k" },
+            baseUrl = { null },
+            apiModelName = { it },
+        )
+        val ctx = GenerationContext(agentMode = "build", agentModels = listOf("OpenAI:a"))
+        val res = runBlocking {
+            Json.parseToJsonElement(
+                provider.execute("ask_models", """{"question":"hi"}""", ctx),
+            ).jsonObject
+        }
+        val answers = res.getValue("answers").jsonArray
+        assertEquals(1, answers.size)
+        val err = answers[0].jsonObject.getValue("error").jsonPrimitive.content
+        assertTrue(err.contains("boom-detail"))
     }
 }

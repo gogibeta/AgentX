@@ -52,3 +52,14 @@
   only for VISUAL verification (rendering, PDF pages via PyMuPDF).
 - Dismiss the keyguard (`wm dismiss-keyguard`) after reinstall; enable Stay
   Awake in dev options to stop the phone locking mid-test.
+- Sandbox toolchain (2026-10-01 PDF saga): the Alpine sandbox ships with NO
+  python3 and a possibly-stale apk index — the agent must run `apk update`
+  before `apk add`, and there is NO C compiler, so numpy/matplotlib/scipy can
+  never build from source. Prefer pure-Python Alpine packages
+  (`apk add py3-pillow`) or pip wheels. The shell tool description now says this.
+- `save_artifact` could not register a pre-built binary (agent-generated PDFs
+  via reportlab were invisible to the app). It now accepts `source_path`: a
+  plain file name in the agent workspace, registered as-is (up to 50MB).
+- `ask_models` swallowed provider failures as opaque "provider_error"; it now
+  returns the real (truncated) provider message, and accepts a per-call
+  `models` array to ask specific models for one verification pass.
