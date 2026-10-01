@@ -30,6 +30,8 @@ object ArtifactExporter {
     const val MAX_PDF_PAGES = 100
     const val MAX_FILENAME_LENGTH = 64
     const val MAX_IMAGE_BYTES = 5_000_000
+    /** Cap for pre-built files registered via save_artifact(source_path=...). */
+    const val MAX_SOURCE_BYTES = 50_000_000
 
     data class SavedArtifact(
         val fileName: String,

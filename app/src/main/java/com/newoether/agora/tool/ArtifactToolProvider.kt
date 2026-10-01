@@ -42,15 +42,24 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     "Use this when the user asks for a file, report, PDF, or document. " +
                     "Markdown supports headings, bold, bullets, numbered lists, tables and " +
                     "`![caption](filename)` images (download them first with fetch_image). " +
+                    "If you already built the file yourself in the sandbox (e.g. a PDF generated " +
+                    "with a Python library and saved to the shared folder), pass its file name as " +
+                    "`source_path` instead of `content` and it will be registered as-is. " +
                     "Files go to the user's Agent workspace folder when set, else app storage.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "title" to ToolProperty("string", "Report title (also used for the file name)."),
-                        "format" to ToolProperty("string", "File format: 'md' for Markdown, 'pdf' for a rendered PDF report."),
-                        "content" to ToolProperty("string", "Full Markdown content of the report."),
+                        "format" to ToolProperty("string", "File format: 'md' for Markdown, 'pdf' for a rendered PDF report. Ignored when source_path is set (format comes from the file)."),
+                        "content" to ToolProperty("string", "Full Markdown content of the report. Not needed when source_path is set."),
                         "filename" to ToolProperty("string", "Optional explicit file name (must end in .md or .pdf)."),
+                        "source_path" to ToolProperty(
+                            "string",
+                            "Optional file name of an already-built file in the agent workspace " +
+                                "(e.g. 'report.pdf') to register as-is instead of rendering from " +
+                                "content. Use this for PDFs you generated yourself in the sandbox.",
+                        ),
                     ),
-                    required = listOf("title", "format", "content"),
+                    required = listOf("title"),
                 ),
             )),
             ToolDefinition(function = ToolFunction(
@@ -90,6 +99,10 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
             fun str(key: String): String? =
                 (args[key] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() }
             val title = str("title") ?: return@withContext errorJson("no_title")
+            val sourcePath = str("source_path")
+            if (sourcePath != null) {
+                return@withContext executeSourcePath(sourcePath, str("filename"), ctx)
+            }
             val format = (str("format") ?: "md").lowercase()
             if (format != "md" && format != "pdf") return@withContext errorJson("bad_format")
             val content = AnswerGuard.cleanForSynthesis(
@@ -152,6 +165,121 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
         } catch (e: Exception) {
             errorJson("write_error", e.message.orEmpty())
         }
+    }
+
+    /**
+     * Register an already-built file from the agent workspace as an artifact as-is.
+     * The agent builds files in the sandbox (e.g. a PDF rendered with a Python
+     * library) and writes them to the shared folder; this copies the bytes into the
+     * artifact destination (workspace SAF or app storage) so the file reaches the user.
+     * Only a plain file name is accepted — no paths, no traversal.
+     */
+    private suspend fun executeSourcePath(
+        sourcePath: String,
+        filenameOverride: String?,
+        ctx: GenerationContext,
+    ): String = withContext(Dispatchers.IO) {
+        val trimmed = sourcePath.trim()
+        val name = trimmed.substringAfterLast('/').substringAfterLast('\\')
+        if (name.isBlank() || name.contains("..") || name != trimmed) {
+            return@withContext errorJson(
+                "bad_source_path",
+                "source_path must be a plain file name in the agent workspace (e.g. 'report.pdf')",
+            )
+        }
+        val bytes = readSourceBytes(name, ctx)
+            ?: return@withContext errorJson(
+                "source_not_found",
+                "No file named '$name' in the agent workspace. Save it to the shared folder first.",
+            )
+        val ext = name.substringAfterLast('.', "").lowercase()
+        val mime = sourceMime(ext)
+        val fileName = filenameOverride?.takeIf {
+            it.lowercase().endsWith(".$ext") && !it.contains("..") && !it.contains("/")
+        } ?: name
+        return@withContext try {
+            val docUri = writeArtifactBytes(
+                ctx, fileName, mime, bytes,
+                maxBytes = ArtifactExporter.MAX_SOURCE_BYTES,
+            )
+            if (docUri != null) {
+                buildJsonObject {
+                    put("type", "artifact")
+                    put("format", ext.ifBlank { "bin" })
+                    put("fileName", fileName)
+                    put("sizeBytes", bytes.size)
+                    put("saved_to", "workspace")
+                    put("uri", docUri)
+                    put("source", "source_path")
+                }.toString()
+            } else {
+                buildJsonObject {
+                    put("type", "artifact")
+                    put("format", ext.ifBlank { "bin" })
+                    put("fileName", fileName)
+                    put("sizeBytes", bytes.size)
+                    put("saved_to", "app storage (pick an Agent workspace folder in Settings to choose where files go)")
+                    put("source", "source_path")
+                }.toString()
+            }
+        } catch (e: IllegalArgumentException) {
+            errorJson("source_too_large", e.message.orEmpty())
+        }
+    }
+
+    /** Read a workspace file by display name: app artifacts dir first, then SAF tree. */
+    private fun readSourceBytes(fileName: String, ctx: GenerationContext): ByteArray? {
+        val cached = File(app.filesDir, "artifacts/$fileName")
+        if (cached.exists() && cached.isFile) {
+            return runCatching { cached.readBytes() }.getOrNull()
+        }
+        val treeUriString = ArtifactExporter.workspaceTreeUri(ctx.agentWorkspaceUri)
+        val treeUri = treeUriString?.let { runCatching { Uri.parse(it) }.getOrNull() }
+        if (treeUri != null && ArtifactExporter.hasWorkspaceGrant(app, treeUri)) {
+            val docUri = findWorkspaceDocument(treeUri, fileName) ?: return null
+            return runCatching {
+                app.contentResolver.openInputStream(docUri)?.use { it.readBytes() }
+            }.getOrNull()
+        }
+        return null
+    }
+
+    /** Find a document by display name directly under the workspace tree. */
+    private fun findWorkspaceDocument(treeUri: Uri, fileName: String): Uri? {
+        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+            treeUri, DocumentsContract.getTreeDocumentId(treeUri),
+        )
+        app.contentResolver.query(
+            childrenUri,
+            arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            ),
+            null, null, null,
+        )?.use { cursor ->
+            val idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            while (cursor.moveToNext()) {
+                if (cursor.getString(nameCol) == fileName) {
+                    return DocumentsContract.buildDocumentUriUsingTree(
+                        treeUri, cursor.getString(idCol),
+                    )
+                }
+            }
+        }
+        return null
+    }
+
+    private fun sourceMime(ext: String): String = when (ext) {
+        "pdf" -> "application/pdf"
+        "md", "markdown", "txt" -> "text/markdown"
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "webp" -> "image/webp"
+        "html", "htm" -> "text/html"
+        "json" -> "application/json"
+        "csv" -> "text/csv"
+        else -> "application/octet-stream"
     }
 
     /**
@@ -251,28 +379,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
     }
 
     private fun readWorkspaceImage(treeUri: Uri, fileName: String): Bitmap? {
-        val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-            treeUri, DocumentsContract.getTreeDocumentId(treeUri),
-        )
-        var docUri: Uri? = null
-        app.contentResolver.query(
-            childrenUri,
-            arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                DocumentsContract.Document.COLUMN_DISPLAY_NAME),
-            null, null, null,
-        )?.use { cursor ->
-            val idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
-            val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
-            while (cursor.moveToNext()) {
-                if (cursor.getString(nameCol) == fileName) {
-                    docUri = DocumentsContract.buildDocumentUriUsingTree(
-                        treeUri, cursor.getString(idCol),
-                    )
-                    break
-                }
-            }
-        }
-        val uri = docUri ?: return null
+        val uri = findWorkspaceDocument(treeUri, fileName) ?: return null
         return app.contentResolver.openInputStream(uri)?.use { stream ->
             val bytes = stream.readBytes()
             if (bytes.size > ArtifactExporter.MAX_IMAGE_BYTES) return null
@@ -286,8 +393,11 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
         fileName: String,
         mime: String,
         bytes: ByteArray,
+        maxBytes: Int = ArtifactExporter.MAX_MARKDOWN_BYTES,
     ): String? {
-        ArtifactExporter.checkContentSize(bytes)
+        require(bytes.size <= maxBytes) {
+            "Artifact content too large (${bytes.size} bytes, max $maxBytes)"
+        }
         val treeUriString = ArtifactExporter.workspaceTreeUri(ctx.agentWorkspaceUri)
         val treeUri = treeUriString?.let { runCatching { Uri.parse(it) }.getOrNull() }
         if (treeUri != null && ArtifactExporter.hasWorkspaceGrant(app, treeUri)) {
