@@ -199,14 +199,19 @@ object StructuredDiagnostics {
 
     private fun Map<String, String>.redacted(): Map<String, String> {
         if (isEmpty()) return emptyMap()
-        return buildMap(size.coerceAtMost(MAX_DETAIL_ENTRIES)) {
-            entries.take(MAX_DETAIL_ENTRIES).forEach { (key, value) ->
-                put(
-                    DiagnosticRedactor.safeIdentifier(key).take(MAX_DETAIL_KEY_CHARS),
-                    DiagnosticRedactor.safeIdentifier(value).take(MAX_DETAIL_VALUE_CHARS),
-                )
+        val result = LinkedHashMap<String, String>(size.coerceAtMost(MAX_DETAIL_ENTRIES))
+        for ((key, value) in entries.take(MAX_DETAIL_ENTRIES)) {
+            val safeKey = runCatching {
+                DiagnosticRedactor.safeIdentifier(key).take(MAX_DETAIL_KEY_CHARS)
+            }.getOrDefault(key.take(MAX_DETAIL_KEY_CHARS))
+            val safeValue = runCatching {
+                DiagnosticRedactor.safeIdentifier(value).take(MAX_DETAIL_VALUE_CHARS)
+            }.getOrDefault("<redacted>")
+            if (safeKey.isNotBlank()) {
+                result[safeKey] = safeValue
             }
         }
+        return result
     }
 
     private suspend fun consumeWrites(file: File, channel: Channel<WriteCommand>) {
