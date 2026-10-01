@@ -414,9 +414,8 @@ class GenerationRequestBuilder(
                 conversationOverride = conversationOverride,
                 promptSettings = capturePromptSettings(),
             )
-            // Resolve once here so the context composition (UI indicator + diagnostics)
-            // prices the real system prompt. The per-request resolver below still
-            // re-resolves with fresh runtime values for actual generation.
+            // Resolve once here so the context composition (UI indicator + diagnostics) prices
+            // the real system prompt; the per-request resolver still re-resolves fresh runtime values.
             val resolvedSnapshot = resolvePromptTemplate(promptTemplate, selectedModelId)
             baseConfig.copy(
                 effectiveSystemPrompt = resolvedSnapshot.systemPrompt,
