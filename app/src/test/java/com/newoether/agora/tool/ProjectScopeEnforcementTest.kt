@@ -16,7 +16,8 @@ class ProjectScopeEnforcementTest {
     private val local: Backend = SandboxBackend(mockk<SandboxManager>())
     private val remote: Backend =
         ConchBackend(ShellDeviceConfig(name = "s1", serverUrl = "http://a"))
-    private fun ctx(folder: String) = GenerationContext(agentMode = "build", agentProjectFolder = folder)
+    private fun ctx(folder: String, mode: String = "build") =
+        GenerationContext(agentMode = mode, agentProjectFolder = folder)
 
     @Test
     fun `explicit path inside scope passes through`() {
@@ -101,8 +102,20 @@ class ProjectScopeEnforcementTest {
         assertEquals("/mnt/shared/proj/sub", workdir("/mnt/shared/proj/sub", ctx("/mnt/shared/proj")))
         // Remote shells keep their own workdir; blank scope in chat mode keeps legacy behavior.
         assertEquals("", workdir("", ctx("/mnt/shared/proj"), remote))
-        assertEquals("", workdir("", ctx("")))
-        assertEquals("/tmp", workdir("/tmp", ctx("")))
+        assertEquals("", workdir("", ctx("", "chat")))
+        assertEquals("/tmp", workdir("/tmp", ctx("", "chat")))
+    }
+
+    @Test
+    fun `shell workdir with blank scope in build mode fails closed`() {
+        var rejected: String? = null
+        val result = runCatching {
+            ProjectScopeEnforcement.scopedLocalWorkdir(
+                "execute_shell_command", "", local, ctx(""),
+            ) { rejected = it; error("rejected") }
+        }
+        assertTrue(result.isFailure)
+        assertTrue(rejected!!.contains("project_folder_not_set"))
     }
 
     @Test
