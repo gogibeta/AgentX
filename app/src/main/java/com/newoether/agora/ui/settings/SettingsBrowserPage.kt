@@ -534,9 +534,14 @@ private suspend fun probeTunnel(url: String, token: String): TunnelProbeResult =
         if (httpUrl == null || httpUrl.scheme != "https" || httpUrl.host.isBlank()) {
             return@withContext TunnelProbeResult.Fail("bad_url")
         }
-        val target = httpUrl.newBuilder().apply {
-            if (token.isNotBlank()) addQueryParameter("token", token)
-        }.build()
+        // NOTE: the worker only serves CDP under /json/* — probing the bare
+        // root path always 404s even with a correct token (v2.3.1 bug).
+        val target = httpUrl.newBuilder()
+            .addPathSegment("json")
+            .addPathSegment("version")
+            .apply {
+                if (token.isNotBlank()) addQueryParameter("token", token)
+            }.build()
         val client = OkHttpClient.Builder()
             .callTimeout(10, TimeUnit.SECONDS)
             .connectTimeout(10, TimeUnit.SECONDS)
