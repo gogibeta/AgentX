@@ -66,7 +66,10 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                                 "(e.g. 'report.pdf', 'slides.pptx') to register as-is instead of " +
                                 "rendering from content. Use this for PPTX files you generated " +
                                 "yourself in the sandbox (python-pptx) and for PDFs that need " +
-                                "layouts the built-in renderer cannot do.",
+                                "layouts the built-in renderer cannot do. HARD LIMIT: the file " +
+                                "must be under 1,000,000 bytes (1 MB) or registration fails " +
+                                "with source_too_large — compress images (JPEG q70-75) and " +
+                                "downscale before building; check size with ls -l first.",
                         ),
                     ),
                     required = listOf("title"),
@@ -77,7 +80,10 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                 description = "Download an image from the web into the artifact workspace so it " +
                     "can be embedded in notes and PDFs via `![caption](filename)`. Verifies " +
                     "the file really decodes as an image (width, height reported); failures " +
-                    "come back as errors — retry with another URL instead of referencing it.",
+                    "come back as errors — retry with another URL instead of referencing it. " +
+                    "HARD LIMIT: images over ~1 MB are rejected — for large source images " +
+                    "(Wikipedia originals are often 4-5 MB), use execute_shell_command with " +
+                    "curl to download, then downscale/compress (JPEG q70-75) before embedding.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "url" to ToolProperty("string", "Direct image URL (png/jpg/webp)."),

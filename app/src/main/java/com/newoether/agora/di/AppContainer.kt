@@ -3,6 +3,7 @@ package com.newoether.agora.di
 import android.app.Application
 import android.content.Context
 import com.newoether.agora.data.MemoryManager
+import com.newoether.agora.data.BuiltinSkillSeeder
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.SettingsManager
 import com.newoether.agora.data.local.ChatDao
@@ -98,7 +99,9 @@ class AppContainer(
 
     val settingsManager: SettingsManager by lazy { SettingsManager(appContext) }
     val memoryManager: MemoryManager by lazy { MemoryManager(appContext) }
-    val skillManager: SkillManager by lazy { SkillManager(appContext) }
+    val skillManager: SkillManager by lazy {
+        SkillManager(appContext).also { BuiltinSkillSeeder.seed(appContext, it) }
+    }
     val chatDao: ChatDao by lazy { database.chatDao() }
 
     // ── Repositories ──────────────────────────────────────────

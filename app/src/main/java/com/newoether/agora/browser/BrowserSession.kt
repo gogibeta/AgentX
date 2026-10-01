@@ -373,7 +373,12 @@ class BrowserSession(
             return false
         }
         // Health check before connect (§1.3.0): GET /json/version → 200.
-        val version = httpGetJson("$rawUrl/json/version", HEALTH_CHECK_TIMEOUT_MS)
+        // The relay 401s without the client token, so it must travel here too
+        // (same contract as the settings Validate probe).
+        val version = httpGetJson(
+            "$rawUrl/json/version?token=" + URLEncoder.encode(token, Charsets.UTF_8.name()),
+            HEALTH_CHECK_TIMEOUT_MS,
+        )
         if (version == null) {
             DebugLog.w(TAG, "connectTunnel: tunnel endpoint unreachable (/json/version)")
             return false
