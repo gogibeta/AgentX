@@ -284,7 +284,6 @@ class SettingsRepository(
 
     fun updateModelAlias(model: String, alias: String, showProviderName: Boolean? = null) =
         scope.launch { settingsManager.updateModelAlias(model, alias, showProviderName) }
-    }
 
     fun saveModelContextWindow(model: String, tokens: Int?) = scope.launch { runCatching { settingsManager.saveModelContextWindow(model, tokens) } }
 
