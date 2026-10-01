@@ -520,6 +520,7 @@ private class RequestBuilderFixture(
             )
         )
         every { settings.maxContextWindow } returns MutableStateFlow(32_768)
+        every { settings.modelContextWindows } returns MutableStateFlow(emptyMap())
         every { settings.defaultTemperature } returns MutableStateFlow(null)
         every { settings.defaultMaxTokens } returns MutableStateFlow(null)
         every { settings.defaultTopP } returns MutableStateFlow(null)
