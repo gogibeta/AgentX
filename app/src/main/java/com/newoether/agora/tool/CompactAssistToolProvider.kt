@@ -133,6 +133,15 @@ class CompactAssistToolProvider : ToolProvider {
                 put("type", "prune")
                 put("kept_count", kept.size)
                 put("dropped_count", items.size - kept.size)
+                // Raw per-item keep probabilities (same order as the input
+                // items) so callers can see the score distribution and pick a
+                // working threshold empirically — Noul probabilities cluster,
+                // so the effective operating point varies by content.
+                put("scores", buildJsonObject {
+                    items.forEachIndexed { index, (key, _) ->
+                        put(key, scores.getOrElse(index) { -1.0 })
+                    }
+                })
                 put("kept", buildJsonObject {
                     kept.forEach { key ->
                         put(key, items.first { it.first == key }.second)

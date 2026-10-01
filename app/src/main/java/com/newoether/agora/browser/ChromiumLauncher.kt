@@ -105,9 +105,11 @@ class ChromiumLauncher(
             }
         }
         DebugLog.w(TAG, "Chromium did not answer /json/version within startup window")
-        // Leave it running: it may still come up (lenient health model); the
-        // next ensureStarted will adopt it if healthy, or relaunch if dead.
-        return isHealthy()
+        // Do NOT leave a half-started browser running: a process that cannot
+        // bind DevTools in the window never becomes usable, and orphans pile
+        // up and strain the device. Kill it; the next attempt starts clean.
+        stopLocked()
+        return false
     }
 
     /** Stops the Chromium process. The persistent profile is left untouched. */
@@ -202,7 +204,11 @@ class ChromiumLauncher(
                 append("exec chromium --headless=new ")
                 append("--no-sandbox ") // proot runs as root (-0); Chromium's own sandbox needs namespaces unavailable here
                 append("--disable-gpu ")
-                append("--remote-debugging-port=127.0.0.1:").append(debugPort).append(' ')
+                // NOTE: --remote-debugging-port takes a bare port number ONLY.
+                // "127.0.0.1:9333" fails to parse and DevTools never binds
+                // (local browser was completely unusable until this was fixed).
+                append("--remote-debugging-port=").append(debugPort).append(' ')
+                append("--remote-allow-origins=* ") // Chrome 111+ gates WS origins; loopback bind keeps this local-only
                 append("--user-data-dir=").append(SANDBOX_PROFILE_PATH).append(' ')
                 // Scry stability flags: a never-foreground browser must not be throttled/suspended.
                 append("--disable-background-timer-throttling ")

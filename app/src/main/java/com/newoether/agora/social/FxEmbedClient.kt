@@ -301,7 +301,12 @@ class FxEmbedClient(
                             callTimeoutMillis = Constants.NETWORK_TOOL_TIMEOUT_MS,
                         )
                         if (response.code != 200) continue
-                        val version = parseVersion(response.body) ?: continue
+                        // NOTE: some workers (e.g. the FxEmbed /ai realm) answer
+                        // 200 with Markdown here, not {"version":"..."} JSON.
+                        // A 200 with a non-empty body counts as reachable.
+                        val version = parseVersion(response.body)
+                            ?: response.body.trim().takeIf { it.isNotEmpty() }?.let { "unknown" }
+                            ?: continue
                         DebugLog.d(TAG, "validate ok path=$path version=$version")
                         return@withContext ValidateResult(version, bare)
                     } catch (_: Exception) {
