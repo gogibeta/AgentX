@@ -15,7 +15,7 @@ object BuiltinSkillSeeder {
     private const val VERSION_FILE = "builtin_skills_version.txt"
 
     /** Bump when any bundled skill changes. */
-    const val BUNDLED_VERSION = 1
+    const val BUNDLED_VERSION = 2
 
     private val BUILTINS = mapOf(
         "builtin-browser-skill.md" to "Browser automation: backends, the 9 browser tools, failure modes",

@@ -77,9 +77,17 @@ class FxEmbedClient(
     // ── Per-network search (documented paths only) ───────────────────
 
     /**
-     * Network search. Supported: `x`, `bluesky`, `threads`, `mastodon`
-     * (mastodon requires [mastodonDomain]). TikTok has no search and
-     * Instagram has no documented search — both are refused honestly.
+     * Network search, per the worker's llms.txt (2026-10-02 refresh).
+     * - `bluesky`: works (`/ai/2/bsky/search?q=`; the worker retries the
+     *   public AppView when datacenter IPs are edge-403d).
+     * - `threads`: proxy-only — 501 without an account pool on the worker.
+     * - `mastodon`: people search only (`search/users?q=` returns hits;
+     *   status search is always empty upstream for anonymous callers).
+     *   Requires [mastodonDomain].
+     * - `x`: REMOVED — X keyword/people search is shut off upstream and the
+     *   route was deleted from the worker. Refused honestly; start from a
+     *   known handle and read their profile timeline instead.
+     * TikTok and Instagram have no search — refused honestly.
      */
     suspend fun search(
         network: String,
@@ -91,7 +99,12 @@ class FxEmbedClient(
             return@withContext ResolveResult.Failure("no_query", hint = "Pass a non-empty search query.")
         }
         val path = when (network.lowercase()) {
-            "x", "twitter" -> aiPath("/2/search?q=") + encode(q) + "&feed=latest"
+            "x", "twitter" -> return@withContext ResolveResult.Failure(
+                "search_not_supported",
+                hint = "X keyword/people search was removed from the worker (shut off upstream). " +
+                    "Start from a known handle: social_resolve the profile URL, then read " +
+                    "their timeline via the worker's /ai/2/profile/{handle}/statuses route.",
+            )
             "bluesky", "bsky" -> aiPath("/2/bsky/search?q=") + encode(q)
             // Documented under /atmosphere/2 in §2.4 (no /ai twin): JSON result.
             "threads" -> realmPath("atmosphere", "/2/threads/search?q=") + encode(q)
@@ -103,7 +116,10 @@ class FxEmbedClient(
                         hint = "Mastodon search needs the instance domain, e.g. mastodon.social.",
                     )
                 }
-                realmPath("atmosphere", "/2/mastodon/") + domain + "/search?q=" + encode(q)
+                // NOTE: /search?q= (statuses) always returns results:[] for anonymous
+                // callers — Mastodon only serves status search to authenticated users.
+                // search/users?q= DOES return hits, so people search is the useful one.
+                realmPath("atmosphere", "/2/mastodon/") + domain + "/search/users?q=" + encode(q)
             }
             "tiktok" -> return@withContext ResolveResult.Failure(
                 "search_not_supported",
@@ -115,7 +131,8 @@ class FxEmbedClient(
             )
             else -> return@withContext ResolveResult.Failure(
                 "unknown_network",
-                hint = "Supported: x, bluesky, threads, mastodon.",
+                hint = "Searchable: bluesky, threads (needs account pool), mastodon (people only). " +
+                    "X search was removed upstream.",
             )
         }
         get(path, "search:$network")
