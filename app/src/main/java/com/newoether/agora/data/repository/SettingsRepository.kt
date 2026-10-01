@@ -180,8 +180,11 @@ class SettingsRepository(
     val webSearchApiKeys: StateFlow<Map<String, String>> = hot(settingsManager.webSearchApiKeys, emptyMap())
     val webSearchNumResults: StateFlow<Int> = hot(settingsManager.webSearchNumResults, 5)
     val webSearchBaseUrl: StateFlow<String> = hot(settingsManager.webSearchBaseUrl, "")
-    /** Agent-mode store (mode, workspace folder, ensemble models). */
-    val agentSettings = settingsManager.agentPreferenceStore
+    val agentSettings = settingsManager.agentPreferenceStore // Agent-mode store (mode, workspace folder, ensemble models).
+    val jevSettings = settingsManager.jevPreferenceStore // Jev decision-model store (enabled, base URL, model, keys).
+    val credentialVault = settingsManager.credentialVault // Browser credential vault (Keystore-backed; model sees only cred_id).
+    val socialSettings = settingsManager.socialPreferenceStore // Social store (enabled, worker URL, validation state).
+    val diagnosticsSettings = settingsManager.diagnosticsPreferenceStore // Diagnostics store (share, live tail, debug overlay).
     val imageGenEnabled: StateFlow<Boolean> = hot(settingsManager.imageGenEnabled, false)
     val imageGenModel: StateFlow<String?> = hot(settingsManager.imageGenModel, null)
     val imageGenSize: StateFlow<String> = hot(settingsManager.imageGenSize, "1024x1024")
@@ -304,12 +307,13 @@ class SettingsRepository(
     ) = settingsManager.replaceCustomModel(oldModelId, newModelId, alias, showProviderName)
 
     // API keys
-    fun addApiKey(name: String, key: String, provider: String) {
-        scope.launch {
-            val entry = ApiKeyEntry(name = name, key = key, provider = provider)
-            settingsManager.saveApiKeys(apiKeys.value + entry)
-            settingsManager.setActiveApiKeyId(provider, entry.id)
-        }
+    fun addApiKey(name: String, key: String, provider: String) = addApiKeysBulk(listOf(name to key), provider)
+
+    /** Atomic bulk import: adds all keys in one write (no lost-update race). */
+    fun addApiKeysBulk(namedKeys: List<Pair<String, String>>, provider: String) = scope.launch {
+        val entries = namedKeys.map { (n, k) -> ApiKeyEntry(name = n, key = k, provider = provider) }
+        settingsManager.saveApiKeys(apiKeys.value + entries)
+        entries.lastOrNull()?.let { settingsManager.setActiveApiKeyId(provider, it.id) }
     }
 
     /**
@@ -779,9 +783,7 @@ class SettingsRepository(
     fun setLocalModelIdleRetentionMinutes(minutes: Int) = scope.launch {
         settingsManager.saveLocalModelIdleRetentionMinutes(minutes)
     }
-    fun setLocalLowContextModeEnabled(enabled: Boolean) = scope.launch {
-        settingsManager.saveLocalLowContextModeEnabled(enabled)
-    }
+    fun setLocalLowContextModeEnabled(enabled: Boolean) = scope.launch { settingsManager.saveLocalLowContextModeEnabled(enabled) }
     suspend fun saveEmbeddingModels(models: List<EmbeddingModelConfig>) = settingsManager.saveEmbeddingModels(models)
     suspend fun setActiveEmbeddingModelId(id: String) = settingsManager.setActiveEmbeddingModelId(id)
     suspend fun saveAutoBackupEnabled(enabled: Boolean) = settingsManager.saveAutoBackupEnabled(enabled)
@@ -793,8 +795,6 @@ class SettingsRepository(
 
     fun stableProviderReference(reference: String): String {
         val normalized = reference.trim()
-        return customProviders.value.firstOrNull { provider ->
-            provider.name == normalized || provider.ownsIdentity(normalized)
-        }?.providerId ?: normalized
+        return customProviders.value.firstOrNull { it.name == normalized || it.ownsIdentity(normalized) }?.providerId ?: normalized
     }
 }

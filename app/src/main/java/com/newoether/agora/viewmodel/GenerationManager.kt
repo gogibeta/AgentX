@@ -53,11 +53,9 @@ class GenerationManager(
     private val customProviders: () -> List<CustomProviderConfig> = { emptyList() },
 ) {
     var onMessagePersisted: ((messageId: String, text: String) -> Unit)? = null
-
     /** User-confirmation gate for remote shell mutations. Set by the ViewModel.
      *  Returns true to proceed, false to deny. */
     var onConfirmShellCommand: (suspend (server: String, summary: String, conversationId: String?) -> Boolean)? = null
-
     private val toolExecutor = GenerationToolExecutor.createDefault(
         app = app,
         conversations = conversations,
@@ -85,13 +83,11 @@ class GenerationManager(
         releaseForegroundLease = AgentXForegroundService::release,
         notify = ::showTerminalNotification,
     )
-
     /** Semantic message search — delegates to the RAG tool provider, which owns the
      *  embedding-search logic. Kept here as the entry point used by ChatViewModel's
      *  in-app conversation search. */
     suspend fun semanticSearch(query: String, limit: Int, ctx: GenerationContext): List<Pair<MessageEntity, Float>> =
         toolExecutor.semanticSearch(query, limit, ctx)
-
     internal fun showTerminalNotification(
         text: String,
         conversationId: String,
@@ -441,7 +437,9 @@ class GenerationManager(
                     effectId = "provider-$pass-$providerRequestIndex",
                 )
                 try {
-                    return providerPassEffects.execute(
+                    val passStartNanos = System.nanoTime()
+                    var retryCount = 0
+                    val outcome = providerPassEffects.execute(
                         request = ProviderPassExecutionRequest(
                             proposedIdentity = proposedIdentity,
                             provider = provider,
@@ -456,6 +454,7 @@ class GenerationManager(
                             },
                             onFirstEvent = onFirstEvent,
                             onEvent = { event ->
+                                if (event is StreamEvent.Retrying) retryCount++
                                 output.handleStreamEvent(
                                     event = event,
                                     providerAnswerStart = providerAnswerStart,
@@ -471,6 +470,10 @@ class GenerationManager(
                             },
                         ),
                     )
+                    // §6.1 structured `llm` event for this provider pass. The token
+                    // snapshot is read before finishRequest() consumes the request.
+                    recordLlmPassEvent(config, fixedContextComposition(config, ctx), messages, outcome, passStartNanos, retryCount, output.tokenUsageAccumulator.snapshot()?.outputTokenCount, runId, pass)
+                    return outcome
                 } finally {
                     output.tokenUsageAccumulator.finishRequest()
                     output.totalTokenUsage = output.tokenUsageAccumulator.snapshot()

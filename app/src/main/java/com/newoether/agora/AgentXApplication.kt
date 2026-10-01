@@ -80,6 +80,20 @@ class AgentXApplication : Application() {
                     error,
                 )
             }
+            try {
+                com.newoether.agora.diagnostics.StructuredDiagnostics.initialize(
+                    filesDir,
+                    startupScope,
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                DebugLog.e(
+                    "AgentXApplication",
+                    "Structured diagnostics initialization failed closed",
+                    error,
+                )
+            }
             startupGate.initialize()
         }
     }

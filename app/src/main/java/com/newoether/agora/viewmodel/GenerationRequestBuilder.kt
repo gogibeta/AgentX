@@ -625,8 +625,20 @@ class GenerationRequestBuilder(
             agentWorkspaceUri = agentSnapshot().workspaceUri,
             agentModels = agentSnapshot().models,
             agentEnv = agentSnapshot().env,
-            typeSafeApiKey = settings.resolveActiveKey(Constants.PROVIDER_TYPESAFE) ?: "",
-            typeSafeBaseUrl = providerRegistry.getEffectiveBaseUrl(Constants.PROVIDER_TYPESAFE),
+            // Jev: runCatching → defaults keeps this strict-mock-safe when the
+            // Jev store isn't stubbed (see AGENTS.md).
+            typeSafeApiKey = runCatching { settings.jevSettings.pickKey() }.getOrNull() ?: "",
+            typeSafeBaseUrl = runCatching { settings.jevSettings.effectiveBaseUrl() }.getOrDefault(""),
+            jevModel = runCatching { settings.jevSettings.jevModel.value }.getOrDefault(""),
+            jevEnabled = runCatching { settings.jevSettings.jevEnabled.value }.getOrDefault(false),
+            // Social: runCatching → defaults keeps this strict-mock-safe when the
+            // social store isn't stubbed.
+            socialEnabled = runCatching { settings.socialSettings.socialEnabled.value }.getOrDefault(false),
+            socialWorkerBaseUrl = runCatching { settings.socialSettings.socialWorkerBaseUrl.value }.getOrDefault(""),
+            socialUseBareRealm = runCatching { settings.socialSettings.socialBareRealm.value }.getOrDefault(false),
+            appVersion = runCatching {
+                appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "?"
+            }.getOrDefault("?"),
         )
         return Pair(config, genCtx)
     }

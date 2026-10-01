@@ -61,7 +61,7 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         Triple("plan", R.string.agent_mode_plan, R.string.agent_mode_plan_desc),
         Triple("build", R.string.agent_mode_build, R.string.agent_mode_build_desc),
     )
-    val jevConfigured = apiKeys.any { it.provider == Constants.PROVIDER_TYPESAFE }
+    val jevConfigured by viewModel.settings.jevSettings.jevConfigured.collectAsState()
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_agent),

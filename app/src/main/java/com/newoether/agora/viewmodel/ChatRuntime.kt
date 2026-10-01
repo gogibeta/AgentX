@@ -48,6 +48,8 @@ class ChatRuntime(
     sandboxFactory: SandboxManagerFactory?,
     automationToolProvider: AutomationToolProvider,
     mcpToolProvider: McpToolProvider,
+    browserToolProvider: com.newoether.agora.browser.BrowserToolProvider,
+    socialToolProvider: com.newoether.agora.tool.SocialToolProvider,
     askUser: AskUserController,
     shellConfirmation: ShellConfirmationController,
     registry: ConversationStateRegistry,
@@ -91,6 +93,8 @@ class ChatRuntime(
             additionalToolProviders = listOf(
                 automationToolProvider,
                 mcpToolProvider,
+                browserToolProvider,
+                socialToolProvider,
                 AskUserToolProvider(askUser),
                 EnsembleToolProvider(
                     providerForModel = providerRegistry::providerForModel,

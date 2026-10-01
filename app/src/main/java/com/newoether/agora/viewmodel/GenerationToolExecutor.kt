@@ -194,6 +194,15 @@ internal class GenerationToolExecutor private constructor(
                     ),
                     "tool end",
                 )
+                // §6.1 structured `tool` event: name, duration, outcome only.
+                // Arguments and results are never logged — they may contain user content.
+                com.newoether.agora.diagnostics.StructuredDiagnostics.emit(
+                    category = com.newoether.agora.diagnostics.StructuredDiagnosticCategory.TOOL,
+                    name = call.name,
+                    outcome = if (result.result.isError) "error" else "ok",
+                    durationMs = (System.nanoTime() - startNanos) / 1_000_000L,
+                    sessionId = call.batchIdentity.runId,
+                )
             }
         } catch (e: Throwable) {
             com.newoether.agora.util.DebugLog.event(
@@ -204,6 +213,13 @@ internal class GenerationToolExecutor private constructor(
                     "elapsedMs" to ((System.nanoTime() - startNanos) / 1_000_000L).toString(),
                 ),
                 "tool end",
+            )
+            com.newoether.agora.diagnostics.StructuredDiagnostics.emit(
+                category = com.newoether.agora.diagnostics.StructuredDiagnosticCategory.TOOL,
+                name = call.name,
+                outcome = "threw",
+                durationMs = (System.nanoTime() - startNanos) / 1_000_000L,
+                sessionId = call.batchIdentity.runId,
             )
             throw e
         }

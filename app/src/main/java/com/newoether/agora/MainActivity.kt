@@ -225,6 +225,20 @@ class MainActivity : ComponentActivity() {
                     val container = agentxApplication.requireContainer()
                     // The WebUI mirrors the app's resolved colors and font.
                     com.newoether.agora.webui.PublishWebUiTheme(container.webUi, fontPreference, customFontPath)
+                    // Browser watch-panel + approval dialog hosts live OUTSIDE the chat
+                    // message list (anti-prompt-injection: page text must never be able
+                    // to manufacture a fake approval inside the conversation).
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        com.newoether.agora.ui.browser.LocalBrowserWatchController provides
+                            container.browserWatchController,
+                        com.newoether.agora.ui.browser.LocalBrowserPreferenceStore provides
+                            container.browserPreferenceStore,
+                        com.newoether.agora.ui.browser.LocalBrowserDataController provides
+                            container.chromiumLauncher,
+                    ) {
+                        com.newoether.agora.ui.security.ApprovalDialogHost(
+                            gate = container.approvalGate,
+                        )
                     val factory = remember { container.chatViewModelFactory() }
                     val viewModel: ChatViewModel = viewModel(factory = factory)
 
@@ -254,6 +268,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                    } // CompositionLocalProvider (browser watch controller)
                 }
             }
             }

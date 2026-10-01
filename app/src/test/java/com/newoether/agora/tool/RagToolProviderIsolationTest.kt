@@ -4,6 +4,7 @@ import com.newoether.agora.data.local.ChatEntity
 import com.newoether.agora.data.local.MessageContextTopology
 import com.newoether.agora.data.local.MessageEntity
 import com.newoether.agora.data.repository.ConversationRepository
+import com.newoether.agora.data.repository.ScoredMessage
 import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.Participant
 import com.newoether.agora.viewmodel.GenerationContext
@@ -78,7 +79,7 @@ class RagToolProviderIsolationTest {
             runId = "run-hidden",
             runSequence = 0,
         )
-        coEvery { conversations.searchMessages("private", any()) } returns listOf(hiddenMatch)
+        coEvery { conversations.searchMessages("private", any()) } returns listOf(ScoredMessage(hiddenMatch, 1.0f))
         coEvery { conversations.getSearchableConversation("hidden") } returns null
 
         val result = Json.parseToJsonElement(
@@ -105,7 +106,7 @@ class RagToolProviderIsolationTest {
             runId = "run-1",
             runSequence = 0,
         )
-        coEvery { conversations.searchMessages("target", any()) } returns listOf(match)
+        coEvery { conversations.searchMessages("target", any()) } returns listOf(ScoredMessage(match, 1.0f))
         coEvery { conversations.getSearchableConversation("conv") } returns ChatEntity(id = "conv", title = "Conv", lastUpdated = 123L)
         coEvery { conversations.getMessageTopologySnapshot("conv") } returns
             listOf(topology(match))

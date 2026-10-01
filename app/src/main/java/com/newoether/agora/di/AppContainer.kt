@@ -35,7 +35,20 @@ import com.newoether.agora.viewmodel.ChatViewModelFactory
 import com.newoether.agora.viewmodel.ConversationStateRegistry
 import com.newoether.agora.viewmodel.ProviderRegistry
 import com.newoether.agora.viewmodel.ShellConfirmationController
+import com.newoether.agora.api.HttpClient
+import com.newoether.agora.browser.BrowserPreferenceStore
+import com.newoether.agora.browser.BrowserSession
+import com.newoether.agora.browser.BrowserToolProvider
+import com.newoether.agora.browser.ChromiumLauncher
+import com.newoether.agora.browser.cdp.CdpClient
+import com.newoether.agora.security.ApprovalGate
+import com.newoether.agora.security.CredentialVault
+import com.newoether.agora.social.SocialPreferenceStore
+import com.newoether.agora.tool.SocialToolProvider
+import com.newoether.agora.ui.browser.DefaultBrowserWatchController
 import com.newoether.agora.data.dataStore
+import com.newoether.agora.tool.ToolImageStore
+import java.util.concurrent.TimeUnit
 import com.newoether.agora.webui.WebUiController
 import com.newoether.agora.webui.WebUiSettingsStore
 import kotlinx.coroutines.flow.first
@@ -211,6 +224,83 @@ class AppContainer(
         McpToolProvider(mcpRegistry)
     }
 
+    // ── Browser automation (Workstream A) ─────────────────────────
+    // Own DataStore slice (BrowserPreferenceStore), so the 800-line-capped
+    // SettingsManager/SettingsRepository stay untouched. The tunnel client
+    // token is encrypted at rest via SecretCrypto (Android Keystore-backed).
+
+    val browserPreferenceStore: BrowserPreferenceStore by lazy {
+        BrowserPreferenceStore(
+            appContext.dataStore,
+            kotlinx.serialization.json.Json { ignoreUnknownKeys = true },
+        )
+    }
+
+    val chromiumLauncher: ChromiumLauncher by lazy {
+        ChromiumLauncher(appContext, HttpClient.client, appScope)
+    }
+
+    val browserCdpClient: CdpClient by lazy {
+        CdpClient(
+            // ~20s WebSocket ping: an idle CDP socket is the normal state,
+            // never a dead one — keep it alive, don't cut it.
+            HttpClient.client.newBuilder()
+                .pingInterval(20, TimeUnit.SECONDS)
+                .build(),
+            appScope,
+        )
+    }
+
+    val browserSession: BrowserSession by lazy {
+        BrowserSession(
+            browserPreferenceStore,
+            chromiumLauncher,
+            browserCdpClient,
+            HttpClient.client,
+            appScope,
+        )
+    }
+
+    val browserToolProvider: BrowserToolProvider by lazy {
+        BrowserToolProvider(
+            browserSession,
+            browserPreferenceStore,
+            ToolImageStore(appContext),
+            // Credential vault (stream C): resolve cred_id → secret through the
+            // Keystore-backed vault; the CharArray is zeroed immediately after
+            // copying. The secret never reaches logs, diagnostics, or tool results.
+            credentialResolver = { credId ->
+                credentialVault.resolveSecret(credId)
+                    ?.let { chars -> String(chars).also { chars.fill('\u0000') } }
+            },
+        )
+    }
+
+    /** Keystore-backed credential vault (AES-256-GCM); agent sees only cred_id surrogates. */
+    val credentialVault: CredentialVault
+        get() = settingsManager.credentialVault
+
+    /** Fail-closed approval policy engine for the browser tool layer. */
+    val approvalGate: ApprovalGate by lazy {
+        ApprovalGate(appContext)
+    }
+
+    /** Watch-panel controller: feeds the Compose mini-browser from the CDP session. */
+    val browserWatchController: DefaultBrowserWatchController by lazy {
+        DefaultBrowserWatchController(browserSession, approvalGate, appScope)
+    }
+
+    // ── Social read (Workstream D) ───────────────────────────────
+    // User-provided FxEmbed worker; the app ships no default URL.
+
+    val socialPreferenceStore: SocialPreferenceStore by lazy {
+        SocialPreferenceStore(appContext.dataStore)
+    }
+
+    val socialToolProvider: SocialToolProvider by lazy {
+        SocialToolProvider()
+    }
+
     /** Lets native import quiesce Task/Loop generation without serializing ordinary executions. */
     val automationExecutionGate: AutomationExecutionGate by lazy { AutomationExecutionGate() }
 
@@ -334,6 +424,8 @@ class AppContainer(
             sandboxFactory = sandboxManagerFactory,
             automationToolProvider = automationToolProvider,
             mcpToolProvider = mcpToolProvider,
+            browserToolProvider = browserToolProvider,
+            socialToolProvider = socialToolProvider,
             askUser = askUserController,
             shellConfirmation = shellConfirmationController,
             registry = conversationStateRegistry,

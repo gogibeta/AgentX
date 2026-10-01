@@ -45,6 +45,8 @@ class AgentSettingsTest {
         assertTrue(!isValidAgentEnvName("9starts-digit"))
         assertTrue(!isValidAgentEnvName(""))
         // SecretCrypto needs Android; identity-mock it (same as PortableSettingsArchiveTest).
+        // Unmock first for idempotence under parallel test execution.
+        runCatching { io.mockk.unmockkObject(com.newoether.agora.util.SecretCrypto) }
         io.mockk.mockkObject(com.newoether.agora.util.SecretCrypto)
         io.mockk.every { com.newoether.agora.util.SecretCrypto.encrypt(any()) } answers { firstArg<String>() }
         io.mockk.every { com.newoether.agora.util.SecretCrypto.decrypt(any()) } answers { firstArg<String>() }
@@ -56,7 +58,7 @@ class AgentSettingsTest {
             assertEquals(emptyMap<String, String>(), decodeAgentEnv("garbage", json))
             assertEquals(emptyMap<String, String>(), decodeAgentEnv(null, json))
         } finally {
-            io.mockk.unmockkObject(com.newoether.agora.util.SecretCrypto)
+            runCatching { io.mockk.unmockkObject(com.newoether.agora.util.SecretCrypto) }
         }
     }
 }

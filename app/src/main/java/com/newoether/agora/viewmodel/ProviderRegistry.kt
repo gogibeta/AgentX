@@ -15,7 +15,6 @@ import com.newoether.agora.api.openai.OpenAiProvider
 import com.newoether.agora.api.openai.OpenCodeGoProvider
 import com.newoether.agora.api.openai.OpenRouterProvider
 import com.newoether.agora.api.openai.QwenProvider
-import com.newoether.agora.api.typesafe.TypeSafeProvider
 import com.newoether.agora.data.CustomEndpointProtocol
 import com.newoether.agora.data.CustomEndpointResolution
 import com.newoether.agora.data.CustomProviderConfig
@@ -143,9 +142,11 @@ class ProviderRegistry(
         Constants.PROVIDER_OLLAMA to OllamaProvider(),
         Constants.PROVIDER_OPEN_ROUTER to OpenRouterProvider(),
         Constants.PROVIDER_OPENCODE_GO to OpenCodeGoProvider(appVersion),
-        Constants.PROVIDER_TYPESAFE to TypeSafeProvider(),
         Constants.PROVIDER_LOCAL to localProvider
     )
+
+    // Note: TypeSafe (Jev) was removed from the provider list — it is a decision
+    // model, not a chat model. Configure it in Settings → Jev instead.
 
     private val debugProvider = DebugProvider()
 

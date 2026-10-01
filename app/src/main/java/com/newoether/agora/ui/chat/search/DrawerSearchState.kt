@@ -48,7 +48,7 @@ internal class DrawerSearchState(
                 results = if (method == Constants.SEARCH_METHOD_RAG)
                     viewModel.semanticSearch(query)
                 else
-                    viewModel.searchMessages(query).map { it to 0f }
+                    viewModel.searchMessages(query).map { it.message to it.score }
                 isActive = true
             }
         } finally {

@@ -26,7 +26,8 @@ import java.io.File
  * files. Offered only in agent `build` mode.
  *
  * Destination: the user's Agent workspace folder (SAF) when set and granted,
- * else app `cacheDir/artifacts` (private, shareable via the next chat export).
+ * else app `filesDir/artifacts` (private, persistent — not the cache dir,
+ * which Android may clear; shareable via the next chat export).
  * Content is guard-cleaned and capped; filenames are sanitized; writes can never
  * escape the destination directory.
  */
@@ -137,7 +138,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("uri", docUri)
                 }.toString()
             }
-            val dir = File(app.cacheDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
+            val dir = File(app.filesDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
             val out = ByteArrayOutputStream().also { it.write(bytes) }
             File(dir, fileName).outputStream().use { out.writeTo(it) }
             buildJsonObject {
@@ -223,13 +224,13 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
     /** Resolve `![alt](src)` filenames to bitmaps (cache dir first, SAF second). */
     internal fun resolvePdfImages(content: String, ctx: GenerationContext): Map<String, Bitmap> {
         val out = LinkedHashMap<String, Bitmap>()
-        val cacheDir = File(app.cacheDir, "artifacts")
+        val artifactsDir = File(app.filesDir, "artifacts")
         val treeUriString = ArtifactExporter.workspaceTreeUri(ctx.agentWorkspaceUri)
         val treeUri = treeUriString?.let { runCatching { Uri.parse(it) }.getOrNull() }
         val useSaf = treeUri != null && ArtifactExporter.hasWorkspaceGrant(app, treeUri)
         for (key in ArtifactExporter.imageKeys(content)) {
             try {
-                val cached = File(cacheDir, key)
+                val cached = File(artifactsDir, key)
                 val bitmap = if (cached.exists()) {
                     BitmapFactory.decodeFile(cached.absolutePath)
                 } else if (useSaf) {
@@ -295,7 +296,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
             )
             if (docUri != null) return docUri
         }
-        val dir = File(app.cacheDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
+        val dir = File(app.filesDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
         File(dir, fileName).outputStream().use { it.write(bytes) }
         return null
     }

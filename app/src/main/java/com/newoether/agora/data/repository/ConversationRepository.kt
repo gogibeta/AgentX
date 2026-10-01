@@ -658,7 +658,7 @@ class ConversationRepository(
 
     // ── Search ────────────────────────────────────────────────
 
-    suspend fun searchMessages(query: String, limit: Int = 10): List<MessageEntity> =
+    suspend fun searchMessages(query: String, limit: Int = 10): List<ScoredMessage> =
         searchConversationMessages(chatDao, query, limit)
 
     suspend fun getAllConversationsList(): List<ChatEntity> =

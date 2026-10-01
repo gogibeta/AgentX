@@ -41,6 +41,8 @@ class PortableSettingsArchiveTest {
             true
         }
         try {
+            // Unmock first for idempotence under parallel test execution.
+            runCatching { unmockkObject(SecretCrypto) }
             mockkObject(SecretCrypto)
             every { SecretCrypto.encrypt(any()) } answers { firstArg<String>() }
             every { SecretCrypto.decrypt(any()) } answers { firstArg<String>() }
@@ -84,7 +86,7 @@ class PortableSettingsArchiveTest {
             assertFalse(manager.anthropicCacheEnabled.first())
             assertEquals("5m", manager.anthropicCacheTtl.first())
         } finally {
-            unmockkObject(SecretCrypto)
+            runCatching { unmockkObject(SecretCrypto) }
             unmockkStatic(movesClass)
             directory.deleteRecursively()
         }

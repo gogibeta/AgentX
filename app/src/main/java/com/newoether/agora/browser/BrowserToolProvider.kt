@@ -1,0 +1,609 @@
+package com.newoether.agora.browser
+
+import android.os.SystemClock
+import com.newoether.agora.api.ToolDefinition
+import com.newoether.agora.api.ToolFunction
+import com.newoether.agora.api.ToolParameters
+import com.newoether.agora.api.ToolProperty
+import com.newoether.agora.browser.cdp.CdpException
+import com.newoether.agora.model.ToolImageAttachment
+import com.newoether.agora.tool.ToolExecutionEvent
+import com.newoether.agora.tool.ToolExecutionResult
+import com.newoether.agora.tool.ToolImageStore
+import com.newoether.agora.tool.ToolPresentationMetadata
+import com.newoether.agora.tool.ToolProvider
+import com.newoether.agora.util.DebugLog
+import com.newoether.agora.viewmodel.GenerationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
+
+/**
+ * Agent tools for the on-device / tunneled browser (§1.3, tools component).
+ *
+ * Tools: `browser_navigate`, `browser_snapshot` (compact `@eN` refs from the AX
+ * tree), `browser_click`, `browser_fill` (text OR `cred_id`), `browser_key`,
+ * `browser_scroll`, `browser_screenshot`, `browser_takeover`,
+ * `browser_download_status`.
+ *
+ * Every tool action emits a structured `browser` diagnostic event (action +
+ * duration + outcome) via [BrowserDiagnostics] — the browser audit trail.
+ * Privacy: full URLs are never logged (host only), credentials and page text
+ * never enter diagnostics or results.
+ *
+ * `browser_fill` with `cred_id` resolves the secret through [credentialResolver]
+ * (owned by the credential-vault stream when it lands; until then the caller
+ * supplies it) and types it via the trusted `Input.insertText` path — the
+ * value never enters model context, logs, or diagnostics.
+ */
+class BrowserToolProvider(
+    private val session: BrowserSession,
+    private val prefs: BrowserPreferenceStore,
+    private val imageStore: ToolImageStore,
+    private val credentialResolver: suspend (credId: String) -> String? = { null },
+) : ToolProvider {
+
+    private val json = Json { ignoreUnknownKeys = true }
+
+    init {
+        // Session-level events (reconnects, backend switches) join the audit trail.
+        session.eventReporter = BrowserEventReporter { action, elapsedMs, outcome, extra ->
+            BrowserDiagnostics.record(session.diagnosticContext, action, elapsedMs, outcome, extra)
+        }
+    }
+
+    override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
+        if (!prefs.browserEnabled.value) return emptyList()
+        return listOf(
+            tool(
+                "browser_navigate",
+                "Navigate the browser to a URL. The page loads first; use browser_snapshot " +
+                    "afterwards to see what is on it.",
+                mapOf("url" to ToolProperty("string", "The http(s) URL to open.")),
+                listOf("url"),
+            ),
+            tool(
+                "browser_snapshot",
+                "Capture the page's accessibility tree as compact @eN references " +
+                    "(viewport-relevant, truncated). Use the refs with browser_click / browser_fill.",
+                emptyMap(),
+                emptyList(),
+            ),
+            tool(
+                "browser_click",
+                "Click the element with the given @eN reference from browser_snapshot.",
+                mapOf("ref" to ToolProperty("string", "Element reference, e.g. \"@e3\".")),
+                listOf("ref"),
+            ),
+            tool(
+                "browser_fill",
+                "Type into the element with the given @eN reference. Pass text directly, " +
+                    "or a vault credential id as cred_id (the secret is typed without ever " +
+                    "entering the conversation).",
+                mapOf(
+                    "ref" to ToolProperty("string", "Element reference, e.g. \"@e3\"."),
+                    "text" to ToolProperty("string", "Text to type. Omit when using cred_id."),
+                    "cred_id" to ToolProperty("string", "Vault credential id to type. Omit when using text."),
+                ),
+                listOf("ref"),
+            ),
+            tool(
+                "browser_key",
+                "Press a key: Enter, Tab, Escape, Backspace, Delete, ArrowUp/Down/Left/Right, " +
+                    "or a single character.",
+                mapOf("key" to ToolProperty("string", "Key name, e.g. \"Enter\".")),
+                listOf("key"),
+            ),
+            tool(
+                "browser_scroll",
+                "Scroll the page with the mouse wheel.",
+                mapOf(
+                    "direction" to ToolProperty("string", "up, down (default), left or right."),
+                    "pixels" to ToolProperty("integer", "Scroll distance in pixels (default 400)."),
+                ),
+                emptyList(),
+            ),
+            tool(
+                "browser_screenshot",
+                "Capture a viewport JPEG screenshot. Reserved for hard pages (canvas, seat " +
+                    "maps) that the accessibility tree cannot describe.",
+                emptyMap(),
+                emptyList(),
+            ),
+            tool(
+                "browser_takeover",
+                "Hand browser control to the user (take-over mode): the agent loop pauses " +
+                    "and the user drives the live browser. Action: start, stop, or status.",
+                mapOf("action" to ToolProperty("string", "start, stop, or status (default).")),
+                emptyList(),
+            ),
+            tool(
+                "browser_download_status",
+                "List browser downloads and their progress (files land in the app-owned " +
+                    "download dir on the local backend).",
+                emptyMap(),
+                emptyList(),
+            ),
+        )
+    }
+
+    override fun handles(name: String): Boolean = name in TOOL_NAMES
+
+    override fun presentationMetadata(name: String): ToolPresentationMetadata? =
+        if (handles(name)) ToolPresentationMetadata(displayName = "Browser") else null
+
+    override suspend fun execute(
+        name: String,
+        arguments: String,
+        ctx: GenerationContext,
+    ): String = withContext(Dispatchers.IO) {
+        val started = SystemClock.elapsedRealtime()
+        session.diagnosticContext = ctx
+        if (!prefs.browserEnabled.value) {
+            return@withContext errorJson(name, "browser_disabled", "Browser tools are disabled.")
+        }
+        try {
+            val outcome = when (name) {
+                "browser_navigate" -> navigate(arguments, ctx)
+                "browser_snapshot" -> snapshot(ctx)
+                "browser_click" -> click(arguments, ctx)
+                "browser_fill" -> fill(arguments, ctx)
+                "browser_key" -> pressKey(arguments, ctx)
+                "browser_scroll" -> scroll(arguments, ctx)
+                "browser_screenshot" -> screenshot(ctx)
+                "browser_takeover" -> takeover(arguments)
+                "browser_download_status" -> downloadStatus()
+                else -> return@withContext errorJson(name, "unknown_tool", "Unknown tool: $name")
+            }
+            BrowserDiagnostics.record(
+                ctx, outcome.action,
+                SystemClock.elapsedRealtime() - started, "ok", outcome.extra,
+            )
+            outcome.json
+        } catch (e: Exception) {
+            val outcome = "error:${e.javaClass.simpleName}"
+            BrowserDiagnostics.record(
+                ctx, actionName(name),
+                SystemClock.elapsedRealtime() - started, outcome, emptyMap(),
+            )
+            DebugLog.w(TAG, "$name failed: ${e.javaClass.simpleName}")
+            errorJson(name, errorCode(e), "")
+        }
+    }
+
+    /**
+     * Screenshot override: the JPEG is persisted via [ToolImageStore] and
+     * attached so the model sees it as a multimodal turn, exactly like
+     * `view_image` (transcribeImages = true).
+     */
+    override fun executeEvents(
+        name: String,
+        arguments: String,
+        ctx: GenerationContext,
+    ): Flow<ToolExecutionEvent> = flow {
+        if (name == "browser_screenshot" && prefs.browserEnabled.value) {
+            val started = SystemClock.elapsedRealtime()
+            session.diagnosticContext = ctx
+            try {
+                if (!session.ensureConnected()) {
+                    emit(ToolExecutionEvent.Completed(ToolExecutionResult(errorJson(name, "not_connected", ""), isError = true)))
+                    return@flow
+                }
+                val result = captureScreenshotResult(ctx)
+                BrowserDiagnostics.record(
+                    ctx, "screenshot",
+                    SystemClock.elapsedRealtime() - started, "ok",
+                    mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
+                )
+                emit(ToolExecutionEvent.Completed(result))
+            } catch (e: Exception) {
+                BrowserDiagnostics.record(
+                    ctx, "screenshot",
+                    SystemClock.elapsedRealtime() - started, "error:${e.javaClass.simpleName}", emptyMap(),
+                )
+                emit(ToolExecutionEvent.Completed(ToolExecutionResult(errorJson(name, errorCode(e), ""), isError = true)))
+            }
+        } else {
+            emit(ToolExecutionEvent.Completed(ToolExecutionResult(execute(name, arguments, ctx))))
+        }
+    }
+
+    // ── tool implementations ──
+
+    private data class ActionOutcome(
+        val action: String,
+        val json: String,
+        val extra: Map<String, String> = emptyMap(),
+    )
+
+    private fun args(arguments: String): JsonObject =
+        try {
+            json.parseToJsonElement(arguments.ifBlank { "{}" }) as JsonObject
+        } catch (_: Exception) {
+            buildJsonObject {}
+        }
+
+    private fun argStr(a: JsonObject, name: String): String? =
+        (a[name] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() }
+
+    private fun argInt(a: JsonObject, name: String, default: Int): Int =
+        (a[name] as? JsonPrimitive)?.intOrNull ?: default
+
+    private suspend fun navigate(arguments: String, ctx: GenerationContext): ActionOutcome {
+        val url = argStr(args(arguments), "url")
+            ?: return ActionOutcome("navigate", errorJson("browser_navigate", "no_url", ""))
+        val scheme = runCatching { android.net.Uri.parse(url).scheme?.lowercase() }.getOrNull()
+        if (scheme != "http" && scheme != "https") {
+            return ActionOutcome("navigate", errorJson("browser_navigate", "bad_url", "Only http(s) URLs are allowed."))
+        }
+        if (!session.ensureConnected()) {
+            return ActionOutcome("navigate", errorJson("browser_navigate", "not_connected", ""))
+        }
+        val loaded = session.navigate(url, ctx.toolTimeoutMs)
+        return ActionOutcome(
+            "navigate",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_navigate")
+                put("ok", true)
+                put("loaded", loaded)
+            }.toString(),
+            mapOf(
+                "domain" to hostOf(url),
+                "backend" to (session.currentBackendMode()?.persisted ?: "-"),
+            ),
+        )
+    }
+
+    private suspend fun snapshot(ctx: GenerationContext): ActionOutcome {
+        if (!session.ensureConnected()) {
+            return ActionOutcome("snapshot", errorJson("browser_snapshot", "not_connected", ""))
+        }
+        val tree = session.axSnapshot(ctx.toolTimeoutMs)
+        val (text, refs) = compactAxTree(tree)
+        session.storeSnapshotRefs(refs)
+        val truncated = text.length >= SNAPSHOT_MAX_CHARS
+        return ActionOutcome(
+            "snapshot",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_snapshot")
+                put("snapshot", text)
+                put("truncated", truncated)
+            }.toString(),
+            mapOf(
+                "chars" to text.length.toString(),
+                "backend" to (session.currentBackendMode()?.persisted ?: "-"),
+            ),
+        )
+    }
+
+    private suspend fun click(arguments: String, ctx: GenerationContext): ActionOutcome {
+        val ref = argStr(args(arguments), "ref")
+            ?: return ActionOutcome("click", errorJson("browser_click", "no_ref", ""))
+        if (!session.ensureConnected()) {
+            return ActionOutcome("click", errorJson("browser_click", "not_connected", ""))
+        }
+        val binding = session.resolveRef(ref)
+            ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
+        val center = elementCenter(binding, ctx.toolTimeoutMs)
+            ?: return ActionOutcome("click", errorJson("browser_click", "not_visible", "Element $ref has no visible bounds."))
+        session.mouseClick(center.first, center.second, ctx.toolTimeoutMs)
+        return ActionOutcome(
+            "click",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_click")
+                put("ok", true)
+                put("ref", ref)
+            }.toString(),
+            mapOf("ref" to ref, "backend" to (session.currentBackendMode()?.persisted ?: "-")),
+        )
+    }
+
+    private suspend fun fill(arguments: String, ctx: GenerationContext): ActionOutcome {
+        val a = args(arguments)
+        val ref = argStr(a, "ref")
+            ?: return ActionOutcome("fill", errorJson("browser_fill", "no_ref", ""))
+        val text = argStr(a, "text")
+        val credId = argStr(a, "cred_id")
+        if (text == null && credId == null) {
+            return ActionOutcome("fill", errorJson("browser_fill", "no_value", "Pass text or cred_id."))
+        }
+        // Resolve the secret BEFORE touching the browser; the value never
+        // enters results, logs, or diagnostics.
+        val secret: String? = if (credId != null) credentialResolver(credId) else null
+        if (credId != null && secret.isNullOrEmpty()) {
+            return ActionOutcome("fill", errorJson("browser_fill", "credential_not_found", "No credential for id."))
+        }
+        if (!session.ensureConnected()) {
+            return ActionOutcome("fill", errorJson("browser_fill", "not_connected", ""))
+        }
+        val binding = session.resolveRef(ref)
+            ?: return ActionOutcome("fill", errorJson("browser_fill", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
+        val objectId = session.resolveNode(binding.backendNodeId, ctx.toolTimeoutMs)
+            ?: return ActionOutcome("fill", errorJson("browser_fill", "not_found", "Element $ref could not be resolved."))
+        session.focusObject(objectId, ctx.toolTimeoutMs)
+        session.insertText(secret ?: text!!, ctx.toolTimeoutMs)
+        return ActionOutcome(
+            "fill",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_fill")
+                put("ok", true)
+                put("ref", ref)
+                put("via", if (credId != null) "vault" else "text")
+            }.toString(),
+            mapOf("ref" to ref, "backend" to (session.currentBackendMode()?.persisted ?: "-")),
+        )
+    }
+
+    private suspend fun pressKey(arguments: String, ctx: GenerationContext): ActionOutcome {
+        val key = argStr(args(arguments), "key")
+            ?: return ActionOutcome("key", errorJson("browser_key", "no_key", ""))
+        if (!session.ensureConnected()) {
+            return ActionOutcome("key", errorJson("browser_key", "not_connected", ""))
+        }
+        val mapped = NAMED_KEYS.entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
+        if (mapped != null) {
+            session.dispatchKey("keyDown", mapped.first, mapped.second, ctx.toolTimeoutMs)
+            session.dispatchKey("keyUp", mapped.first, mapped.second, ctx.toolTimeoutMs)
+        } else if (key.length == 1) {
+            // A single character is typed, not pressed.
+            session.insertText(key, ctx.toolTimeoutMs)
+        } else {
+            return ActionOutcome("key", errorJson("browser_key", "unknown_key", "Unknown key: $key"))
+        }
+        return ActionOutcome(
+            "key",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_key")
+                put("ok", true)
+            }.toString(),
+            mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
+        )
+    }
+
+    private suspend fun scroll(arguments: String, ctx: GenerationContext): ActionOutcome {
+        val a = args(arguments)
+        val direction = (argStr(a, "direction") ?: "down").lowercase()
+        val pixels = argInt(a, "pixels", 400).coerceIn(1, 5000)
+        if (!session.ensureConnected()) {
+            return ActionOutcome("scroll", errorJson("browser_scroll", "not_connected", ""))
+        }
+        val (dx, dy) = when (direction) {
+            "up" -> 0.0 to -pixels.toDouble()
+            "left" -> -pixels.toDouble() to 0.0
+            "right" -> pixels.toDouble() to 0.0
+            else -> 0.0 to pixels.toDouble()
+        }
+        // Wheel at a fixed viewport point scrolls the page under it.
+        session.mouseWheel(120.0, 200.0, dx, dy, ctx.toolTimeoutMs)
+        return ActionOutcome(
+            "scroll",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_scroll")
+                put("ok", true)
+            }.toString(),
+            mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
+        )
+    }
+
+    private suspend fun screenshot(ctx: GenerationContext): ActionOutcome {
+        if (!session.ensureConnected()) {
+            return ActionOutcome("screenshot", errorJson("browser_screenshot", "not_connected", ""))
+        }
+        val attachment = captureScreenshotAttachment(ctx)
+        return ActionOutcome(
+            "screenshot",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_screenshot")
+                put("ok", true)
+                put("width", attachment.width ?: 0)
+                put("height", attachment.height ?: 0)
+            }.toString(),
+            mapOf(
+                "bytes" to attachment.sizeBytes.toString(),
+                "backend" to (session.currentBackendMode()?.persisted ?: "-"),
+            ),
+        )
+    }
+
+    private suspend fun captureScreenshotResult(ctx: GenerationContext): ToolExecutionResult {
+        val attachment = captureScreenshotAttachment(ctx)
+        return ToolExecutionResult(
+            text = buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_screenshot")
+                put("ok", true)
+            }.toString(),
+            images = listOf(attachment),
+            transcribeImages = true,
+        )
+    }
+
+    private suspend fun captureScreenshotAttachment(ctx: GenerationContext): ToolImageAttachment {
+        val bytes = session.captureScreenshot(ctx.toolTimeoutMs)
+        return imageStore.persistBytes(bytes, "image/jpeg", "browser")
+    }
+
+    private suspend fun takeover(arguments: String): ActionOutcome {
+        val action = (argStr(args(arguments), "action") ?: "status").lowercase()
+        // Takeover does not strictly need a live page, but connecting keeps the
+        // state truthful about backend availability.
+        session.ensureConnected()
+        when (action) {
+            "start" -> session.setTakeover(true)
+            "stop" -> session.setTakeover(false)
+        }
+        val active = session.isTakeoverActive()
+        return ActionOutcome(
+            "takeover",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_takeover")
+                put("takeover", if (active) "active" else "inactive")
+            }.toString(),
+            mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
+        )
+    }
+
+    private suspend fun downloadStatus(): ActionOutcome {
+        session.ensureConnected()
+        val items = buildJsonArray {
+            for (d in session.downloadStatus()) {
+                add(buildJsonObject {
+                    put("guid", d.guid)
+                    put("state", d.state)
+                    put("receivedBytes", d.receivedBytes)
+                    put("totalBytes", d.totalBytes)
+                })
+            }
+        }
+        return ActionOutcome(
+            "download_status",
+            buildJsonObject {
+                put("type", "browser")
+                put("tool", "browser_download_status")
+                put("downloads", items)
+            }.toString(),
+            mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
+        )
+    }
+
+    // ── helpers ──
+
+    /** Center of the element's content quad; null when it has no visible bounds. */
+    private suspend fun elementCenter(
+        binding: BrowserSnapshotRef,
+        timeoutMs: Long,
+    ): Pair<Double, Double>? {
+        val objectId = session.resolveNode(binding.backendNodeId, timeoutMs) ?: return null
+        val model = session.boxModel(objectId, timeoutMs) ?: return null
+        val content = (model["content"] as? JsonArray) ?: return null
+        if (content.size < 8) return null
+        val xs = listOf(0, 2, 4, 6).mapNotNull { (content[it] as? JsonPrimitive)?.doubleOrNull }
+        val ys = listOf(1, 3, 5, 7).mapNotNull { (content[it] as? JsonPrimitive)?.doubleOrNull }
+        if (xs.isEmpty() || ys.isEmpty()) return null
+        val cx = xs.average()
+        val cy = ys.average()
+        if (xs.max() - xs.min() < 1 || ys.max() - ys.min() < 1) return null
+        return cx to cy
+    }
+
+    /**
+     * Flatten the AX tree into compact `@eN` lines. Typical pages land at
+     * 2–8 KB. Refs bind to backend DOM node ids for click/fill.
+     */
+    private fun compactAxTree(tree: JsonObject): Pair<String, Map<String, BrowserSnapshotRef>> {
+        val nodes = (tree["nodes"] as? JsonArray).orEmpty()
+        val lines = ArrayList<String>(nodes.size.coerceAtMost(MAX_SNAPSHOT_NODES))
+        val refs = LinkedHashMap<String, BrowserSnapshotRef>()
+        var counter = 0
+        var chars = 0
+        for (element in nodes) {
+            if (counter >= MAX_SNAPSHOT_NODES || chars >= SNAPSHOT_MAX_CHARS) break
+            val node = element as? JsonObject ?: continue
+            if ((node["ignored"] as? JsonPrimitive)?.booleanOrNull == true) continue
+            val role = ((node["role"] as? JsonObject)?.get("value") as? JsonPrimitive)?.contentOrNull
+                .orEmpty().ifBlank { continue }
+            if (role in SKIPPED_ROLES) continue
+            val name = ((node["name"] as? JsonObject)?.get("value") as? JsonPrimitive)?.contentOrNull
+                .orEmpty().trim().replace(Regex("\\s+"), " ").take(120)
+            val value = ((node["value"] as? JsonObject)?.get("value") as? JsonPrimitive)?.contentOrNull
+                .orEmpty().trim().replace(Regex("\\s+"), " ").take(80)
+            if (name.isBlank() && value.isBlank() && role !in NAMELESS_ROLES) continue
+            val backendNodeId = (node["backendDOMNodeId"] as? JsonPrimitive)?.longOrNull
+            val label = buildString {
+                if (backendNodeId != null) {
+                    counter++
+                    append("(@e").append(counter).append(") ")
+                }
+                append('[').append(role).append(']')
+                if (name.isNotBlank()) append(" \"").append(name).append('"')
+                if (value.isNotBlank()) append(" =\"").append(value).append('"')
+            }
+            lines.add(label)
+            chars += label.length + 1
+            if (backendNodeId != null) {
+                refs["@e$counter"] = BrowserSnapshotRef("@e$counter", backendNodeId, role, name)
+            }
+        }
+        return lines.joinToString("\n").take(SNAPSHOT_MAX_CHARS) to refs
+    }
+
+    private fun tool(
+        name: String,
+        description: String,
+        properties: Map<String, ToolProperty>,
+        required: List<String>,
+    ): ToolDefinition = ToolDefinition(
+        function = ToolFunction(
+            name = name,
+            description = description,
+            parameters = ToolParameters(properties = properties, required = required),
+        ),
+    )
+
+    private fun errorJson(tool: String, error: String, message: String): String =
+        buildJsonObject {
+            put("type", "browser")
+            put("tool", tool)
+            put("error", error)
+            if (message.isNotBlank()) put("message", message)
+        }.toString()
+
+    private fun errorCode(e: Exception): String = when (e) {
+        is CdpException -> e.message?.substringBefore(':')?.take(40) ?: "cdp_error"
+        else -> "error"
+    }
+
+    private fun actionName(tool: String): String = tool.removePrefix("browser_")
+
+    companion object {
+        private const val TAG = "BrowserToolProvider"
+        private const val MAX_SNAPSHOT_NODES = 200
+        private const val SNAPSHOT_MAX_CHARS = 8000
+
+        private val TOOL_NAMES = setOf(
+            "browser_navigate", "browser_snapshot", "browser_click", "browser_fill",
+            "browser_key", "browser_scroll", "browser_screenshot", "browser_takeover",
+            "browser_download_status",
+        )
+
+        /** Structural roles that add noise without actionability. */
+        private val SKIPPED_ROLES = setOf("none", "generic", "presentation", "StaticText")
+
+        /** Roles worth listing even without an accessible name. */
+        private val NAMELESS_ROLES = setOf("button", "link", "textbox", "checkbox", "radio", "image")
+
+        /** (CDP key name, windowsVirtualKeyCode) for control keys. */
+        private val NAMED_KEYS = mapOf(
+            "Enter" to ("Enter" to 13),
+            "Tab" to ("Tab" to 9),
+            "Escape" to ("Escape" to 27),
+            "Backspace" to ("Backspace" to 8),
+            "Delete" to ("Delete" to 46),
+            "ArrowLeft" to ("ArrowLeft" to 37),
+            "ArrowUp" to ("ArrowUp" to 38),
+            "ArrowRight" to ("ArrowRight" to 39),
+            "ArrowDown" to ("ArrowDown" to 40),
+        )
+    }
+}

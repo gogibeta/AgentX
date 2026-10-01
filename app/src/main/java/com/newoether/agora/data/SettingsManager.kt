@@ -6,6 +6,8 @@ import com.newoether.agora.model.ThinkingLevels
 import com.newoether.agora.model.ContextBudget
 import com.newoether.agora.model.ThinkingSegmentDisplayModes
 import com.newoether.agora.model.ToolCallDisplayModes
+import com.newoether.agora.security.CredentialVault
+import com.newoether.agora.social.SocialPreferenceStore
 import com.newoether.agora.util.DebugLog
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
@@ -25,6 +27,10 @@ class SettingsManager(private val context: Context) {
     internal val modelPreferenceStore = SettingsModelPreferenceStore(context.dataStore, json)
     internal val backupPreferenceStore = SettingsBackupPreferenceStore(context.dataStore)
     internal val agentPreferenceStore = SettingsAgentPreferenceStore(context.dataStore, json)
+    internal val jevPreferenceStore = JevPreferenceStore(context.dataStore, json)
+    internal val diagnosticsPreferenceStore = DiagnosticsPreferenceStore(context.dataStore)
+    internal val credentialVault = CredentialVault(context)
+    internal val socialPreferenceStore = SocialPreferenceStore(context.dataStore)
 
     companion object {
         const val DEFAULT_PROXY_HOST = "127.0.0.1"

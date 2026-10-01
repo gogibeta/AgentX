@@ -43,6 +43,7 @@ import com.newoether.agora.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
 import com.newoether.agora.ui.chat.bottombar.ChatBottomBar
 import com.newoether.agora.ui.chat.bottombar.LoopStatusBackdrop
 import com.newoether.agora.ui.chat.interaction.ChatUserInteractionBar
+import com.newoether.agora.ui.browser.ChatBrowserWatchCard
 import com.newoether.agora.ui.components.AnimatedBlobBackground
 import com.newoether.agora.ui.components.clearFocusOnTap
 import com.newoether.agora.ui.common.LocalAgentXHaptics
@@ -89,8 +90,8 @@ fun ChatApp(
         if (openDrawerOnStart && drawerEnabled) drawerState.openImmediately()
     }
     val conversations by viewModel.conversations.collectAsState()
-    // Defer value reads to the narrow composition regions that actually render messages. The
-    // State objects themselves are stable, so stream snapshots no longer recompose all ChatApp.
+    // Defer value reads to the narrow composition regions that actually render messages; stable
+    // State objects no longer recompose all ChatApp on stream snapshots.
     val messagesState = viewModel.messages.collectAsState()
     val allMessagesState = viewModel.allMessages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -180,17 +181,14 @@ fun ChatApp(
     val chatWindow = LocalWindowInfo.current
     val chatHapticActive = topLevelPresentation == TopLevelPresentation.CHAT &&
         chatWindow.isWindowFocused && !drawerState.shouldHandleBack
-    // The three send paths (manual Send, queue drain, loop cycle) converge in the Controller at
-    // notifySendAccepted, the single choke point for Direct + Queued send acceptances. Wiring the
-    // haptics there gives each visible accepted send one confirm(), independent of its send path.
-    // Covered acceptances are consumed silently instead of replaying feedback after an overlay exits.
+    // The three send paths converge in the Controller at notifySendAccepted, the single choke
+    // point for Direct + Queued send acceptances. Covered acceptances are consumed silently instead
+    // of replaying feedback after an overlay exits.
     SendAcceptedHapticBindingEffect(viewModel, haptics, chatHapticActive)
 
     var isExpanded by remember { mutableStateOf(false) }
-    // Composer-expand spacer collapse (44dp → 0). An Animatable driven from an effect replaces the
-    // former hand-rolled clock, which wrote animation state DURING composition (Compose forbids
-    // that — it makes the frame's output depend on when it happened to be composed) and ticked on
-    // a fixed 16ms sleep that drifts against the real refresh rate.
+    // Composer-expand spacer collapse (44dp → 0): Animatable from an effect replaces the
+    // hand-rolled clock (wrote animation state DURING composition — forbidden — on a drifting 16ms sleep).
     val composerSpacerAnimation = rememberComposerSpacerAnimation(
         isExpanded = isExpanded,
         allowSpatialTransitions = motionPolicy.allowSpatialTransitions,
@@ -617,6 +615,8 @@ fun ChatApp(
                                     bottom = bottomBarHeight + shareSelectionBarSpace + 8.dp
                                 )
                             )
+                            // Live browser watch panel: collapsible card, visible only during an active session.
+                            ChatBrowserWatchCard()
                             }
                         } else if (targetShowLaunch) {
                             ChatWelcomeContent(
@@ -656,6 +656,9 @@ fun ChatApp(
                     )
 
                     ChatSwitchingOverlay(isSwitching, isTransitioningToNewChat, topBarH, bottomBarHeight)
+                    // Floating debug overlay (Settings → Diagnostics toggle): live tokens/s + last action.
+                    val dbgOverlay by viewModel.settings.diagnosticsSettings.debugOverlayEnabled.collectAsState()
+                    DebugDiagnosticsOverlay(enabled = dbgOverlay)
                 }
             }
 

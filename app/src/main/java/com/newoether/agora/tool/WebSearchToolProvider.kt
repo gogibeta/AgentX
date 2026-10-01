@@ -10,6 +10,8 @@ import com.newoether.agora.api.ToolProperty
 import com.newoether.agora.api.monid.MonidClient
 import com.newoether.agora.api.typesafe.AnswerGuard
 import com.newoether.agora.api.typesafe.JevDecisions
+import com.newoether.agora.diagnostics.StructuredDiagnostics
+import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
 import com.newoether.agora.util.Constants
 import com.newoether.agora.data.normalizeWebSearchProvider
 import com.newoether.agora.viewmodel.GenerationContext
@@ -223,17 +225,32 @@ class WebSearchToolProvider : ToolProvider {
             val clipped = AnswerGuard.cleanForSynthesis(markdown, maxChars)
             // Jev relevance vs goal (one batched Noul, fail-open).
             var relevance: Double? = null
-            if (!goal.isNullOrBlank() && JevDecisions.isConfigured(ctx.typeSafeApiKey)) {
+            if (!goal.isNullOrBlank() && ctx.jevEnabled && JevDecisions.isConfigured(ctx.typeSafeApiKey)) {
+                val jevStartNanos = System.nanoTime()
                 relevance = try {
                     JevDecisions.relevanceScores(
                         apiKey = ctx.typeSafeApiKey,
                         baseUrl = ctx.typeSafeBaseUrl,
+                        model = ctx.jevModel,
                         query = goal,
                         documents = listOf(clipped.take(1500)),
                     )?.firstOrNull()
                 } catch (_: Exception) {
                     null
                 }
+                // §6.1 structured `llm` event for the Jev relevance check. Only the
+                // outcome and doc count are recorded — never the query or document.
+                StructuredDiagnostics.emit(
+                    category = StructuredDiagnosticCategory.LLM,
+                    name = "jev_relevance",
+                    outcome = if (relevance != null) "ok" else "no_signal",
+                    durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L,
+                    detail = mapOf(
+                        "model" to ctx.jevModel,
+                        "key_fingerprint" to StructuredDiagnostics.keyFingerprint(ctx.typeSafeApiKey),
+                        "docs" to "1",
+                    ),
+                )
             }
             buildJsonObject {
                 put("type", "browse")
@@ -465,7 +482,7 @@ class WebSearchToolProvider : ToolProvider {
                     val fused = MonidClient.fuseDedupe(tiny.await(), ddg.await(), numResults)
                     // Jev re-rank (one batched Noul call, fail-open): sort by answer
                     // probability, never drop — a Jev miss must not lose results.
-                    if (JevDecisions.isConfigured(ctx.typeSafeApiKey)) {
+                    if (ctx.jevEnabled && JevDecisions.isConfigured(ctx.typeSafeApiKey)) {
                         rerankWithJev(query, fused, ctx) ?: fused
                     } else {
                         fused
@@ -508,18 +525,35 @@ class WebSearchToolProvider : ToolProvider {
         ctx: GenerationContext,
     ): List<MonidClient.WebHit>? {
         if (hits.size < 2) return hits
+        val jevStartNanos = System.nanoTime()
+        fun emitJevRerank(outcome: String) {
+            StructuredDiagnostics.emit(
+                category = StructuredDiagnosticCategory.LLM,
+                name = "jev_rerank",
+                outcome = outcome,
+                durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L,
+                detail = mapOf(
+                    "model" to ctx.jevModel,
+                    "key_fingerprint" to StructuredDiagnostics.keyFingerprint(ctx.typeSafeApiKey),
+                    "docs" to hits.size.toString(),
+                ),
+            )
+        }
         return try {
             val scores = JevDecisions.relevanceScores(
                 apiKey = ctx.typeSafeApiKey,
                 baseUrl = ctx.typeSafeBaseUrl,
+                model = ctx.jevModel,
                 query = query,
                 documents = hits.map { "${it.title}\n${it.snippet}" },
-            ) ?: return null
-            if (scores.size != hits.size) return null
+            ) ?: return null.also { emitJevRerank("no_signal") }
+            if (scores.size != hits.size) return null.also { emitJevRerank("size_mismatch") }
+            emitJevRerank("ok")
             hits.mapIndexed { index, hit -> hit to scores[index] }
                 .sortedByDescending { (_, score) -> score }
                 .map { (hit, _) -> hit }
         } catch (_: Exception) {
+            emitJevRerank("error")
             null
         }
     }
@@ -575,11 +609,23 @@ class WebSearchToolProvider : ToolProvider {
                     }
                 }
             }
-            val html = HttpClient.fetchModels(url, mapOf(
+            val fetchResponse = HttpClient.fetchModelsResponse(url, mapOf(
                 "User-Agent" to Constants.WEB_FETCH_USER_AGENT,
                 "Accept" to "text/html,application/xhtml+xml,*/*"
             ), callTimeoutMillis = Constants.NETWORK_TOOL_TIMEOUT_MS)
-                ?: return buildJsonObject { put("type", "web_fetch"); put("url", url); put("error", "no_response") }.toString()
+            if (!fetchResponse.isSuccessful) {
+                return buildJsonObject {
+                    put("type", "web_fetch")
+                    put("url", url)
+                    put("error", "http_error")
+                    put("http_status", fetchResponse.code)
+                    put("message", "HTTP ${fetchResponse.code} ${fetchResponse.body.take(200)}")
+                }.toString()
+            }
+            val html = fetchResponse.body
+            if (html.isBlank()) {
+                return buildJsonObject { put("type", "web_fetch"); put("url", url); put("error", "no_response") }.toString()
+            }
             val fullText = htmlToReadableText(html)
             val text = fullText.take(maxChars)
             buildJsonObject {
