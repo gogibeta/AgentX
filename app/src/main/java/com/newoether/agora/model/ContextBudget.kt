@@ -21,12 +21,11 @@ object ContextBudget {
     /**
      * Values up to 100 are legacy logical-message windows from pre-token-budget builds. Convert
      * them once at read/use boundaries so old settings remain useful instead of becoming a
-     * nonsensical 20-token context. Null/zero means "unset" and falls back to the default;
-     * negative values are invalid and clamp to the minimum.
+     * nonsensical 20-token context. Null/zero/negative means "unset" and falls back to default.
      */
     fun normalize(value: Int?): Int {
-        if (value == null || value == 0) return DEFAULT_TOKENS
-        val migrated = if (value in 1..100) value * 1_024 else value
+        if (value == null || value <= 0) return DEFAULT_TOKENS
+        val migrated = if (value <= 100) value * 1_024 else value
         return migrated.coerceIn(MIN_TOKENS, MAX_TOKENS)
     }
 

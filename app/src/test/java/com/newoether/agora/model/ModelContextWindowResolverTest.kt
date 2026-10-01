@@ -114,8 +114,19 @@ class ModelContextWindowResolverTest {
                 globalWindow = 262_144,
             ),
         )
+        // A tiny legacy value (1 message -> 1024 tokens) clamps up to the minimum.
         assertEquals(
             ContextBudget.MIN_TOKENS,
+            ModelContextWindowResolver.resolve(
+                canonicalModelId = null,
+                modelWindows = emptyMap(),
+                conversationOverride = null,
+                globalWindow = 1,
+            ),
+        )
+        // Invalid values fall back to the default, not the minimum.
+        assertEquals(
+            ContextBudget.DEFAULT_TOKENS,
             ModelContextWindowResolver.resolve(
                 canonicalModelId = null,
                 modelWindows = emptyMap(),
