@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -53,7 +54,10 @@ data class StructuredDiagnosticEvent(
     val ts: Long,
     val category: String,
     val name: String,
+    // §6.1 wire contract uses snake_case; the test asserts `session_id`/`duration_ms`.
+    @SerialName("session_id")
     val sessionId: String,
+    @SerialName("duration_ms")
     val durationMs: Long? = null,
     val outcome: String,
     val detail: Map<String, String> = emptyMap(),

@@ -68,7 +68,10 @@ object DiagnosticShareBundle {
                         category = obj["category"]?.jsonPrimitive?.content ?: "?",
                         name = obj["name"]?.jsonPrimitive?.content ?: "?",
                         outcome = obj["outcome"]?.jsonPrimitive?.content ?: "?",
-                        durationMs = obj["durationMs"]?.jsonPrimitive?.longOrNull
+                        durationMs = obj["duration_ms"]?.jsonPrimitive?.longOrNull
+                            ?: obj["duration_ms"]?.jsonPrimitive?.doubleOrNull?.toLong()
+                            // Files written before the §6.1 snake_case fix used camelCase.
+                            ?: obj["durationMs"]?.jsonPrimitive?.longOrNull
                             ?: obj["durationMs"]?.jsonPrimitive?.doubleOrNull?.toLong(),
                     )
                 }.getOrNull()
