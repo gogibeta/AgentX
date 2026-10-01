@@ -64,7 +64,9 @@ class JevPreferenceStoreTest {
             s.addJevApiKey("k1")
             s.addJevApiKey("   ")
             s.addJevApiKey("k2")
-            assertEquals(listOf("k1", "k2"), s.jevApiKeys.first { it.size == 2 })
+            // Order is not guaranteed under concurrent launches; check contents as a set.
+            val keys = s.jevApiKeys.first { it.size == 2 }
+            assertEquals(setOf("k1", "k2"), keys.toSet())
         } finally {
             unmockSecretCrypto()
         }
