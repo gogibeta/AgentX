@@ -41,7 +41,9 @@ class CompactAssistToolProvider : ToolProvider {
                 name = "prune_context",
                 description = "Shrink a large blob (tool output, history chunk, search dump) by asking Jev " +
                     "whether each item is still needed for the task. Kept items come back VERBATIM; " +
-                    "dropped ones are gone. Use before continuing when context is getting long.",
+                    "dropped ones are gone from the RETURNED TEXT ONLY — this does not remove " +
+                    "anything from the conversation history, so the context counter will not " +
+                    "change. Use before continuing when context is getting long.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "task" to ToolProperty("string", "What the remaining work needs (one line). Items are judged against this."),

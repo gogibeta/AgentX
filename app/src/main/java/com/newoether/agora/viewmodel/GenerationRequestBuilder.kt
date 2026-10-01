@@ -211,6 +211,8 @@ class GenerationRequestBuilder(
         val workspaceUri: String = "",
         val models: List<String> = emptyList(),
         val env: Map<String, String> = emptyMap(),
+        val autoCompactEnabled: Boolean = true,
+        val autoCompactIntervalTurns: Int = 25,
     )
 
     /**
@@ -223,6 +225,8 @@ class GenerationRequestBuilder(
             workspaceUri = settings.agentSettings.agentWorkspaceUri.value,
             models = settings.agentSettings.agentModels.value,
             env = settings.agentSettings.agentEnv.value,
+            autoCompactEnabled = settings.agentSettings.autoCompactEnabled.value,
+            autoCompactIntervalTurns = settings.agentSettings.autoCompactIntervalTurns.value,
         )
     }.getOrDefault(AgentSnapshot())
 
@@ -625,6 +629,8 @@ class GenerationRequestBuilder(
             agentWorkspaceUri = agentSnapshot().workspaceUri,
             agentModels = agentSnapshot().models,
             agentEnv = agentSnapshot().env,
+            autoCompactEnabled = agentSnapshot().autoCompactEnabled,
+            autoCompactIntervalTurns = agentSnapshot().autoCompactIntervalTurns,
             // Jev: runCatching → defaults keeps this strict-mock-safe when the
             // Jev store isn't stubbed (see AGENTS.md).
             typeSafeApiKey = runCatching { settings.jevSettings.pickKey() }.getOrNull() ?: "",

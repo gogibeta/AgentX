@@ -129,6 +129,13 @@ data class GenerationContext(
      * only tools whose function name is in this set are offered to the model.
      */
     val toolAllowList: Set<String>? = null,
+    /**
+     * v2.4 auto-compact: after every [autoCompactIntervalTurns] tool turns the engine
+     * asks Jev to drop low-value tool outputs from the model projection.
+     * Room history is never touched; only active when Jev is enabled/configured.
+     */
+    val autoCompactEnabled: Boolean = true,
+    val autoCompactIntervalTurns: Int = 25,
 )
 
 /** Frozen automatic-Compact policy and provider access captured with one generation. */

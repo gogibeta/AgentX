@@ -372,8 +372,11 @@ private fun BackendModeDropdown(
     ) {
         OutlinedTextField(
             value = stringResource(
-                if (current == BrowserBackendMode.LOCAL) R.string.browser_backend_local
-                else R.string.browser_backend_tunnel,
+                when (current) {
+                    BrowserBackendMode.LOCAL -> R.string.browser_backend_local
+                    BrowserBackendMode.TUNNEL -> R.string.browser_backend_tunnel
+                    BrowserBackendMode.WEBVIEW -> R.string.browser_backend_webview
+                },
             ),
             onValueChange = {},
             readOnly = true,
@@ -424,6 +427,25 @@ private fun BackendModeDropdown(
                 onClick = {
                     expanded = false
                     onSelect(BrowserBackendMode.TUNNEL)
+                },
+            )
+            AgentXDropdownMenuItem(
+                text = {
+                    Column {
+                        Text(
+                            stringResource(R.string.browser_backend_webview),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        )
+                        Text(
+                            stringResource(R.string.browser_backend_webview_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onSelect(BrowserBackendMode.WEBVIEW)
                 },
             )
         }

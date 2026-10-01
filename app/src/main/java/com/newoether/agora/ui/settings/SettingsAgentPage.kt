@@ -62,6 +62,8 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         Triple("build", R.string.agent_mode_build, R.string.agent_mode_build_desc),
     )
     val jevConfigured by viewModel.settings.jevSettings.jevConfigured.collectAsState()
+    val autoCompactEnabled by viewModel.settings.agentSettings.autoCompactEnabled.collectAsState()
+    val autoCompactInterval by viewModel.settings.agentSettings.autoCompactIntervalTurns.collectAsState()
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_agent),
@@ -161,6 +163,58 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     },
                 )
             })
+
+            SettingsGroup(
+                title = stringResource(R.string.agent_autocompact_title),
+                items = buildList {
+                    add {
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(R.string.agent_autocompact_enable)) },
+                            supportingContent = {
+                                Text(stringResource(R.string.agent_autocompact_enable_desc, autoCompactInterval))
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = autoCompactEnabled,
+                                    onCheckedChange = {
+                                        viewModel.settings.agentSettings.setAutoCompactEnabled(it)
+                                    },
+                                )
+                            },
+                            modifier = Modifier.optionClickable {
+                                viewModel.settings.agentSettings.setAutoCompactEnabled(!autoCompactEnabled)
+                            },
+                        )
+                    }
+                    if (autoCompactEnabled) {
+                        add {
+                            SettingsItem(
+                                headlineContent = { Text(stringResource(R.string.agent_autocompact_interval)) },
+                            )
+                        }
+                        listOf(15, 25, 50).forEach { turns ->
+                            add {
+                                SettingsItem(
+                                    headlineContent = {
+                                        Text(stringResource(R.string.agent_autocompact_interval_turns, turns))
+                                    },
+                                    leadingContent = {
+                                        RadioButton(
+                                            selected = autoCompactInterval == turns,
+                                            onClick = {
+                                                viewModel.settings.agentSettings.setAutoCompactIntervalTurns(turns)
+                                            },
+                                        )
+                                    },
+                                    modifier = Modifier.optionClickable {
+                                        viewModel.settings.agentSettings.setAutoCompactIntervalTurns(turns)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                },
+            )
 
             SettingsGroup(
                 title = stringResource(R.string.agent_env_title),                items = buildList {

@@ -40,6 +40,7 @@ import com.newoether.agora.browser.BrowserPreferenceStore
 import com.newoether.agora.browser.BrowserSession
 import com.newoether.agora.browser.BrowserToolProvider
 import com.newoether.agora.browser.ChromiumLauncher
+import com.newoether.agora.browser.WebViewBrowserBackend
 import com.newoether.agora.browser.cdp.CdpClient
 import com.newoether.agora.security.ApprovalGate
 import com.newoether.agora.security.CredentialVault
@@ -255,10 +256,16 @@ class AppContainer(
         BrowserSession(
             browserPreferenceStore,
             chromiumLauncher,
+            webViewBrowserBackend,
             browserCdpClient,
             HttpClient.client,
             appScope,
         )
+    }
+
+    /** v2.4 WebView CDP backend: System WebView + 127.0.0.1 bridge (no sandbox). */
+    val webViewBrowserBackend: WebViewBrowserBackend by lazy {
+        WebViewBrowserBackend(appContext, appScope)
     }
 
     val browserToolProvider: BrowserToolProvider by lazy {

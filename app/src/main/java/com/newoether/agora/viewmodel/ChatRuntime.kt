@@ -144,7 +144,12 @@ class ChatRuntime(
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }
             gm.onConfirmShellCommand = shellConfirmation::confirm
-        }
+            // v2.4 auto-compact: visible notice every time Jev prunes the projection.
+            gm.autoCompactCheckpoint.onCompacted = { dropped ->
+                _snackbarEvents.tryEmit(
+                    SnackbarEvent(appContext.getString(R.string.agent_autocompact_notice, dropped)),
+                )
+            }        }
     }
 
     /** Stateless request assembly shared by every command; context previews read it too. */

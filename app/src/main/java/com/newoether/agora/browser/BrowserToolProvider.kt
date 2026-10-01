@@ -170,7 +170,7 @@ class BrowserToolProvider(
             }
             BrowserDiagnostics.record(
                 ctx, outcome.action,
-                SystemClock.elapsedRealtime() - started, "ok", outcome.extra,
+                SystemClock.elapsedRealtime() - started, outcome.diagnosticOutcome(), outcome.extra,
             )
             outcome.json
         } catch (e: Exception) {
@@ -227,7 +227,22 @@ class BrowserToolProvider(
         val action: String,
         val json: String,
         val extra: Map<String, String> = emptyMap(),
-    )
+    ) {
+        /**
+         * Derive the diagnostic outcome from the payload itself: success JSON
+         * carries `"ok": true`, failure JSON carries `"error": "<code>"`.
+         * Never hardcode "ok" — a returned outcome can still be a failure.
+         */
+        fun diagnosticOutcome(): String = try {
+            val obj = Json.parseToJsonElement(json).jsonObject
+            val error = (obj["error"] as? JsonPrimitive)?.contentOrNull
+            if (error != null) "error:$error"
+            else if ((obj["ok"] as? JsonPrimitive)?.booleanOrNull == true) "ok"
+            else "error:unknown"
+        } catch (_: Exception) {
+            "error:unparseable"
+        }
+    }
 
     private fun args(arguments: String): JsonObject =
         try {

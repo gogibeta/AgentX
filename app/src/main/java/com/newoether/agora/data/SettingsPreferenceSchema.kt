@@ -74,6 +74,9 @@ internal val AGENT_MODE = stringPreferencesKey("agent_mode")
 internal val AGENT_WORKSPACE_URI = stringPreferencesKey("agent_workspace_uri")
 internal val AGENT_MODELS_JSON = stringPreferencesKey("agent_models_json")
 internal val AGENT_ENV_JSON = stringPreferencesKey("agent_env_json")
+/** v2.4 auto-compact: drop low-value tool outputs from the model projection. */
+internal val AGENT_AUTO_COMPACT_ENABLED = booleanPreferencesKey("agent_auto_compact_enabled")
+internal val AGENT_AUTO_COMPACT_INTERVAL_TURNS = intPreferencesKey("agent_auto_compact_interval_turns")
 internal val IMAGE_GEN_ENABLED = booleanPreferencesKey("image_gen_enabled")
 // Selected image model as "Provider:modelId"; provider creds are reused (no separate key/url).
 internal val IMAGE_GEN_MODEL = stringPreferencesKey("image_gen_model")

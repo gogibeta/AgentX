@@ -48,11 +48,14 @@ internal fun hostOf(url: String): String =
     runCatching { Uri.parse(url).host }.getOrNull()?.takeIf { it.isNotBlank() } ?: "unknown"
 
 /**
- * Unified browser session over both backends (§1.3.0).
+ * Unified browser session over all backends (§1.3.0).
  *
  * - LOCAL → `ws://127.0.0.1:<port>` (sandbox Chromium via [ChromiumLauncher]).
  * - TUNNEL → `wss://<user-url>/devtools/...?token=...` (token from encrypted
  *   prefs, never logged). Health-checked with `GET /json/version` before connect.
+ * - WEBVIEW → `ws://127.0.0.1:<port>/devtools/page/<id>` (System WebView via
+ *   [WebViewBrowserBackend]'s 127.0.0.1 bridge to the app-owned abstract
+ *   DevTools socket; page target picked from `GET /json/list`).
  *
  * Switching backends closes the old CDP session and starts a new one. The
  * local Chromium process itself is never killed on a backend switch (scry:
@@ -61,6 +64,7 @@ internal fun hostOf(url: String): String =
 class BrowserSession(
     private val prefs: BrowserPreferenceStore,
     private val launcher: ChromiumLauncher,
+    private val webViewBackend: WebViewBrowserBackend,
     private val cdp: CdpClient,
     private val healthHttp: OkHttpClient,
     private val scope: CoroutineScope,
@@ -135,6 +139,7 @@ class BrowserSession(
         val ok = when (mode) {
             BrowserBackendMode.LOCAL -> connectLocal()
             BrowserBackendMode.TUNNEL -> connectTunnel()
+            BrowserBackendMode.WEBVIEW -> connectWebView()
         }
         val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
         if (ok) {
@@ -396,6 +401,43 @@ class BrowserSession(
         return true
     }
 
+    /**
+     * WEBVIEW backend: System WebView via the 127.0.0.1 bridge. The
+     * `webSocketDebuggerUrl` served over the abstract socket has no usable
+     * host, so the page target is picked from `GET /json/list` and the WS URL
+     * is built against the bridge port.
+     */
+    private suspend fun connectWebView(): Boolean {
+        if (!webViewBackend.ensureStarted()) {
+            DebugLog.w(TAG, "connectWebView: WebView backend failed to start")
+            return false
+        }
+        val port = webViewBackend.debugPort()
+        val targets = httpGetJsonArray(
+            "http://127.0.0.1:$port/json/list",
+            HEALTH_CHECK_TIMEOUT_MS,
+        ) ?: return false
+        val page = targets.mapNotNull { it as? JsonObject }
+            .firstOrNull { (it["type"] as? JsonPrimitive)?.contentOrNull == "page" }
+            ?: return false
+        val targetId = (page["id"] as? JsonPrimitive)?.contentOrNull
+        if (targetId.isNullOrBlank()) return false
+        val wsUrl = webViewTargetWsUrl(port, targetId)
+        if (!cdp.connect(wsUrl)) {
+            DebugLog.w(TAG, "connectWebView: CDP websocket to WebView bridge failed")
+            return false
+        }
+        // The WebView profile is persistent; downloads use the default
+        // behavior (files land in the WebView profile dir).
+        cdp.invoke(
+            method = "Browser.setDownloadBehavior",
+            params = buildJsonObject { put("behavior", "allow") },
+            sessionId = null,
+        )
+        DebugLog.d(TAG, "connectWebView: connected via System WebView bridge")
+        return true
+    }
+
     /** `ws://anything/devtools/browser/x` → `/devtools/browser/x`. Null when unparseable. */
     private fun extractWsPath(debuggerUrl: String): String? {
         val withoutScheme = debuggerUrl.substringAfter("://", "")
@@ -420,6 +462,27 @@ class BrowserSession(
                     if (!response.isSuccessful) return@withContext null
                     val body = response.body?.string().orEmpty()
                     json.parseToJsonElement(body) as? JsonObject
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    private suspend fun httpGetJsonArray(url: String, timeoutMs: Long): kotlinx.serialization.json.JsonArray? =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", Constants.WEB_FETCH_USER_AGENT)
+                    .build()
+                val callClient = healthHttp.newBuilder()
+                    .connectTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .readTimeout(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .build()
+                callClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    val body = response.body?.string().orEmpty()
+                    json.parseToJsonElement(body) as? kotlinx.serialization.json.JsonArray
                 }
             } catch (_: Exception) {
                 null
@@ -466,5 +529,14 @@ class BrowserSession(
         private const val TAG = "BrowserSession"
         private const val HEALTH_CHECK_TIMEOUT_MS = 10_000L
         private const val LOAD_WAIT_MS = 20_000L
+
+        /**
+         * CDP WebSocket URL for a WebView page target through the 127.0.0.1
+         * bridge. The `webSocketDebuggerUrl` served over the abstract socket
+         * has no usable host, so the URL is built from the `/json/list`
+         * target id instead. Unit-tested.
+         */
+        internal fun webViewTargetWsUrl(bridgePort: Int, targetId: String): String =
+            "ws://127.0.0.1:$bridgePort/devtools/page/$targetId"
     }
 }

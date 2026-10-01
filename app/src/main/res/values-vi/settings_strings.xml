@@ -244,6 +244,12 @@
     <string name="agent_jev_title">Jev decisions</string>
     <string name="agent_jev_configured">TypeSafe key set - routing, re-rank and guardrails active.</string>
     <string name="agent_jev_missing">Not set - add your key under Providers, TypeSafe entry, for smarter routing and re-rank.</string>
+    <string name="agent_autocompact_title">Auto-compact context</string>
+    <string name="agent_autocompact_enable">Prune useless tool outputs</string>
+    <string name="agent_autocompact_enable_desc">Every %1$d tool turns, Jev drops low-value tool outputs from the model's view. Full history is always kept. Only runs when Jev is enabled.</string>
+    <string name="agent_autocompact_interval">Checkpoint every</string>
+    <string name="agent_autocompact_interval_turns">%1$d tool turns</string>
+    <string name="agent_autocompact_notice">Compacted %1$d low-value tool outputs</string>
     <string name="agent_env_title">Environment variables</string>
     <string name="agent_env_desc">Exported into every shell command as $NAME for API calls. Values stay encrypted.</string>
     <string name="agent_env_add">Add variable</string>
@@ -618,6 +624,8 @@
     <string name="browser_backend_local_desc">On-device Chromium (default)</string>
     <string name="browser_backend_tunnel">Via tunnel</string>
     <string name="browser_backend_tunnel_desc">Your own CDP-over-HTTPS endpoint</string>
+    <string name="browser_backend_webview">System WebView</string>
+    <string name="browser_backend_webview_desc">On-device System WebView, no sandbox download</string>
     <string name="browser_backend_fallback_note">Tunnel selected but no URL is set \u2014 the local backend is used until you add one.</string>
     <string name="browser_tunnel_group">Tunnel backend</string>
     <string name="browser_tunnel_url">Tunnel URL</string>

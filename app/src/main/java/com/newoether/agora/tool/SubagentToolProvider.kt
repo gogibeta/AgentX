@@ -3,6 +3,8 @@ package com.newoether.agora.tool
 import com.newoether.agora.automation.ChildGenerationRunner
 import com.newoether.agora.automation.ChildRequest
 import com.newoether.agora.automation.ChildResult
+import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
+import com.newoether.agora.diagnostics.StructuredDiagnostics
 import com.newoether.agora.viewmodel.GenerationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -156,6 +158,28 @@ class SubagentToolProvider(
                 }
             }.map { it.await().second }
         }
+        // Measurable self-improvement: per-batch outcome counts (children, per-model
+        // success/failure, proposals surfaced) so future delegation can learn which
+        // models and task shapes pay off. No task text or report content is recorded.
+        val succeeded = results.count { it.error == null }
+        val proposals = results.sumOf { result ->
+            (result.report?.get("memory_proposals") as? JsonArray)?.size ?: 0
+        }
+        StructuredDiagnostics.emit(
+            category = StructuredDiagnosticCategory.TOOL,
+            name = "delegate_task",
+            outcome = when {
+                succeeded == results.size -> "ok"
+                succeeded == 0 -> "error"
+                else -> "partial"
+            },
+            detail = mapOf(
+                "children" to results.size.toString(),
+                "succeeded" to succeeded.toString(),
+                "failed" to (results.size - succeeded).toString(),
+                "proposals" to proposals.toString(),
+            ),
+        )
         buildJsonObject {
             put("type", "delegate_task")
             put("task", task.take(500))
@@ -163,6 +187,14 @@ class SubagentToolProvider(
                 results.forEach { result -> add(reportJson(result)) }
             })
             if (results.none { it.error == null }) put("error", "all_failed")
+            // Reflection nudge: the parent decides what becomes a durable lesson.
+            // memory_proposals are suggestions only — commit the reusable ones
+            // with the memory tools, discard the rest.
+            put(
+                "reflection",
+                "Review the reports: promote genuinely reusable findings to memory " +
+                    "with the memory tools; ignore one-off observations.",
+            )
         }.toString()
     }
 

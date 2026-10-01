@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
+import com.newoether.agora.diagnostics.StructuredDiagnostics
 import java.io.File
 import java.io.FileOutputStream
 
@@ -312,9 +314,13 @@ object ArtifactExporter {
         markdown: String,
         images: Map<String, Bitmap> = emptyMap(),
     ): Int {
+        val totalStartNanos = System.nanoTime()
+        val parseStartNanos = System.nanoTime()
         val paints = Paints()
         val contentW = PAGE_W - 2 * MARGIN_SIDE
         val blocks = parseMarkdownBlocks(title, markdown)
+        val parseMs = (System.nanoTime() - parseStartNanos) / 1_000_000L
+        val renderStartNanos = System.nanoTime()
         val document = PdfDocument()
         var pageNum = 0
         var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, 1).create())
@@ -414,8 +420,43 @@ object ArtifactExporter {
             }
             drawFooter(page, paints, pageNum)
             document.finishPage(page)
+            val renderMs = (System.nanoTime() - renderStartNanos) / 1_000_000L
+            val writeStartNanos = System.nanoTime()
             FileOutputStream(file).use { document.writeTo(it) }
+            val writeMs = (System.nanoTime() - writeStartNanos) / 1_000_000L
+            // Structured PDF timing diagnostics: phase durations and sizes only —
+            // never the markdown content, title, or image data.
+            StructuredDiagnostics.emit(
+                category = StructuredDiagnosticCategory.TOOL,
+                name = "pdf_render",
+                outcome = "ok",
+                durationMs = (System.nanoTime() - totalStartNanos) / 1_000_000L,
+                detail = mapOf(
+                    "parse_ms" to parseMs.toString(),
+                    "render_ms" to renderMs.toString(),
+                    "write_ms" to writeMs.toString(),
+                    "pages" to pageNum.toString(),
+                    "blocks" to blocks.size.toString(),
+                    "markdown_bytes" to markdown.toByteArray().size.toString(),
+                    "images" to images.size.toString(),
+                    "capped" to capped.toString(),
+                ),
+            )
             return pageNum
+        } catch (e: Exception) {
+            StructuredDiagnostics.emit(
+                category = StructuredDiagnosticCategory.TOOL,
+                name = "pdf_render",
+                outcome = "error",
+                durationMs = (System.nanoTime() - totalStartNanos) / 1_000_000L,
+                detail = mapOf(
+                    "error" to (e::class.simpleName ?: "Exception"),
+                    "blocks" to blocks.size.toString(),
+                    "markdown_bytes" to markdown.toByteArray().size.toString(),
+                    "images" to images.size.toString(),
+                ),
+            )
+            throw e
         } finally {
             document.close()
         }
