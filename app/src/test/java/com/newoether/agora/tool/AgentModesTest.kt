@@ -161,19 +161,26 @@ class AgentModesTest {
 
     @Test
     fun artifactTool_sourcePath_rejectsTraversalAndMissing() {
-        val provider = ArtifactToolProvider(mockk(relaxed = true))
-        val ctx = GenerationContext(agentMode = "build")
-        runBlocking {
-            for (bad in listOf("../evil.pdf", "/abs/report.pdf", "sub/dir.pdf", "..")) {
-                val r = Json.parseToJsonElement(
-                    provider.execute("save_artifact", """{"title":"T","source_path":"$bad"}""", ctx),
+        val tmp = Files.createTempDirectory("agentx-artifact-test2").toFile()
+        try {
+            val app: Application = mockk(relaxed = true)
+            every { app.filesDir } returns tmp
+            val provider = ArtifactToolProvider(app)
+            val ctx = GenerationContext(agentMode = "build")
+            runBlocking {
+                for (bad in listOf("../evil.pdf", "/abs/report.pdf", "sub/dir.pdf", "..")) {
+                    val r = Json.parseToJsonElement(
+                        provider.execute("save_artifact", """{"title":"T","source_path":"$bad"}""", ctx),
+                    ).jsonObject
+                    assertEquals("bad_source_path", r.getValue("error").jsonPrimitive.content)
+                }
+                val missing = Json.parseToJsonElement(
+                    provider.execute("save_artifact", """{"title":"T","source_path":"ghost.pdf"}""", ctx),
                 ).jsonObject
-                assertEquals("bad_source_path", r.getValue("error").jsonPrimitive.content)
+                assertEquals("source_not_found", missing.getValue("error").jsonPrimitive.content)
             }
-            val missing = Json.parseToJsonElement(
-                provider.execute("save_artifact", """{"title":"T","source_path":"ghost.pdf"}""", ctx),
-            ).jsonObject
-            assertEquals("source_not_found", missing.getValue("error").jsonPrimitive.content)
+        } finally {
+            tmp.deleteRecursively()
         }
     }
 
@@ -235,7 +242,14 @@ class AgentModesTest {
         }
         val answers = res.getValue("answers").jsonArray
         assertEquals(2, answers.size)
-        assertEquals(listOf("OpenAI:b", "OpenAI:c"), asked)
+        // Fan-out is concurrent, so the order the provider is *called* is not
+        // deterministic; both requested models must be asked exactly once, and the
+        // answers array must follow the requested order.
+        assertEquals(setOf("OpenAI:b", "OpenAI:c"), asked.toSet())
+        assertEquals(
+            listOf("OpenAI:b", "OpenAI:c"),
+            answers.map { it.jsonObject.getValue("model").jsonPrimitive.content },
+        )
     }
 
     @Test

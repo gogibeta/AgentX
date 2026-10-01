@@ -229,8 +229,11 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
 
     /** Read a workspace file by display name: app artifacts dir first, then SAF tree. */
     private fun readSourceBytes(fileName: String, ctx: GenerationContext): ByteArray? {
-        val cached = File(app.filesDir, "artifacts/$fileName")
-        if (cached.exists() && cached.isFile) {
+        // Guard the local-file probe: a broken filesDir (or a File double without an
+        // initialized path, as in unit tests) must degrade to "not found" rather than
+        // surfacing as a misleading write_error from the outer catch.
+        val cached = runCatching { File(app.filesDir, "artifacts/$fileName") }.getOrNull()
+        if (cached != null && cached.exists() && cached.isFile) {
             return runCatching { cached.readBytes() }.getOrNull()
         }
         val treeUriString = ArtifactExporter.workspaceTreeUri(ctx.agentWorkspaceUri)
