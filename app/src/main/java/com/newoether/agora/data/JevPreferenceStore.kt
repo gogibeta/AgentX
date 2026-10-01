@@ -41,9 +41,31 @@ private val JEV_API_KEYS_JSON = stringPreferencesKey("jev_api_keys_json")
  * Keys are encrypted at rest via [SecretCrypto]. Key rotation is in-memory
  * round-robin (per process); failover across keys on retry is the caller's job.
  */
+/**
+ * Pluggable encryption for Jev API keys at rest. Production uses [SecretCrypto]
+ * (Android Keystore); tests inject the identity implementation to avoid
+ * Android-only code and JVM-global MockK object mocks.
+ */
+interface JevKeyCrypto {
+    fun encrypt(plaintext: String): String
+    fun decrypt(stored: String): String
+
+    companion object {
+        val Default: JevKeyCrypto = object : JevKeyCrypto {
+            override fun encrypt(plaintext: String) = SecretCrypto.encrypt(plaintext)
+            override fun decrypt(stored: String) = SecretCrypto.decrypt(stored)
+        }
+        val Identity: JevKeyCrypto = object : JevKeyCrypto {
+            override fun encrypt(plaintext: String) = plaintext
+            override fun decrypt(stored: String) = stored
+        }
+    }
+}
+
 class JevPreferenceStore(
     private val store: DataStore<Preferences>,
     private val json: Json,
+    private val crypto: JevKeyCrypto = JevKeyCrypto.Default,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val rotationCursor = AtomicInteger(0)
@@ -62,12 +84,12 @@ class JevPreferenceStore(
 
     /** All configured keys (decrypted). Empty = not configured. */
     val jevApiKeys: StateFlow<List<String>> = store.data
-        .map { decodeJevKeys(it[JEV_API_KEYS_JSON], json) }
+        .map { decodeJevKeys(it[JEV_API_KEYS_JSON], json, crypto) }
         .stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     /** True when the toggle is on AND at least one key is present. */
     val jevConfigured: StateFlow<Boolean> = store.data
-        .map { (it[JEV_ENABLED] ?: false) && decodeJevKeys(it[JEV_API_KEYS_JSON], json).isNotEmpty() }
+        .map { (it[JEV_ENABLED] ?: false) && decodeJevKeys(it[JEV_API_KEYS_JSON], json, crypto).isNotEmpty() }
         .stateIn(scope, SharingStarted.Eagerly, false)
 
     fun setJevEnabled(enabled: Boolean) = scope.launch {
@@ -87,7 +109,7 @@ class JevPreferenceStore(
         val cleaned = keys.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
         store.edit { prefs ->
             if (cleaned.isEmpty()) prefs.remove(JEV_API_KEYS_JSON)
-            else prefs[JEV_API_KEYS_JSON] = SecretCrypto.encrypt(json.encodeToString(cleaned))
+            else prefs[JEV_API_KEYS_JSON] = crypto.encrypt(json.encodeToString(cleaned))
         }
     }
 
@@ -95,17 +117,17 @@ class JevPreferenceStore(
         val trimmed = key.trim()
         if (trimmed.isEmpty()) return@launch
         store.edit { prefs ->
-            val current = decodeJevKeys(prefs[JEV_API_KEYS_JSON], json).toMutableList()
+            val current = decodeJevKeys(prefs[JEV_API_KEYS_JSON], json, crypto).toMutableList()
             if (trimmed !in current) current.add(trimmed)
-            prefs[JEV_API_KEYS_JSON] = SecretCrypto.encrypt(json.encodeToString(current))
+            prefs[JEV_API_KEYS_JSON] = crypto.encrypt(json.encodeToString(current))
         }
     }
 
     fun removeJevApiKey(key: String) = scope.launch {
         store.edit { prefs ->
-            val current = decodeJevKeys(prefs[JEV_API_KEYS_JSON], json).filter { it != key }
+            val current = decodeJevKeys(prefs[JEV_API_KEYS_JSON], json, crypto).filter { it != key }
             if (current.isEmpty()) prefs.remove(JEV_API_KEYS_JSON)
-            else prefs[JEV_API_KEYS_JSON] = SecretCrypto.encrypt(json.encodeToString(current))
+            else prefs[JEV_API_KEYS_JSON] = crypto.encrypt(json.encodeToString(current))
         }
     }
 
@@ -137,10 +159,10 @@ class JevPreferenceStore(
     }
 }
 
-private fun decodeJevKeys(raw: String?, json: Json): List<String> {
+private fun decodeJevKeys(raw: String?, json: Json, crypto: JevKeyCrypto): List<String> {
     if (raw.isNullOrBlank()) return emptyList()
     return try {
-        val decrypted = SecretCrypto.decrypt(raw)
+        val decrypted = crypto.decrypt(raw)
         json.decodeFromString<List<String>>(decrypted)
             .map { it.trim() }
             .filter { it.isNotEmpty() }
