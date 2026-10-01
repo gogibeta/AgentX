@@ -193,8 +193,10 @@ private fun BrowserSettingsContent(
             }
         })
 
-        if (backendMode == BrowserBackendMode.TUNNEL) {
-            SettingsGroup(title = stringResource(R.string.browser_tunnel_group), items = buildList {
+        // The tunnel group is always visible (not only in TUNNEL mode): the mode
+        // dropdown refuses to switch to TUNNEL while the URL is blank, so hiding
+        // the fields behind the mode made the URL impossible to enter.
+        SettingsGroup(title = stringResource(R.string.browser_tunnel_group), items = buildList {
                 add {
                     SettingsIconContent(icon = Icons.Default.Link) {
                         Text(
@@ -280,7 +282,6 @@ private fun BrowserSettingsContent(
                     }
                 }
             })
-        }
 
         SettingsGroup(title = stringResource(R.string.browser_data_group), items = listOf {
             SettingsItem(

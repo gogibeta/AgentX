@@ -621,7 +621,7 @@
     <string name="browser_backend_fallback_note">Tunnel selected but no URL is set \u2014 the local backend is used until you add one.</string>
     <string name="browser_tunnel_group">Tunnel backend</string>
     <string name="browser_tunnel_url">Tunnel URL</string>
-    <string name="browser_tunnel_url_desc">HTTPS URL of your tunnel backend. The app ships with none.</string>
+    <string name="browser_tunnel_url_desc">HTTPS URL of your browser relay Worker (example: https://agentx-browser.&lt;your-subdomain&gt;.workers.dev). Do not paste the social worker URL here \u2014 it belongs under Settings \u2192 Social. The app ships with none.</string>
     <string name="browser_tunnel_url_hint">https://your-tunnel.workers.dev</string>
     <string name="browser_client_token">Client token</string>
     <string name="browser_client_token_desc">Authenticates this app to your tunnel. Stored encrypted on this device; masked here, never logged.</string>
