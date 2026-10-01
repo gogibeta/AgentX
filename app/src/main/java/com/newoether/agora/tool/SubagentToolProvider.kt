@@ -154,6 +154,8 @@ class SubagentToolProvider(
                                 maxTurns = maxTurns,
                                 timeoutMs = timeoutMs,
                                 memorySnapshot = snapshot,
+                                // Subagents inherit the parent's project-folder scope.
+                                projectFolder = ctx.agentProjectFolder,
                             ),
                         )
                     }.getOrElse { error ->

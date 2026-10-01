@@ -233,6 +233,8 @@ class TaskExecutionEngine(
          * and user prompts are disabled (single-writer shared memory, no recursion).
          */
         toolAllowList: Set<String>? = null,
+        /** Project-folder scope inherited from the parent for `delegate_task` child runs. */
+        childProjectFolder: String? = null,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -247,6 +249,7 @@ class TaskExecutionEngine(
                     precondition = precondition,
                     requestKind = requestKind,
                     toolAllowList = toolAllowList,
+                    childProjectFolder = childProjectFolder,
                 )
             }
         }
@@ -289,6 +292,7 @@ class TaskExecutionEngine(
         precondition: suspend () -> Boolean,
         requestKind: String,
         toolAllowList: Set<String>? = null,
+        childProjectFolder: String? = null,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -385,6 +389,8 @@ class TaskExecutionEngine(
                         askUserEnabled = false,
                         accessSavedMemories = false,
                         accessActiveMemory = false,
+                        // Child temp conversations have no persisted folder: inherit the parent's.
+                        agentProjectFolder = childProjectFolder.orEmpty(),
                     )
                 } else base
             }

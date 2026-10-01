@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.tool.takeWorkspaceGrant
+import com.newoether.agora.ui.components.ProjectFolderPickerDialog
 import com.newoether.agora.ui.components.optionClickable
 import com.newoether.agora.util.Constants
 import com.newoether.agora.viewmodel.ChatViewModel
@@ -46,6 +47,23 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     var showModelDialog by remember { mutableStateOf(false) }
     var showEnvDialog by remember { mutableStateOf(false) }
+    // Plan/build needs a project folder per conversation. Settings has no picker of
+    // its own, so when one is chosen here we prompt for the current conversation's
+    // folder (if any); otherwise the chat UI prompts on next use and tools fail
+    // closed until then.
+    val conversationSettingsMap by viewModel.settings.conversationSettings.collectAsState()
+    val currentConversationId by viewModel.currentConversationId.collectAsState()
+    val isNewChatMode by viewModel.isNewChatMode.collectAsState()
+    val settingsOwnerId = currentConversationId.takeUnless { isNewChatMode }
+    var folderPrompt by remember { mutableStateOf<String?>(null) }
+    fun selectAgentMode(key: String) {
+        val existing = settingsOwnerId?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(key) }
+        if ((key == "plan" || key == "build") && existing.isNullOrBlank() && settingsOwnerId != null) {
+            folderPrompt = key
+        } else {
+            viewModel.settings.agentSettings.setAgentMode(key)
+        }
+    }
 
     val workspacePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -83,10 +101,10 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         leadingContent = {
                             RadioButton(
                                 selected = agentMode == key,
-                                onClick = { viewModel.settings.agentSettings.setAgentMode(key) },
+                                onClick = { selectAgentMode(key) },
                             )
                         },
-                        modifier = Modifier.optionClickable { viewModel.settings.agentSettings.setAgentMode(key) },
+                        modifier = Modifier.optionClickable { selectAgentMode(key) },
                     )
                 }
             })
@@ -381,6 +399,25 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     Text(stringResource(R.string.provider_cancel))
                 }
             },
+        )
+    }
+
+    folderPrompt?.let { pendingMode ->
+        ProjectFolderPickerDialog(
+            modeLabel = stringResource(
+                if (pendingMode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+            ),
+            initialFolder = settingsOwnerId
+                ?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(pendingMode) }
+                .orEmpty(),
+            onConfirm = { folder ->
+                viewModel.updateConversationSetting(settingsOwnerId) {
+                    it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (pendingMode to folder))
+                }
+                viewModel.settings.agentSettings.setAgentMode(pendingMode)
+                folderPrompt = null
+            },
+            onDismiss = { folderPrompt = null },
         )
     }
 }

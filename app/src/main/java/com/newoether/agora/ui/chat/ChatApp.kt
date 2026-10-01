@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
+import com.newoether.agora.ui.components.ProjectFolderPickerDialog
 import com.newoether.agora.TopLevelPresentation
 import com.newoether.agora.api.DebugProvider
 import com.newoether.agora.data.forDisplay
@@ -155,6 +156,27 @@ fun ChatApp(
         selectedModel = selectedModel,
         customProviders = customProviders,
     )
+    val conversationSettingsMap by viewModel.settings.conversationSettings.collectAsState()
+    val agentMode by viewModel.settings.agentSettings.agentMode.collectAsState()
+    // Mode awaiting a project folder: set when the user picks plan/build without a
+    // folder yet; the picker dialog confirms before the mode actually changes.
+    var projectFolderPrompt by remember { mutableStateOf<String?>(null) }
+    val activeProjectFolder = conversationControls.settingsOwnerId
+        ?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(agentMode) }
+        .orEmpty()
+    // If the mode was switched in Settings (no conversation there to scope), prompt
+    // once per conversation when entering plan/build without a folder.
+    val folderPromptedKeys = remember { mutableSetOf<String>() }
+    LaunchedEffect(agentMode, activeProjectFolder, conversationControls.settingsOwnerId) {
+        val owner = conversationControls.settingsOwnerId
+        if ((agentMode == "plan" || agentMode == "build") &&
+            activeProjectFolder.isBlank() &&
+            owner != null &&
+            folderPromptedKeys.add("$owner:$agentMode")
+        ) {
+            projectFolderPrompt = agentMode
+        }
+    }
     val contextProjectionKey = rememberContextProjectionInvalidationKey(
         viewModel,
         listOf(
@@ -736,8 +758,19 @@ fun ChatApp(
                         // The model row owns its selection tick. Repeating it here produced the
                         // previous double buzz for one physical tap.
                         onModelSelect = { viewModel.setActiveModel(it) },
-                        agentMode = viewModel.settings.agentSettings.agentMode.collectAsState().value,
-                        onAgentModeChange = { viewModel.settings.agentSettings.setAgentMode(it) },
+                        agentMode = agentMode,
+                        onAgentModeChange = { mode ->
+                            // Plan/build need a project folder first: prompt before switching.
+                            val existing = conversationControls.settingsOwnerId
+                                ?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(mode) }
+                            if ((mode == "plan" || mode == "build") && existing.isNullOrBlank()) {
+                                projectFolderPrompt = mode
+                            } else {
+                                viewModel.settings.agentSettings.setAgentMode(mode)
+                            }
+                        },
+                        projectFolder = activeProjectFolder,
+                        onProjectFolderClick = { projectFolderPrompt = agentMode },
                         onAllMediaClick = { urls, idx -> onMediaClick(urls, idx) },
                         onFileContentClick = { name, content -> viewModel.mediaPreview.showFile(name, content) },
                         modifier = Modifier,
@@ -797,4 +830,25 @@ fun ChatApp(
     )
 
     ChatForkConfirmationHost(pendingForkRequest, viewModel) { pendingForkRequest = null }
+
+    // Project-folder prompt: shown when plan/build is selected without a folder yet,
+    // or when the user taps the active folder chip to change it.
+    projectFolderPrompt?.let { pendingMode ->
+        ProjectFolderPickerDialog(
+            modeLabel = stringResource(
+                if (pendingMode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+            ),
+            initialFolder = conversationControls.settingsOwnerId
+                ?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(pendingMode) }
+                .orEmpty(),
+            onConfirm = { folder ->
+                viewModel.updateConversationSetting(conversationControls.settingsOwnerId) {
+                    it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (pendingMode to folder))
+                }
+                viewModel.settings.agentSettings.setAgentMode(pendingMode)
+                projectFolderPrompt = null
+            },
+            onDismiss = { projectFolderPrompt = null },
+        )
+    }
 }

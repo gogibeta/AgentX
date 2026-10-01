@@ -104,6 +104,13 @@ data class GenerationContext(
     val agentMode: String = "off",
     /** Persisted SAF tree URI for agent artifact output. Empty = unset (cacheDir fallback). */
     val agentWorkspaceUri: String = "",
+    /**
+     * Active agent project-folder scope for this generation: a normalized absolute
+     * sandbox path under /mnt/shared, resolved per conversation and agent mode.
+     * Empty = no scope (chat mode, or scope not yet chosen — tools fail closed).
+     * Local file tools and the shell default workdir are confined to this folder.
+     */
+    val agentProjectFolder: String = "",
     /** Ensemble models "Provider:modelId" in preference order (max 5). Empty = single model. */
     val agentModels: List<String> = emptyList(),
     /** TypeSafe key for Jev decisions (routing/re-rank/guardrails). Empty = Jev disabled. */

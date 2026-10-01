@@ -62,8 +62,16 @@ internal fun effectiveConversationControls(
     val globalShell by viewModel.settings.shellEnabled.collectAsState()
     val maxContextWindow by viewModel.settings.maxContextWindow.collectAsState()
     val modelContextWindows by viewModel.settings.modelContextWindows.collectAsState()
+    val localChatModels by viewModel.settings.localChatModels.collectAsState()
     val selectedProviderName = viewModel.getProviderForModel(selectedModel)
     val isEmbeddedLocalModel = selectedProviderName == Constants.PROVIDER_LOCAL
+    // On-device engine limit: the prompt budget can never exceed the loaded nCtx.
+    val localModelNCtx = if (isEmbeddedLocalModel) {
+        val localModelId = selectedModel.substringAfter("${Constants.PROVIDER_LOCAL}:")
+        localChatModels.find { it.modelId == localModelId }?.nCtx
+    } else {
+        null
+    }
 
     return EffectiveConversationControls(
         settingsOwnerId = settingsOwnerId,
@@ -100,6 +108,7 @@ internal fun effectiveConversationControls(
             modelWindows = modelContextWindows,
             conversationOverride = conversationOverride?.contextWindow,
             globalWindow = maxContextWindow,
+            localModelNCtx = localModelNCtx,
         ),
     )
 }

@@ -85,11 +85,14 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val customModels by viewModel.settings.customModels.collectAsState()
     val customProviders by viewModel.settings.customProviders.collectAsState()
     val modelAliases by viewModel.settings.modelAliases.collectAsState()
+    val modelContextWindows by viewModel.settings.modelContextWindows.collectAsState()
+    val maxContextWindow by viewModel.settings.maxContextWindow.collectAsState()
     val modelProviderNames by viewModel.settings.modelProviderNames.collectAsState()
     val selectedModel by viewModel.settings.selectedModel.collectAsState()
     val isSyncingModels by viewModel.isSyncingModels.collectAsState()
     var showActiveModelDialog by remember { mutableStateOf(false) }
     var showModelAliasDialog by remember { mutableStateOf<String?>(null) }
+    var showModelContextWindowDialog by remember { mutableStateOf<String?>(null) }
     var showCustomModelDialog by remember { mutableStateOf(false) }
     var editingCustomModel by remember { mutableStateOf<String?>(null) }
     var deletingCustomModel by remember { mutableStateOf<String?>(null) }
@@ -97,6 +100,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     var customModelId by rememberSaveable { mutableStateOf("") }
     var customModelAlias by rememberSaveable { mutableStateOf("") }
     var customModelRawAlias by rememberSaveable { mutableStateOf("") }
+    var customModelContextWindow by rememberSaveable { mutableStateOf("") }
     var customModelProviderMenuExpanded by remember { mutableStateOf(false) }
     var modelSearchQuery by rememberSaveable { mutableStateOf("") }
     val expandedProviders = remember { mutableStateMapOf<String, MutableTransitionState<Boolean>>() }
@@ -285,6 +289,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         )
                         customModelId = parsed.modelName
                         customModelRawAlias = modelAliases[model].orEmpty()
+                        customModelContextWindow = modelContextWindows[model]?.toString().orEmpty()
                         customModelAlias = modelAliasDisplayName(
                             model,
                             modelAliases,
@@ -292,6 +297,8 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         )
                         showCustomModelDialog = true
                     },
+                    onContextWindowClick = { showModelContextWindowDialog = it },
+                    modelContextWindows = modelContextWindows,
                     onEnabledChange = { model, enabled ->
                         viewModel.settings.setEnabledModels(
                             if (enabled) enabledModels + model else enabledModels - model
@@ -309,6 +316,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             customModelId = ""
                             customModelAlias = ""
                             customModelRawAlias = ""
+                            customModelContextWindow = ""
                             if (customModelProvider !in providerChoices) {
                                 customModelProvider = providerChoices.firstOrNull().orEmpty()
                             }
@@ -448,6 +456,8 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     modelBlockHeights = modelBlockHeights,
                     onAliasClick = { showModelAliasDialog = it },
                     onDetailsClick = null,
+                    onContextWindowClick = { showModelContextWindowDialog = it },
+                    modelContextWindows = modelContextWindows,
                     onEnabledChange = { model, enabled ->
                         viewModel.settings.setEnabledModels(
                             if (enabled) enabledModels + model else enabledModels - model
@@ -514,166 +524,30 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
 
     // ── Add / edit Custom Model Dialog ──
     if (showCustomModelDialog) {
-        val originalModelId = editingCustomModel
-        val normalizedProvider = customModelProvider.trim()
-        val normalizedModelId = customModelId.trim()
-        val normalizedAlias = customModelAlias.trim()
-        val unchangedDisplayAlias = originalModelId?.let { model ->
-            modelAliasDisplayName(model, modelAliases, customProviders)
-        }.orEmpty()
-        var showProviderName by remember(originalModelId) {
-            mutableStateOf(modelProviderNames[originalModelId] != false)
-        }
-        val aliasToPersist = if (originalModelId != null) {
-            modelAliasToPersist(
-                rawAlias = customModelRawAlias,
-                initialDisplayAlias = unchangedDisplayAlias,
-                editedAlias = customModelAlias,
-            )
-        } else {
-            normalizedAlias
-        }
-        val pendingModelId = if (
-            normalizedProvider.isNotEmpty() &&
-            normalizedModelId.isNotEmpty()
-        ) {
-            ModelId(normalizedProvider, normalizedModelId).prefixed
-        } else {
-            ""
-        }
-        val modelAlreadyExists =
-            pendingModelId in customModels && pendingModelId != originalModelId
-        val canSaveModel = pendingModelId.isNotEmpty() && !modelAlreadyExists
-
-        AlertDialog(
-            modifier = Modifier.clearFocusOnTap(),
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            onDismissRequest = {
+        CustomModelDialog(
+            viewModel = viewModel,
+            originalModelId = editingCustomModel,
+            provider = customModelProvider,
+            onProviderChange = { customModelProvider = it },
+            providerChoices = providerChoices,
+            providerMenuExpanded = customModelProviderMenuExpanded,
+            onProviderMenuExpandedChange = { customModelProviderMenuExpanded = it },
+            modelId = customModelId,
+            onModelIdChange = { customModelId = it },
+            alias = customModelAlias,
+            onAliasChange = { customModelAlias = it },
+            rawAlias = customModelRawAlias,
+            contextWindow = customModelContextWindow,
+            onContextWindowChange = { customModelContextWindow = it },
+            modelAliases = modelAliases,
+            modelProviderNames = modelProviderNames,
+            customProviders = customProviders,
+            customModels = customModels,
+            onDismiss = {
                 customModelProviderMenuExpanded = false
                 showCustomModelDialog = false
             },
-            title = {
-                Text(
-                    stringResource(
-                        if (originalModelId == null) {
-                            R.string.models_add_custom
-                        } else {
-                            R.string.models_edit_custom
-                        }
-                    ),
-                    fontWeight = FontWeight.Bold,
-                )
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    CustomModelProviderPicker(
-                        customModelProvider = customModelProvider,
-                        customModelProviderMenuExpanded = customModelProviderMenuExpanded,
-                        providerChoices = providerChoices,
-                        onExpandedChange = { customModelProviderMenuExpanded = it },
-                        onProviderChange = { customModelProvider = it },
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Box(modifier = Modifier.noOpBringIntoView()) {
-                        OutlinedTextField(
-                            value = customModelId,
-                            onValueChange = { customModelId = it },
-                            singleLine = true,
-                            label = { Text(stringResource(R.string.model_id_label)) },
-                            isError = modelAlreadyExists,
-                            supportingText = if (modelAlreadyExists) {
-                                { Text(stringResource(R.string.models_custom_exists)) }
-                            } else {
-                                null
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Box(modifier = Modifier.noOpBringIntoView()) {
-                        OutlinedTextField(
-                            value = customModelAlias,
-                            onValueChange = { customModelAlias = it },
-                            singleLine = true,
-                            label = { Text(stringResource(R.string.models_alias_hint)) },
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    ModelProviderNameSwitch(showProviderName) { showProviderName = it }
-                }
-            },
-            confirmButton = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (originalModelId != null) {
-                        TextButton(
-                            colors = ButtonDefaults.textButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error,
-                            ),
-                            onClick = {
-                                customModelProviderMenuExpanded = false
-                                showCustomModelDialog = false
-                                deletingCustomModel = originalModelId
-                            },
-                        ) {
-                            Text(stringResource(R.string.delete))
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    TextButton(
-                        onClick = {
-                            customModelProviderMenuExpanded = false
-                            showCustomModelDialog = false
-                        }
-                    ) {
-                        Text(stringResource(R.string.provider_cancel))
-                    }
-
-                    TextButton(
-                        enabled = canSaveModel,
-                        onClick = {
-                            if (originalModelId == null) {
-                                viewModel.settings.addCustomModel(
-                                    provider = normalizedProvider,
-                                    modelName = normalizedModelId,
-                                    alias = aliasToPersist,
-                                    showProviderName = showProviderName,
-                                )
-                            } else {
-                                viewModel.customModelConfiguration.updateModel(
-                                    oldModelId = originalModelId,
-                                    provider = normalizedProvider,
-                                    modelId = normalizedModelId,
-                                    alias = aliasToPersist,
-                                    showProviderName = showProviderName,
-                                )
-                            }
-                            customModelProviderMenuExpanded = false
-                            showCustomModelDialog = false
-                        },
-                    ) {
-                        Text(
-                            stringResource(
-                                if (originalModelId == null) {
-                                    R.string.add
-                                } else {
-                                    R.string.save
-                                }
-                            )
-                        )
-                    }
-                }
-            },
+            onDeleteRequest = { deletingCustomModel = it },
         )
     }
 
@@ -764,9 +638,20 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             dismissButton = { TextButton(onClick = { showModelAliasDialog = null }) { Text(stringResource(R.string.provider_cancel)) } }
         )
     }
+
+    // ── Per-Model Context Window Dialog ──
+    showModelContextWindowDialog?.let { model ->
+        ModelContextWindowDialog(
+            displayName = modelAliasDisplayName(model, modelAliases, customProviders),
+            currentOverride = modelContextWindows[model],
+            globalDefault = maxContextWindow,
+            onSave = { tokens -> viewModel.settings.saveModelContextWindow(model, tokens) },
+            onDismiss = { showModelContextWindowDialog = null },
+        )
+    }
 }
 @Composable
-private fun ModelProviderNameSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+internal fun ModelProviderNameSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     val rippleOutset = 8.dp
     Row(
         modifier = Modifier.fillMaxWidth()

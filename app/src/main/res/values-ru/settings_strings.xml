@@ -135,6 +135,12 @@
     <string name="models_custom_details">Сведения о пользовательской модели</string>
     <string name="models_rename">Переименовать модель</string>
     <string name="models_rename_current">Текущий ID: %1$s</string>
+    <string name="models_context_window">Context window</string>
+    <string name="models_context_window_desc">Per-model token budget. The active window switches automatically with the model.</string>
+    <string name="models_context_window_use_global">Use global default (%1$s)</string>
+    <string name="models_context_window_custom_hint">Custom tokens</string>
+    <string name="models_context_window_effective">Effective: %1$s</string>
+    <string name="models_context_window_blank_hint">Blank = global default</string>
     <string name="models_alias_hint">Псевдоним</string>
     <string name="models_select_default">Выбрать модель по умолчанию</string>
 
@@ -245,6 +251,13 @@
     <string name="agent_mode_build">Agent (Build)</string>
     <string name="agent_mode_build_desc">Full agent: all tools, file reports/PDFs, multi-model answers. Mutations still ask for confirmation.</string>
     <string name="agent_workspace_title">Workspace folder</string>
+    <string name="project_folder_title">Project folder</string>
+    <string name="project_folder_prompt">Pick a project folder for %1$s mode. The agent only reads and writes inside it.</string>
+    <string name="project_folder_hint">Folder name or path inside /mnt/shared</string>
+    <string name="project_folder_invalid">Enter a folder inside /mnt/shared (no .. segments).</string>
+    <string name="project_folder_use_all">Use the whole shared folder</string>
+    <string name="project_folder_confirm">Use this folder</string>
+    <string name="project_folder_active">Project folder</string>
     <string name="agent_workspace_not_set">Not set - tap to pick a folder. Files go to app storage until then.</string>
     <string name="agent_models_title">Ensemble models</string>
     <string name="agent_models_desc">Up to 5 models (in order). ask_models fans out to all of them; the chat model synthesizes.</string>

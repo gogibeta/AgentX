@@ -42,10 +42,18 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     "Use this when the user asks for a file, report, PDF, or document. " +
                     "Markdown supports headings, bold, bullets, numbered lists, tables and " +
                     "`![caption](filename)` images (download them first with fetch_image). " +
+                    "RENDERER LIMITS: format 'pdf' renders Markdown with the app's built-in " +
+                    "renderer (simple layouts only — no embedded HTML/CSS, no complex tables). " +
+                    "There is NO built-in PowerPoint renderer: to deliver a .pptx, build it " +
+                    "yourself in the sandbox with python-pptx (pure Python, no numpy/matplotlib " +
+                    "needed; if pip refuses, use a venv), save it to the shared folder, then " +
+                    "register it with source_path. The same source_path flow works for any " +
+                    "prebuilt file (PDFs from reportlab, spreadsheets, etc.). " +
                     "If you already built the file yourself in the sandbox (e.g. a PDF generated " +
                     "with a Python library and saved to the shared folder), pass its file name as " +
                     "`source_path` instead of `content` and it will be registered as-is. " +
-                    "Files go to the user's Agent workspace folder when set, else app storage.",
+                    "Files go to the user's Agent workspace folder when set, else app storage. " +
+                    "The result reports format, sizeBytes and saved_to so you can confirm delivery.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "title" to ToolProperty("string", "Report title (also used for the file name)."),
@@ -55,8 +63,10 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                         "source_path" to ToolProperty(
                             "string",
                             "Optional file name of an already-built file in the agent workspace " +
-                                "(e.g. 'report.pdf') to register as-is instead of rendering from " +
-                                "content. Use this for PDFs you generated yourself in the sandbox.",
+                                "(e.g. 'report.pdf', 'slides.pptx') to register as-is instead of " +
+                                "rendering from content. Use this for PPTX files you generated " +
+                                "yourself in the sandbox (python-pptx) and for PDFs that need " +
+                                "layouts the built-in renderer cannot do.",
                         ),
                     ),
                     required = listOf("title"),
@@ -149,6 +159,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("sizeBytes", bytes.size)
                     put("saved_to", "workspace")
                     put("uri", docUri)
+                    if (format == "pdf") put("render", "builtin")
                 }.toString()
             }
             val dir = File(app.filesDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
@@ -161,6 +172,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                 put("sizeBytes", bytes.size)
                 put("saved_to", "app storage (pick an Agent workspace folder in Settings to choose where files go)")
                 put("path", File(dir, fileName).absolutePath)
+                if (format == "pdf") put("render", "builtin")
             }.toString()
         } catch (e: Exception) {
             errorJson("write_error", e.message.orEmpty())
@@ -211,6 +223,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("saved_to", "workspace")
                     put("uri", docUri)
                     put("source", "source_path")
+                    put("render", "prebuilt")
                 }.toString()
             } else {
                 buildJsonObject {
@@ -220,6 +233,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("sizeBytes", bytes.size)
                     put("saved_to", "app storage (pick an Agent workspace folder in Settings to choose where files go)")
                     put("source", "source_path")
+                    put("render", "prebuilt")
                 }.toString()
             }
         } catch (e: IllegalArgumentException) {
@@ -282,6 +296,9 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
         "html", "htm" -> "text/html"
         "json" -> "application/json"
         "csv" -> "text/csv"
+        "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else -> "application/octet-stream"
     }
 

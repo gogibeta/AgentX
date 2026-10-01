@@ -121,19 +121,6 @@ internal class SettingsModelPreferenceStore(
         }
     }
 
-    /** Moves a per-model context-window override when a model id is renamed. */
-    suspend fun renameModelContextWindow(oldId: String, newId: String) {
-        if (oldId == newId || oldId.isBlank() || newId.isBlank()) return
-        dataStore.edit { prefs ->
-            val windows = json.decodeFromString<MutableMap<String, Int>>(
-                prefs[MODEL_CONTEXT_WINDOWS_JSON] ?: "{}",
-            )
-            val tokens = windows.remove(oldId) ?: return@edit
-            windows[newId] = tokens
-            prefs[MODEL_CONTEXT_WINDOWS_JSON] = json.encodeToString(windows)
-        }
-    }
-
     /** Removes per-model context-window overrides owned by [providerId], preserving others. */
     suspend fun removeModelContextWindowsForProvider(providerId: String) {
         val prefix = "$providerId:"
@@ -346,6 +333,19 @@ internal class SettingsModelPreferenceStore(
             val previousVisibility = visibility.remove(oldModelId) ?: true
             if (newModelId != null) visibility[newModelId] = showProviderName ?: previousVisibility
             prefs[MODEL_PROVIDER_NAMES_JSON] = json.encodeToString(visibility)
+
+            // Keep per-model context windows following the model id across renames;
+            // a deleted model (newModelId == null) drops its override. Never overwrite an
+            // entry already written under the new id: the edit dialog saves the fresh value
+            // there, and DataStore write order between the two edits is not guaranteed.
+            val windows = json.decodeFromString<MutableMap<String, Int>>(
+                prefs[MODEL_CONTEXT_WINDOWS_JSON] ?: "{}",
+            )
+            val windowTokens = windows.remove(oldModelId)
+            if (windowTokens != null && newModelId != null && newModelId !in windows) {
+                windows[newModelId] = windowTokens
+            }
+            prefs[MODEL_CONTEXT_WINDOWS_JSON] = json.encodeToString(windows)
 
             if (prefs[SELECTED_MODEL] == oldModelId) {
                 prefs[SELECTED_MODEL] =

@@ -300,8 +300,7 @@ class SettingsManager(private val context: Context) {
     suspend fun saveEnabledModels(models: Set<String>) =
         modelPreferenceStore.saveEnabledModels(models)
 
-    suspend fun saveModelAliases(aliases: Map<String, String>) =
-        modelPreferenceStore.saveModelAliases(aliases)
+    suspend fun saveModelAliases(aliases: Map<String, String>) = modelPreferenceStore.saveModelAliases(aliases)
 
     suspend fun updateModelAlias(modelId: String, alias: String, showProviderName: Boolean? = null) =
         modelPreferenceStore.updateModelAlias(modelId, alias, showProviderName)
@@ -314,8 +313,9 @@ class SettingsManager(private val context: Context) {
     suspend fun synchronizeLocalModelAliases(aliases: Map<String, String>) =
         modelPreferenceStore.synchronizeLocalModelAliases(aliases)
 
-    suspend fun removeModelAliasesForProvider(providerId: String) =
-        modelPreferenceStore.removeModelAliasesForProvider(providerId)
+    suspend fun removeModelAliasesForProvider(providerId: String) = modelPreferenceStore.removeModelAliasesForProvider(providerId)
+
+    suspend fun removeModelContextWindowsForProvider(providerId: String) = modelPreferenceStore.removeModelContextWindowsForProvider(providerId)
 
     suspend fun saveApiKeys(keys: List<ApiKeyEntry>) =
         modelPreferenceStore.saveApiKeys(keys)

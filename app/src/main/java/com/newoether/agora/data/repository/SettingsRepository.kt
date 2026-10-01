@@ -507,6 +507,7 @@ class SettingsRepository(
                 enabledModels.value.filter { !it.startsWith("$providerId:") }.toSet(),
             )
             settingsManager.removeModelAliasesForProvider(providerId)
+            settingsManager.removeModelContextWindowsForProvider(providerId)
             settingsManager.saveProviderBaseUrl(name, "")
             settingsManager.saveApiKeys(apiKeys.value.filter { it.provider != name })
             settingsManager.setActiveApiKeyId(name, null)

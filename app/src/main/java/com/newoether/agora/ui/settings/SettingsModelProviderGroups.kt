@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -41,6 +42,7 @@ import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.modelAliasDisplayName
 import com.newoether.agora.data.modelApiDisplayName
 import com.newoether.agora.data.providerDisplayName
+import com.newoether.agora.model.ContextBudget
 import com.newoether.agora.ui.components.clearFocusOnTap
 import com.newoether.agora.ui.components.providerIcon
 import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
@@ -62,6 +64,8 @@ internal fun LazyListScope.modelProviderGroups(
     modelBlockHeights: MutableMap<String, Float>,
     onAliasClick: ((String) -> Unit)?,
     onDetailsClick: ((String) -> Unit)?,
+    onContextWindowClick: ((String) -> Unit)? = null,
+    modelContextWindows: Map<String, Int> = emptyMap(),
     onEnabledChange: (String, Boolean) -> Unit,
 ) {
     groups.forEachIndexed { providerIndex, group ->
@@ -193,9 +197,35 @@ internal fun LazyListScope.modelProviderGroups(
                                     headlineContent = { Text(displayName) },
                                     supportingContent = {
                                         Text(modelApiDisplayName(model, customProviders))
+                                        val windowOverride = modelContextWindows[model]
+                                        if (windowOverride != null && windowOverride > 0) {
+                                            Text(
+                                                stringResource(
+                                                    R.string.models_context_window_effective,
+                                                    ContextBudget.compactLabel(windowOverride),
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
                                     },
                                     trailingContent = {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (onContextWindowClick != null) {
+                                                IconButton(
+                                                    onClick = { onContextWindowClick(model) },
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Tune,
+                                                        contentDescription =
+                                                            stringResource(
+                                                                R.string.models_context_window
+                                                            ),
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                            }
                                             if (onDetailsClick != null) {
                                                 IconButton(
                                                     onClick = { onDetailsClick(model) },

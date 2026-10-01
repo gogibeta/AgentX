@@ -45,6 +45,7 @@ class ChildGenerationRunner(
                         modelId = request.modelId,
                         systemPromptOverride = buildChildSystemPrompt(request),
                         toolAllowList = request.toolAllowList,
+                        childProjectFolder = request.projectFolder,
                         requestKind = "subagent",
                     )
                 }
@@ -69,6 +70,9 @@ class ChildGenerationRunner(
         appendLine("Work autonomously: finish within about ${request.maxTurns} tool rounds.")
         appendLine("You have a limited tool set; use only what you were given.")
         appendLine("Never ask the user anything — there is no user to ask.")
+        if (request.projectFolder.isNotBlank()) {
+            appendLine("PROJECT FOLDER: stay inside ${request.projectFolder}; file tools outside it are rejected.")
+        }
         if (request.memorySnapshot.isNotBlank()) {
             appendLine()
             appendLine("SHARED MEMORY (read-only — you cannot write memory).")
@@ -120,6 +124,8 @@ data class ChildRequest(
     val maxTurns: Int,
     val timeoutMs: Long,
     val memorySnapshot: String = "",
+    /** Project-folder scope inherited from the parent ("" = none). */
+    val projectFolder: String = "",
 )
 
 /** Structured outcome of one child generation. */
