@@ -202,6 +202,23 @@ class ChatViewModel(
     val sandboxManager: SandboxManager? by lazy {
         sandboxFactory?.create()
     }
+
+    /**
+     * True when the project folder still exists inside the sandbox. Checks the
+     * single folder only (never scans the workspace). When the sandbox is
+     * unavailable the check is skipped (returns true); enforcement still fails
+     * closed at tool time, so this never silently widens access.
+     */
+    suspend fun projectFolderExists(folder: String): Boolean {
+        if (folder.isBlank()) return false
+        val manager = sandboxManager ?: return true
+        val quoted = "'" + folder.replace("'", "'\''") + "'"
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                manager.executeCommand("test -d $quoted", timeoutMs = 15000).exitCode == 0
+            }
+        }.getOrDefault(true)
+    }
     val isSandboxFlavor: Boolean = sandboxFactory?.isAvailable() == true
     val mcpServerSnapshots: StateFlow<Map<String, com.newoether.agora.mcp.McpServerSnapshot>>
         get() = mcpRegistry.snapshots

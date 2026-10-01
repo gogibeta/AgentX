@@ -2,7 +2,9 @@ package com.newoether.agora.automation
 
 import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.repository.ConversationRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -46,6 +48,8 @@ class ChildGenerationRunner(
                         systemPromptOverride = buildChildSystemPrompt(request),
                         toolAllowList = request.toolAllowList,
                         childProjectFolder = request.projectFolder,
+                        // Engine-enforced: the tool loop stops at this many rounds.
+                        maxToolRounds = request.maxTurns,
                         requestKind = "subagent",
                     )
                 }
@@ -61,13 +65,19 @@ class ChildGenerationRunner(
                     ChildResult(request.modelId, rawText = "", error = "failure: ${outcome.reason}")
             }
         } finally {
-            runCatching { conversations.deleteConversation(conversationId) }
+            // Cancellation before deletion: stop the child's generation first so
+            // the temp conversation is never deleted out from under an active run.
+            // NonCancellable: deletion must still happen when the parent was cancelled.
+            withContext(NonCancellable) {
+                runCatching { engine.stopChildGeneration(conversationId) }
+                runCatching { conversations.deleteConversation(conversationId) }
+            }
         }
     }
 
     private fun buildChildSystemPrompt(request: ChildRequest): String = buildString {
         appendLine("You are a focused subagent. Do exactly one task, then stop.")
-        appendLine("Work autonomously: finish within about ${request.maxTurns} tool rounds.")
+        appendLine("Work autonomously: the engine stops your tools after ${request.maxTurns} tool rounds, so write your final JSON report before then.")
         appendLine("You have a limited tool set; use only what you were given.")
         appendLine("Never ask the user anything — there is no user to ask.")
         if (request.projectFolder.isNotBlank()) {

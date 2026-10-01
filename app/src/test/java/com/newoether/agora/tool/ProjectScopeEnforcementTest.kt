@@ -95,10 +95,37 @@ class ProjectScopeEnforcementTest {
 
     @Test
     fun `shell workdir defaults to scope on local sandbox`() {
-        assertEquals("/mnt/shared/proj", ProjectScopeEnforcement.scopedLocalWorkdir("", local, ctx("/mnt/shared/proj")))
-        assertEquals("/tmp", ProjectScopeEnforcement.scopedLocalWorkdir("/tmp", local, ctx("/mnt/shared/proj")))
-        // Remote shells keep their own workdir; blank scope keeps legacy behavior.
-        assertEquals("", ProjectScopeEnforcement.scopedLocalWorkdir("", remote, ctx("/mnt/shared/proj")))
-        assertEquals("", ProjectScopeEnforcement.scopedLocalWorkdir("", local, ctx("")))
+        fun workdir(dir: String, ctx: GenerationContext, backend: Backend = local) =
+            ProjectScopeEnforcement.scopedLocalWorkdir("execute_shell_command", dir, backend, ctx) { error(it) }
+        assertEquals("/mnt/shared/proj", workdir("", ctx("/mnt/shared/proj")))
+        assertEquals("/mnt/shared/proj/sub", workdir("/mnt/shared/proj/sub", ctx("/mnt/shared/proj")))
+        // Remote shells keep their own workdir; blank scope in chat mode keeps legacy behavior.
+        assertEquals("", workdir("", ctx("/mnt/shared/proj"), remote))
+        assertEquals("", workdir("", ctx("")))
+        assertEquals("/tmp", workdir("/tmp", ctx("")))
+    }
+
+    @Test
+    fun `shell workdir outside scope is rejected`() {
+        var rejected: String? = null
+        val result = runCatching {
+            ProjectScopeEnforcement.scopedLocalWorkdir(
+                "execute_shell_command", "/tmp", local, ctx("/mnt/shared/proj"),
+            ) { rejected = it; error("rejected") }
+        }
+        assertTrue(result.isFailure)
+        assertTrue(rejected!!.contains("path_outside_project_folder"))
+    }
+
+    @Test
+    fun `shell with blank scope in plan-build mode fails closed`() {
+        var rejected: String? = null
+        val result = runCatching {
+            ProjectScopeEnforcement.scopedLocalWorkdir(
+                "execute_shell_command", "", local, ctx(""),
+            ) { rejected = it; error("rejected") }
+        }
+        assertTrue(result.isFailure)
+        assertTrue(rejected!!.contains("project_folder_not_set"))
     }
 }

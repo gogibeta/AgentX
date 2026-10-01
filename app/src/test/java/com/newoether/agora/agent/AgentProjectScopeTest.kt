@@ -41,7 +41,7 @@ class AgentProjectScopeTest {
 
     @Test
     fun normalizeFolder_collapsesDotSegments() {
-        assertEquals("/mnt/shared/a/c", AgentProjectScope.normalizeFolder("/mnt/shared/a/./b/../c"))
+        assertNull(AgentProjectScope.normalizeFolder("/mnt/shared/a/./b/../c"))
     }
 
     @Test

@@ -219,6 +219,15 @@ class TaskExecutionEngine(
      * default for task executions). Leave null to resolve the prompt the way the
      * foreground chat does (conversation's prompt id, falling back to the active one).
      */
+    /**
+     * Stop any in-flight generation for [conversationId] and wait for it to
+     * settle. ChildGenerationRunner calls this before deleting a child's temp
+     * conversation so deletion never races an active generation.
+     */
+    suspend fun stopChildGeneration(conversationId: String) {
+        generationRegistry.get(conversationId)?.stop()
+    }
+
     suspend fun runOnce(
         conversationId: String,
         userText: String,
@@ -235,6 +244,8 @@ class TaskExecutionEngine(
         toolAllowList: Set<String>? = null,
         /** Project-folder scope inherited from the parent for `delegate_task` child runs. */
         childProjectFolder: String? = null,
+        /** Hard tool-round cap for `delegate_task` child runs (0 = uncapped). */
+        maxToolRounds: Int = 0,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -250,6 +261,7 @@ class TaskExecutionEngine(
                     requestKind = requestKind,
                     toolAllowList = toolAllowList,
                     childProjectFolder = childProjectFolder,
+                    maxToolRounds = maxToolRounds,
                 )
             }
         }
@@ -293,6 +305,7 @@ class TaskExecutionEngine(
         requestKind: String,
         toolAllowList: Set<String>? = null,
         childProjectFolder: String? = null,
+        maxToolRounds: Int = 0,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -391,6 +404,7 @@ class TaskExecutionEngine(
                         accessActiveMemory = false,
                         // Child temp conversations have no persisted folder: inherit the parent's.
                         agentProjectFolder = childProjectFolder.orEmpty(),
+                        maxToolRounds = maxToolRounds,
                     )
                 } else base
             }

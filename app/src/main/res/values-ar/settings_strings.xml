@@ -258,6 +258,8 @@
     <string name="project_folder_use_all">Use the whole shared folder</string>
     <string name="project_folder_confirm">Use this folder</string>
     <string name="project_folder_active">Project folder</string>
+    <string name="project_folder_not_set">Not set</string>
+    <string name="project_folder_change">Change</string>
     <string name="agent_workspace_not_set">Not set - tap to pick a folder. Files go to app storage until then.</string>
     <string name="agent_models_title">Ensemble models</string>
     <string name="agent_models_desc">Up to 5 models (in order). ask_models fans out to all of them; the chat model synthesizes.</string>

@@ -88,8 +88,8 @@ class SubagentToolProvider(
                         ),
                         "max_turns" to ToolProperty(
                             "integer",
-                            "Advisory cap on child tool rounds (default 8). " +
-                                "timeout_ms is the hard bound.",
+                            "Hard cap on child tool rounds, enforced by the engine (default 8). " +
+                                "The child gets no further tool calls past this; timeout_ms is the wall-clock bound.",
                         ),
                         "timeout_ms" to ToolProperty(
                             "integer",
@@ -179,18 +179,23 @@ class SubagentToolProvider(
                 succeeded == 0 -> "error"
                 else -> "partial"
             },
-            detail = mapOf(
-                "children" to results.size.toString(),
-                "succeeded" to succeeded.toString(),
-                "failed" to (results.size - succeeded).toString(),
-                "proposals" to proposals.toString(),
-            ),
+            detail = run {
+                val (accepted, total) = MemoryProposalTracker.counts()
+                mapOf(
+                    "children" to results.size.toString(),
+                    "succeeded" to succeeded.toString(),
+                    "failed" to (results.size - succeeded).toString(),
+                    "proposals" to proposals.toString(),
+                    "proposals_accepted" to accepted.toString(),
+                    "proposals_total" to total.toString(),
+                )
+            },
         )
         buildJsonObject {
             put("type", "delegate_task")
             put("task", task.take(500))
             put("reports", buildJsonArray {
-                results.forEach { result -> add(reportJson(result)) }
+                results.forEachIndexed { index, result -> add(reportJson(result, index)) }
             })
             if (results.none { it.error == null }) put("error", "all_failed")
             // Reflection nudge: the parent decides what becomes a durable lesson.
@@ -199,7 +204,9 @@ class SubagentToolProvider(
             put(
                 "reflection",
                 "Review the reports: promote genuinely reusable findings to memory " +
-                    "with the memory tools; ignore one-off observations.",
+                    "with the memory tools; ignore one-off observations. When you commit " +
+                    "a proposal, mention its proposal_id (e.g. in the memory text) so its " +
+                    "acceptance is tracked.",
             )
         }.toString()
     }
@@ -209,12 +216,30 @@ class SubagentToolProvider(
         put("error", code)
     }.toString()
 
-    private fun reportJson(result: ChildResult): JsonObject = buildJsonObject {
+    private fun reportJson(result: ChildResult, childIndex: Int): JsonObject = buildJsonObject {
         put("model", result.modelId)
         val report = result.report
         if (report != null) {
             (report["findings"] as? JsonArray)?.let { put("findings", it) }
-            (report["memory_proposals"] as? JsonArray)?.let { put("memory_proposals", it) }
+            (report["memory_proposals"] as? JsonArray)?.let { proposals ->
+                // Stable IDs let the parent reference a proposal when committing it
+                // via the memory tools; MemoryProposalTracker records accept/reject.
+                val withIds = buildJsonArray {
+                    proposals.forEachIndexed { index, proposal ->
+                        val id = "prop-${childIndex}-${index}"
+                        MemoryProposalTracker.track(id, proposal.toString().take(500))
+                        if (proposal is JsonObject) {
+                            add(buildJsonObject {
+                                put("proposal_id", id)
+                                proposal.forEach { (k, v) -> put(k, v) }
+                            })
+                        } else {
+                            add(proposal)
+                        }
+                    }
+                }
+                put("memory_proposals", withIds)
+            }
             (report["summary"] as? JsonPrimitive)?.let { put("summary", it.content.take(2000)) }
             // Pass through anything else the child reported without bloating the parent.
             report.filterKeys { it != "findings" && it != "memory_proposals" && it != "summary" }

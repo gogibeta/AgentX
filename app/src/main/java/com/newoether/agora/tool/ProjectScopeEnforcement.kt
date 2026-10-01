@@ -15,9 +15,11 @@ import com.newoether.agora.viewmodel.GenerationContext
  * - An explicit path outside the scope is rejected with `path_outside_project_folder`
  *   (fail closed) instead of being read/scanned.
  * - Chat/off mode (or any blank scope outside plan/build) keeps legacy behavior.
- * - Shell workdirs are only defaulted, never rejected: a shell can `cd` anywhere,
- *   so rejecting the workdir would be theater; the default keeps the agent in
- *   the project folder without thinking about it.
+ * - Shell workdirs follow the same boundary: blank defaults to the scope, an
+ *   explicit workdir outside the scope is rejected, and plan/build with no
+ *   folder rejects. (Shell command *contents* stay native-approval-gated; the
+ *   workdir boundary is separate and not theater — `cd` out of the project is
+ *   still a project-folder violation.)
  *
  * Call sites use the inline form so rejection returns straight out of the tool:
  * `val path = scopedLocalPath("file_read", raw, backend, ctx) { return it }`
@@ -58,10 +60,42 @@ internal object ProjectScopeEnforcement {
         )
     }
 
-    /** Default a blank local shell workdir to the scope; explicit workdirs pass through. */
-    fun scopedLocalWorkdir(workdir: String, backend: Backend, ctx: GenerationContext): String {
-        if (backend.device != null) return workdir
+    /**
+     * Enforce the scope on a local shell workdir: blank defaults to the scope,
+     * an explicit workdir outside the scope is rejected, and plan/build with
+     * no folder fails closed. Remote shells keep their own workdir.
+     */
+    inline fun scopedLocalWorkdir(
+        tool: String,
+        workdir: String,
+        backend: Backend,
+        ctx: GenerationContext,
+        onReject: (String) -> Nothing,
+    ): String {
+        if (backend.device != null) return workdir // Remote shell: unchanged.
         val scope = ctx.agentProjectFolder
-        return if (workdir.isBlank() && scope.isNotBlank()) scope else workdir
+        if (scope.isBlank()) {
+            // Fail closed: plan/build without a project folder cannot run local shell.
+            if (ctx.agentMode == "plan" || ctx.agentMode == "build") {
+                onReject(
+                    jsonError(
+                        tool,
+                        "project_folder_not_set: plan/build mode needs a project folder " +
+                            "before running local shell commands. Ask the user to pick one.",
+                    ),
+                )
+            }
+            return workdir // Chat/off mode: legacy behavior.
+        }
+        if (workdir.isBlank()) return scope
+        if (AgentProjectScope.isPathInScope(workdir, scope)) return workdir
+        onReject(
+            jsonError(
+                tool,
+                "path_outside_project_folder: the shell workdir is outside the active " +
+                    "project folder ($scope). Stay inside the project folder or ask the " +
+                    "user to change it.",
+            ),
+        )
     }
 }

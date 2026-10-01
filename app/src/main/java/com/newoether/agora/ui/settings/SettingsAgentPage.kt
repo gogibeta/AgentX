@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.tool.takeWorkspaceGrant
 import com.newoether.agora.ui.components.ProjectFolderPickerDialog
+import com.newoether.agora.ui.chat.canonicalSettingsOwnerId
 import com.newoether.agora.ui.components.optionClickable
 import com.newoether.agora.util.Constants
 import com.newoether.agora.viewmodel.ChatViewModel
@@ -54,11 +55,13 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val conversationSettingsMap by viewModel.settings.conversationSettings.collectAsState()
     val currentConversationId by viewModel.currentConversationId.collectAsState()
     val isNewChatMode by viewModel.isNewChatMode.collectAsState()
-    val settingsOwnerId = currentConversationId.takeUnless { isNewChatMode }
+    val settingsOwnerId = canonicalSettingsOwnerId(currentConversationId.takeUnless { isNewChatMode })
     var folderPrompt by remember { mutableStateOf<String?>(null) }
+    // Direct folder change (bypasses the mode switch): null until a mode is picked.
+    var folderChangeMode by remember { mutableStateOf<String?>(null) }
     fun selectAgentMode(key: String) {
-        val existing = settingsOwnerId?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(key) }
-        if ((key == "plan" || key == "build") && existing.isNullOrBlank() && settingsOwnerId != null) {
+        val existing = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(key)
+        if ((key == "plan" || key == "build") && existing.isNullOrBlank()) {
             folderPrompt = key
         } else {
             viewModel.settings.agentSettings.setAgentMode(key)
@@ -105,6 +108,38 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             )
                         },
                         modifier = Modifier.optionClickable { selectAgentMode(key) },
+                    )
+                }
+            })
+
+            SettingsGroup(title = stringResource(R.string.project_folder_title), items = listOf("plan", "build").map { mode ->
+                {
+                    val folder = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(mode).orEmpty()
+                    SettingsItem(
+                        headlineContent = {
+                            Text(
+                                stringResource(
+                                    if (mode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+                                ),
+                                fontWeight = FontWeight.Normal,
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                if (folder.isBlank()) stringResource(R.string.project_folder_not_set)
+                                else folder,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        leadingContent = {
+                            Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingContent = {
+                            TextButton(onClick = { folderChangeMode = mode }) {
+                                Text(stringResource(R.string.project_folder_change))
+                            }
+                        },
+                        modifier = Modifier.optionClickable { folderChangeMode = mode },
                     )
                 }
             })
@@ -407,9 +442,7 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             modeLabel = stringResource(
                 if (pendingMode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
             ),
-            initialFolder = settingsOwnerId
-                ?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(pendingMode) }
-                .orEmpty(),
+            initialFolder = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(pendingMode).orEmpty(),
             onConfirm = { folder ->
                 viewModel.updateConversationSetting(settingsOwnerId) {
                     it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (pendingMode to folder))
@@ -418,6 +451,23 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 folderPrompt = null
             },
             onDismiss = { folderPrompt = null },
+        )
+    }
+
+    // Direct folder change: updates the stored folder without switching modes.
+    folderChangeMode?.let { changeMode ->
+        ProjectFolderPickerDialog(
+            modeLabel = stringResource(
+                if (changeMode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+            ),
+            initialFolder = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(changeMode).orEmpty(),
+            onConfirm = { folder ->
+                viewModel.updateConversationSetting(settingsOwnerId) {
+                    it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (changeMode to folder))
+                }
+                folderChangeMode = null
+            },
+            onDismiss = { folderChangeMode = null },
         )
     }
 }

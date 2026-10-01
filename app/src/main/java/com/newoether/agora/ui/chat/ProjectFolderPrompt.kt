@@ -13,6 +13,7 @@ import com.newoether.agora.R
 import com.newoether.agora.data.ConversationSettings
 import com.newoether.agora.ui.components.ProjectFolderPickerDialog
 import com.newoether.agora.viewmodel.ChatViewModel
+import com.newoether.agora.viewmodel.NEW_CHAT_WORKSPACE_ID
 
 /**
  * Project-folder scoping glue for the chat screen. Extracted from ChatApp to
@@ -20,29 +21,33 @@ import com.newoether.agora.viewmodel.ChatViewModel
  *
  * When the user picks plan/build mode they must first choose a project folder
  * for the current conversation; the mode only switches after confirmation.
+ *
+ * The settings owner is canonicalized once: a null conversation (new chat)
+ * reads and writes through [NEW_CHAT_WORKSPACE_ID], matching
+ * [ChatViewModel.updateConversationSetting].
  */
+fun canonicalSettingsOwnerId(settingsOwnerId: String?): String =
+    settingsOwnerId ?: NEW_CHAT_WORKSPACE_ID
 
-/** Active project folder for [agentMode] in [settingsOwnerId], or "" when none. */
+/** Active project folder for [agentMode] in [ownerId], or "" when none. */
 fun activeProjectFolderFor(
     conversationSettingsMap: Map<String, ConversationSettings>,
-    settingsOwnerId: String?,
+    ownerId: String,
     agentMode: String,
-): String = settingsOwnerId
-    ?.let { conversationSettingsMap[it]?.agentProjectFolders?.get(agentMode) }
-    .orEmpty()
+): String =
+    conversationSettingsMap[ownerId]?.agentProjectFolders?.get(agentMode).orEmpty()
 
 /**
  * Returns the mode to prompt a folder for, or null when selecting [mode] can
- * switch immediately (not plan/build, no conversation, or a folder is set).
+ * switch immediately (not plan/build, or a folder is already set).
  */
 fun pendingFolderPrompt(
     mode: String,
-    settingsOwnerId: String?,
+    ownerId: String,
     conversationSettingsMap: Map<String, ConversationSettings>,
 ): String? {
     if (mode != "plan" && mode != "build") return null
-    if (settingsOwnerId == null) return null
-    val existing = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(mode)
+    val existing = conversationSettingsMap[ownerId]?.agentProjectFolders?.get(mode)
     return if (existing.isNullOrBlank()) mode else null
 }
 
@@ -70,18 +75,37 @@ fun rememberProjectFolderScope(
 ): ProjectFolderScope {
     val agentMode by viewModel.settings.agentSettings.agentMode.collectAsState()
     val conversationSettingsMap by viewModel.settings.conversationSettings.collectAsState()
+    // Canonical owner: new chat reads/writes through NEW_CHAT_WORKSPACE_ID.
+    val ownerId = canonicalSettingsOwnerId(settingsOwnerId)
     var promptMode by remember { mutableStateOf<String?>(null) }
-    val activeFolder = activeProjectFolderFor(conversationSettingsMap, settingsOwnerId, agentMode)
+    val activeFolder = activeProjectFolderFor(conversationSettingsMap, ownerId, agentMode)
 
     val promptedKeys = remember { mutableSetOf<String>() }
-    LaunchedEffect(agentMode, activeFolder, settingsOwnerId) {
-        val owner = settingsOwnerId
+    LaunchedEffect(agentMode, activeFolder, ownerId) {
         if ((agentMode == "plan" || agentMode == "build") &&
             activeFolder.isBlank() &&
-            owner != null &&
-            promptedKeys.add("$owner:$agentMode")
+            promptedKeys.add("$ownerId:$agentMode")
         ) {
             promptMode = agentMode
+        }
+    }
+
+    // A stored folder can be deleted or renamed outside the app. Verify the
+    // single folder (never scan the workspace); when it is gone, clear it and
+    // re-prompt instead of failing silently or falling back to wider access.
+    val existenceChecked = remember { mutableSetOf<String>() }
+    LaunchedEffect(agentMode, activeFolder, ownerId) {
+        val folder = activeFolder
+        val checkKey = "$ownerId:$agentMode:$folder"
+        if ((agentMode == "plan" || agentMode == "build") &&
+            folder.isNotBlank() &&
+            existenceChecked.add(checkKey) &&
+            !viewModel.projectFolderExists(folder)
+        ) {
+            viewModel.updateConversationSetting(ownerId) {
+                it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (agentMode to ""))
+            }
+            promptedKeys.remove("$ownerId:$agentMode")
         }
     }
 
@@ -90,9 +114,9 @@ fun rememberProjectFolderScope(
             modeLabel = stringResource(
                 if (mode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
             ),
-            initialFolder = activeProjectFolderFor(conversationSettingsMap, settingsOwnerId, mode),
+            initialFolder = activeProjectFolderFor(conversationSettingsMap, ownerId, mode),
             onConfirm = { folder ->
-                viewModel.updateConversationSetting(settingsOwnerId) {
+                viewModel.updateConversationSetting(ownerId) {
                     it.copy(
                         agentProjectFolders = it.agentProjectFolders.orEmpty() + (mode to folder),
                     )
@@ -104,12 +128,12 @@ fun rememberProjectFolderScope(
         )
     }
 
-    return remember(activeFolder, agentMode, settingsOwnerId, conversationSettingsMap) {
+    return remember(activeFolder, agentMode, ownerId, conversationSettingsMap) {
         ProjectFolderScope(
             activeFolder = activeFolder,
             agentMode = agentMode,
             requestModeChange = { mode ->
-                val pending = pendingFolderPrompt(mode, settingsOwnerId, conversationSettingsMap)
+                val pending = pendingFolderPrompt(mode, ownerId, conversationSettingsMap)
                 if (pending != null) {
                     promptMode = pending
                 } else {

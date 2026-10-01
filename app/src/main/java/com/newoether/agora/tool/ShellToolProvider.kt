@@ -283,7 +283,10 @@ class ShellToolProvider(
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("execute_shell_command", serverNotFoundMessage(serverName, ctx))
         // Local sandbox: a blank workdir starts in the project folder, never /home/agora.
-        val workdir = ProjectScopeEnforcement.scopedLocalWorkdir(rawWorkdir, backend, ctx)
+        // An explicit workdir outside the project folder is rejected (fail closed).
+        val workdir = ProjectScopeEnforcement.scopedLocalWorkdir(
+            "execute_shell_command", rawWorkdir, backend, ctx,
+        ) { return it }
         return try {
             // Gate on the backend's ACTUAL target: with a blank server name the sandbox wins
             // resolution, while resolveShellDevice() would name an unrelated remote device.

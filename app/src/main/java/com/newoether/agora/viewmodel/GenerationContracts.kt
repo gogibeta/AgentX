@@ -137,6 +137,13 @@ data class GenerationContext(
      */
     val toolAllowList: Set<String>? = null,
     /**
+     * Hard cap on tool rounds for this generation (0 = uncapped). Set for
+     * `delegate_task` child runs from their `max_turns`; the engine stops the
+     * tool loop when the cap is reached instead of trusting the model's
+     * cooperation.
+     */
+    val maxToolRounds: Int = 0,
+    /**
      * v2.4 auto-compact: after every [autoCompactIntervalTurns] tool turns the engine
      * asks Jev to drop low-value tool outputs from the model projection.
      * Room history is never touched; only active when Jev is enabled/configured.

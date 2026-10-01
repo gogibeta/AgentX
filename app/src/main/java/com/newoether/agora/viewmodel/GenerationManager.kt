@@ -542,6 +542,15 @@ class GenerationManager(
 
             while (toolCallDataList.isNotEmpty() && output.currentStatus != MessageStatus.ERROR && currentCoroutineContext().isActive) {
                 toolRound++
+                if (ctx.maxToolRounds > 0 && toolRound > ctx.maxToolRounds) {
+                    // Engine-enforced max_turns (delegate_task child runs): stop the
+                    // tool loop instead of trusting the model to stop itself. The
+                    // pending calls were never persisted; finalization below ends
+                    // the turn from the text produced so far.
+                    toolCallDataList = emptyList()
+                    toolCallData = null
+                    break
+                }
                 val roundToolList = roundToolSegments.toList()
                 roundToolSegments.clear()
                 val thoughtSegs = toolRoundThoughtSegments(
