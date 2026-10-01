@@ -118,29 +118,39 @@ internal class GenerationToolExecutor private constructor(
     }
 
     override fun definitions(context: GenerationContext): List<ToolDefinition> =
-        providers.flatMap { it.definitions(context) }
+        context.applyToolAllowList(providers.flatMap { it.definitions(context) })
 
     fun imageDefinitions(context: GenerationContext): List<ToolDefinition> =
-        imageGenProvider?.definitions(context).orEmpty()
+        context.applyToolAllowList(imageGenProvider?.definitions(context).orEmpty())
 
     fun memoryDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<MemoryToolProvider>().flatMap { it.definitions(context) }
+        context.applyToolAllowList(
+            providers.filterIsInstance<MemoryToolProvider>().flatMap { it.definitions(context) },
+        )
 
     fun webSearchDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<WebSearchToolProvider>().flatMap { it.definitions(context) }
+        context.applyToolAllowList(
+            providers.filterIsInstance<WebSearchToolProvider>().flatMap { it.definitions(context) },
+        )
 
     fun ragDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<RagToolProvider>().flatMap { it.definitions(context) }
+        context.applyToolAllowList(
+            providers.filterIsInstance<RagToolProvider>().flatMap { it.definitions(context) },
+        )
 
     fun shellDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<ShellToolProvider>()
-            .flatMap { it.definitions(context) }
-            .filter { it.function.name !in FILE_TOOL_NAMES }
+        context.applyToolAllowList(
+            providers.filterIsInstance<ShellToolProvider>()
+                .flatMap { it.definitions(context) }
+                .filter { it.function.name !in FILE_TOOL_NAMES },
+        )
 
     fun fileDefinitions(context: GenerationContext): List<ToolDefinition> =
-        providers.filterIsInstance<ShellToolProvider>()
-            .flatMap { it.definitions(context) }
-            .filter { it.function.name in FILE_TOOL_NAMES }
+        context.applyToolAllowList(
+            providers.filterIsInstance<ShellToolProvider>()
+                .flatMap { it.definitions(context) }
+                .filter { it.function.name in FILE_TOOL_NAMES },
+        )
 
     override fun presentationMetadata(name: String): ToolPresentationMetadata? {
         if (name.isBlank()) return null
@@ -374,4 +384,18 @@ internal fun finalToolState(result: String): String {
             )
     return if (isBackground) ToolExecutionStates.BACKGROUND_RUNNING
     else ToolExecutionStates.SUCCEEDED
+}
+
+/**
+ * Central allow-list enforcement for restricted child runs (`delegate_task`
+ * subagents, v2.4). When [GenerationContext.toolAllowList] is set, only tools
+ * whose function name is in the set are offered to the model. Every definition
+ * flow passes through here, so a child can never reach a tool outside its
+ * allow-list regardless of which provider or request path supplies it.
+ */
+internal fun GenerationContext.applyToolAllowList(
+    definitions: List<ToolDefinition>,
+): List<ToolDefinition> {
+    val allow = toolAllowList ?: return definitions
+    return definitions.filter { it.function.name in allow }
 }

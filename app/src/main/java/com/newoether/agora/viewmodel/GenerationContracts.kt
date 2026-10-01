@@ -123,6 +123,12 @@ data class GenerationContext(
     val appVersion: String = "?",
     /** Agent environment variables (name -> secret), exported into shell commands. */
     val agentEnv: Map<String, String> = emptyMap(),
+    /**
+     * Restricted tool allow-list for child runs (`delegate_task` subagents).
+     * Null = no restriction. Enforced centrally in [GenerationToolExecutor]:
+     * only tools whose function name is in this set are offered to the model.
+     */
+    val toolAllowList: Set<String>? = null,
 )
 
 /** Frozen automatic-Compact policy and provider access captured with one generation. */

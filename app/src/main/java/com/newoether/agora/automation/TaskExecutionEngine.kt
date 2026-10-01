@@ -227,6 +227,12 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean = false,
         precondition: suspend () -> Boolean = { true },
         requestKind: String = "task",
+        /**
+         * Restricted tool allow-list for `delegate_task` child runs. Non-null marks
+         * this run as a child: tools are filtered centrally, memory tools are hidden,
+         * and user prompts are disabled (single-writer shared memory, no recursion).
+         */
+        toolAllowList: Set<String>? = null,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -240,6 +246,7 @@ class TaskExecutionEngine(
                     foregroundServiceManagedExternally = foregroundServiceManagedExternally,
                     precondition = precondition,
                     requestKind = requestKind,
+                    toolAllowList = toolAllowList,
                 )
             }
         }
@@ -281,6 +288,7 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean,
         precondition: suspend () -> Boolean,
         requestKind: String,
+        toolAllowList: Set<String>? = null,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -367,7 +375,19 @@ class TaskExecutionEngine(
                 // not recursively create more tasks/loops without a user in the loop.
                 automationToolsEnabled = false,
                 foregroundServiceManagedExternally = foregroundServiceManagedExternally,
-            )
+            ).let { base ->
+                // Child runs (delegate_task subagents): restricted tool set, no memory
+                // writes, no user prompts. The child returns memory *proposals*; only the
+                // parent commits them via the ordinary memory tools (single writer).
+                if (toolAllowList != null) {
+                    base.copy(
+                        toolAllowList = toolAllowList,
+                        askUserEnabled = false,
+                        accessSavedMemories = false,
+                        accessActiveMemory = false,
+                    )
+                } else base
+            }
             val generationSnapshot = captured.copy(
                 context = taskContext,
                 automaticCompact = captured.automaticCompact.copy(
