@@ -177,8 +177,8 @@ class SubagentToolProviderTest {
     fun toolAllowList_filtersDefinitionsCentrally() {
         val fakeProvider = object : ToolProvider {
             override fun definitions(ctx: GenerationContext): List<ToolDefinition> = listOf(
-                ToolDefinition(ToolFunction("file_read", "read", ToolParameters(emptyMap()))),
-                ToolDefinition(ToolFunction("execute_shell_command", "shell", ToolParameters(emptyMap()))),
+                ToolDefinition(function = ToolFunction("file_read", "read", ToolParameters(properties = emptyMap()))),
+                ToolDefinition(function = ToolFunction("execute_shell_command", "shell", ToolParameters(properties = emptyMap()))),
             )
 
             override suspend fun execute(name: String, arguments: String, ctx: GenerationContext) = "{}"
