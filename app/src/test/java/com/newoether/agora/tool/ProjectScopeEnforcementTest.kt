@@ -1,7 +1,9 @@
 package com.newoether.agora.tool
 
 import com.newoether.agora.data.ShellDeviceConfig
+import com.newoether.agora.sandbox.SandboxManager
 import com.newoether.agora.viewmodel.GenerationContext
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,24 +11,11 @@ import org.junit.Test
 /** Tests for agent project-folder scope enforcement on local-sandbox file tools. */
 class ProjectScopeEnforcementTest {
 
-    private fun fakeBackend(device: ShellDeviceConfig?): Backend = object : Backend {
-        override val device: ShellDeviceConfig? = device
-        override suspend fun executeCommand(cmd: String, workdir: String, timeoutMs: Int): String = TODO()
-        override suspend fun fileRead(path: String, offset: Long, limit: Long): ShellFileReadResult = TODO()
-        override suspend fun fileWrite(path: String, content: String): String? = TODO()
-        override suspend fun fileEdit(
-            path: String, oldString: String, newString: String, replaceAll: Boolean,
-        ): ShellFileEditResult = TODO()
-        override suspend fun fileGlob(
-            pattern: String, basePath: String, depth: Int?,
-        ): Result<Pair<List<String>, Boolean>> = TODO()
-        override suspend fun fileGrep(
-            pattern: String, basePath: String, fileGlob: String,
-        ): Result<Pair<List<String>, Boolean>> = TODO()
-    }
-
-    private val local = fakeBackend(null)
-    private val remote = fakeBackend(ShellDeviceConfig(name = "s1", serverUrl = "http://a"))
+    // Backend is a sealed interface: use the real local/remote implementations
+    // instead of an anonymous object. Neither is exercised beyond `device`.
+    private val local: Backend = SandboxBackend(mockk<SandboxManager>())
+    private val remote: Backend =
+        ConchBackend(ShellDeviceConfig(name = "s1", serverUrl = "http://a"))
     private fun ctx(folder: String) = GenerationContext(agentMode = "build", agentProjectFolder = folder)
 
     @Test
