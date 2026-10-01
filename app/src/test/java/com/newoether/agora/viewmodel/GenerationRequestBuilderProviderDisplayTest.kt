@@ -217,6 +217,7 @@ class GenerationRequestBuilderProviderDisplayTest {
             )
         )
         every { settings.maxContextWindow } returns MutableStateFlow(128_000)
+        every { settings.modelContextWindows } returns MutableStateFlow(emptyMap())
         every { settings.defaultTemperature } returns MutableStateFlow(null)
         every { settings.defaultMaxTokens } returns MutableStateFlow(null)
         every { settings.defaultTopP } returns MutableStateFlow(null)
