@@ -219,11 +219,7 @@ class TaskExecutionEngine(
      * default for task executions). Leave null to resolve the prompt the way the
      * foreground chat does (conversation's prompt id, falling back to the active one).
      */
-    /**
-     * Stop any in-flight generation for [conversationId] and wait for it to
-     * settle. ChildGenerationRunner calls this before deleting a child's temp
-     * conversation so deletion never races an active generation.
-     */
+    /** Stop any in-flight generation for [conversationId] before its temp conversation is deleted. */
     suspend fun stopChildGeneration(conversationId: String) {
         generationRegistry.get(conversationId)?.stop()
     }
@@ -393,19 +389,8 @@ class TaskExecutionEngine(
                 automationToolsEnabled = false,
                 foregroundServiceManagedExternally = foregroundServiceManagedExternally,
             ).let { base ->
-                // Child runs (delegate_task subagents): restricted tool set, no memory
-                // writes, no user prompts. The child returns memory *proposals*; only the
-                // parent commits them via the ordinary memory tools (single writer).
                 if (toolAllowList != null) {
-                    base.copy(
-                        toolAllowList = toolAllowList,
-                        askUserEnabled = false,
-                        accessSavedMemories = false,
-                        accessActiveMemory = false,
-                        // Child temp conversations have no persisted folder: inherit the parent's.
-                        agentProjectFolder = childProjectFolder.orEmpty(),
-                        maxToolRounds = maxToolRounds,
-                    )
+                    base.forChildRun(toolAllowList, childProjectFolder, maxToolRounds)
                 } else base
             }
             val generationSnapshot = captured.copy(
