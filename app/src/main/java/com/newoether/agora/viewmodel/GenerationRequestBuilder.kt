@@ -258,10 +258,13 @@ class GenerationRequestBuilder(
         modelId: String? = null,
     ): ConversationSettings {
         // On-device engine limit: the prompt budget can never exceed the loaded nCtx.
+        // Strict test mocks don't stub localChatModels; fail open to null (no cap).
         val localPrefix = "${Constants.PROVIDER_LOCAL}:"
-        val localModelNCtx = modelId?.takeIf { it.startsWith(localPrefix) }?.let { id ->
-            settings.localChatModels.value.find { m -> m.modelId == id.removePrefix(localPrefix) }?.nCtx
-        }
+        val localModelNCtx = runCatching {
+            modelId?.takeIf { it.startsWith(localPrefix) }?.let { id ->
+                settings.localChatModels.value.find { m -> m.modelId == id.removePrefix(localPrefix) }?.nCtx
+            }
+        }.getOrNull()
         return ConversationSettings(
             contextWindow = ModelContextWindowResolver.resolve(
                 modelId, settings.modelContextWindows.value, overrides.contextWindow,

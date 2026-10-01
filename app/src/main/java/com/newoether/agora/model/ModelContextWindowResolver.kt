@@ -27,8 +27,11 @@ object ModelContextWindowResolver {
                 ContextBudget.normalize(globalWindow)
             }
         }
+        // Local nCtx is a hard device cap (what the model was loaded with), not a
+        // UI budget: apply it raw so a small on-device context isn't inflated to
+        // MIN_TOKENS, and a generous one never inflates the resolved budget.
         return if (localModelNCtx != null && localModelNCtx > 0) {
-            minOf(resolved, ContextBudget.normalize(localModelNCtx))
+            minOf(resolved, localModelNCtx)
         } else {
             resolved
         }

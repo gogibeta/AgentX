@@ -27,18 +27,34 @@ object AgentProjectScope {
      * Normalize a user-supplied project folder to an absolute sandbox path.
      * Accepts absolute paths under [WORKSPACE_ROOT] or bare relative names
      * (resolved under [WORKSPACE_ROOT]). Returns null when the input is blank,
-     * escapes the workspace root (`..` traversal), or is otherwise invalid.
+     * escapes the workspace root via `..`, resolves to the workspace root
+     * itself through traversal (whole-workspace access needs the explicit
+     * opt-in, not a smuggled path), or is otherwise invalid.
      */
     fun normalizeFolder(input: String): String? {
         val trimmed = input.trim().replace('\\', '/')
         if (trimmed.isBlank()) return null
-        // Reject traversal segments outright: a folder picker never produces them, and
-        // "../shared" must not silently become whole-workspace access — that is an
-        // explicit user choice, not something a path string can smuggle in.
-        if (trimmed.split('/').any { it == ".." }) return null
         val absolute = if (trimmed.startsWith("/")) trimmed else "$WORKSPACE_ROOT/$trimmed"
-        val normalized = normalizePath(absolute) ?: return null
+        val rootDepth = WORKSPACE_ROOT.split('/').count { it.isNotEmpty() }
+        val segments = ArrayDeque<String>()
+        var sawDotDot = false
+        for (segment in absolute.split('/')) {
+            when {
+                segment.isEmpty() || segment == "." -> Unit
+                segment == ".." -> {
+                    sawDotDot = true
+                    // A ".." that would pop above the workspace root escapes it.
+                    if (segments.size <= rootDepth) return null
+                    segments.removeLast()
+                }
+                else -> segments.add(segment)
+            }
+        }
+        val normalized = "/" + segments.joinToString("/")
         if (normalized != WORKSPACE_ROOT && !normalized.startsWith("$WORKSPACE_ROOT/")) return null
+        // Traversal landing exactly on the root is whole-workspace access wearing
+        // a subfolder's clothes: reject it, the explicit opt-in exists for that.
+        if (sawDotDot && normalized == WORKSPACE_ROOT) return null
         return normalized
     }
 
