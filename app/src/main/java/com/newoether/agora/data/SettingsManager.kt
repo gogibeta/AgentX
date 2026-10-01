@@ -53,6 +53,7 @@ class SettingsManager(private val context: Context) {
     val customModels: Flow<Set<String>> = modelPreferenceStore.customModels
     val enabledModels: Flow<Set<String>> = modelPreferenceStore.enabledModels
     val modelAliases: Flow<Map<String, String>> = modelPreferenceStore.modelAliases
+    val modelContextWindows: Flow<Map<String, Int>> = modelPreferenceStore.modelContextWindows
     val modelProviderNames: Flow<Map<String, Boolean>> = modelPreferenceStore.modelProviderNames
     val apiKeys: Flow<List<ApiKeyEntry>> = modelPreferenceStore.apiKeys
     val activeApiKeyIds: Flow<Map<String, String>> = modelPreferenceStore.activeApiKeyIds
@@ -304,6 +305,9 @@ class SettingsManager(private val context: Context) {
 
     suspend fun updateModelAlias(modelId: String, alias: String, showProviderName: Boolean? = null) =
         modelPreferenceStore.updateModelAlias(modelId, alias, showProviderName)
+
+    suspend fun saveModelContextWindow(modelId: String, tokens: Int?) =
+        modelPreferenceStore.saveModelContextWindow(modelId, tokens)
 
     suspend fun saveModelProviderNames(values: Map<String, Boolean>, replace: Boolean = true) =
         modelPreferenceStore.saveModelProviderNames(values, replace)

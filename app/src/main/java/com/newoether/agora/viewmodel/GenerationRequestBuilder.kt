@@ -23,6 +23,7 @@ import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.model.ModelId
 import com.newoether.agora.model.ModelThinkingCapabilities
 import com.newoether.agora.model.ContextBudget
+import com.newoether.agora.model.ModelContextWindowResolver
 import com.newoether.agora.model.OpenAiServiceTiers
 import com.newoether.agora.model.apiModelName
 import com.newoether.agora.util.Constants
@@ -248,17 +249,21 @@ class GenerationRequestBuilder(
         return providerRegistry.getEffectiveBaseUrl(providerRegistry.providerForModel(model)) ?: ""
     }
 
-    fun buildEffectiveConversationSettings(conversationId: String): ConversationSettings {
+    fun buildEffectiveConversationSettings(conversationId: String, modelId: String? = null): ConversationSettings {
         val overrides = settings.conversationSettings.value[conversationId]
             ?: ConversationSettings()
-        return resolveEffectiveConversationSettings(overrides)
+        return resolveEffectiveConversationSettings(overrides, modelId = modelId)
     }
     private fun resolveEffectiveConversationSettings(
         overrides: ConversationSettings,
+        modelId: String? = null,
     ): ConversationSettings {
         return ConversationSettings(
-            contextWindow = ContextBudget.normalize(
-                overrides.contextWindow ?: settings.maxContextWindow.value
+            contextWindow = ModelContextWindowResolver.resolve(
+                canonicalModelId = modelId,
+                modelWindows = settings.modelContextWindows.value,
+                conversationOverride = overrides.contextWindow,
+                globalWindow = settings.maxContextWindow.value,
             ),
             temperature = overrides.temperature ?: settings.defaultTemperature.value,
             maxTokens = overrides.maxTokens ?: settings.defaultMaxTokens.value,
@@ -305,9 +310,10 @@ class GenerationRequestBuilder(
         val effectiveSettings = if (conversationOverride != null) {
             resolveEffectiveConversationSettings(
                 conversationSettingsOverride ?: ConversationSettings(),
+                modelId = selectedModelId,
             )
         } else {
-            buildEffectiveConversationSettings(conversationId)
+            buildEffectiveConversationSettings(conversationId, selectedModelId)
         }
         val frozenKey = settings.awaitActiveKey(providerName).orEmpty()
         check(providerRegistry.isConfigured(providerName, frozenKey)) {
@@ -456,8 +462,8 @@ class GenerationRequestBuilder(
         val selectedModelId = providerRegistry.canonicalModelId(modelId)
         val providerName = providerRegistry.providerForModel(selectedModelId)
         val effectiveSettings = conversationSettingsOverride
-            ?.let(::resolveEffectiveConversationSettings)
-            ?: buildEffectiveConversationSettings(conversationId)
+            ?.let { resolveEffectiveConversationSettings(it, modelId = selectedModelId) }
+            ?: buildEffectiveConversationSettings(conversationId, selectedModelId)
         val (baseConfig, context) = buildGenerationPair(
             providerName = providerName,
             modelId = selectedModelId,
@@ -550,9 +556,8 @@ class GenerationRequestBuilder(
                 )
             }.getOrDefault(emptyList()),
             effectiveSystemPrompt = resolvedSystemPrompt,
-            maxContextWindow = ContextBudget.normalize(
-                effectiveSettings.contextWindow ?: settings.maxContextWindow.value
-            ),
+            maxContextWindow = effectiveSettings.contextWindow
+                ?: ContextBudget.normalize(settings.maxContextWindow.value),
             codeExecutionEnabled = if (lowContextModeEnabled) false
             else effectiveSettings.codeExecutionEnabled ?: settings.codeExecutionEnabled.value,
             googleSearchEnabled = if (lowContextModeEnabled) false

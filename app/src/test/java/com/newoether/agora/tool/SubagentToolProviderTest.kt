@@ -61,7 +61,8 @@ class SubagentToolProviderTest {
 
     @Test
     fun delegateTask_modelsParam_overridesPreset_runsConcurrently() {
-        val captured = mutableListOf<ChildRequest>()
+        // Thread-safe: children run concurrently and each appends its request.
+        val captured = java.util.concurrent.CopyOnWriteArrayList<ChildRequest>()
         val p = provider(
             onChild = { req ->
                 captured.add(req)

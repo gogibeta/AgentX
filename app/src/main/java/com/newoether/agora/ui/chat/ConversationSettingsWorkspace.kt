@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import com.newoether.agora.data.ConversationSettings
 import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.model.ContextBudget
+import com.newoether.agora.model.ModelContextWindowResolver
 import com.newoether.agora.util.Constants
 import com.newoether.agora.viewmodel.ChatViewModel
 
@@ -60,6 +61,7 @@ internal fun effectiveConversationControls(
     val globalWebSearch by viewModel.settings.webSearchEnabled.collectAsState()
     val globalShell by viewModel.settings.shellEnabled.collectAsState()
     val maxContextWindow by viewModel.settings.maxContextWindow.collectAsState()
+    val modelContextWindows by viewModel.settings.modelContextWindows.collectAsState()
     val selectedProviderName = viewModel.getProviderForModel(selectedModel)
     val isEmbeddedLocalModel = selectedProviderName == Constants.PROVIDER_LOCAL
 
@@ -93,6 +95,11 @@ internal fun effectiveConversationControls(
         showLowContextMode = isEmbeddedLocalModel,
         lowContextModeEnabled = isEmbeddedLocalModel &&
             (conversationOverride?.lowContextModeEnabled ?: globalLocalLowContextModeEnabled),
-        contextWindow = ContextBudget.normalize(conversationOverride?.contextWindow ?: maxContextWindow),
+        contextWindow = ModelContextWindowResolver.resolve(
+            canonicalModelId = selectedModel,
+            modelWindows = modelContextWindows,
+            conversationOverride = conversationOverride?.contextWindow,
+            globalWindow = maxContextWindow,
+        ),
     )
 }

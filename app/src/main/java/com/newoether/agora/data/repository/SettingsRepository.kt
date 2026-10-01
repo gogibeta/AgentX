@@ -112,6 +112,8 @@ class SettingsRepository(
     val customModels: StateFlow<Set<String>> = hot(settingsManager.customModels, emptySet())
     val enabledModels: StateFlow<Set<String>> = hot(settingsManager.enabledModels, emptySet())
     val modelAliases: StateFlow<Map<String, String>> = hot(settingsManager.modelAliases, emptyMap())
+    val modelContextWindows: StateFlow<Map<String, Int>> =
+        hot(settingsManager.modelContextWindows, emptyMap())
     val modelProviderNames: StateFlow<Map<String, Boolean>> = hot(settingsManager.modelProviderNames, emptyMap())
     val apiKeys: StateFlow<List<ApiKeyEntry>> = hot(settingsManager.apiKeys, emptyList())
     val activeApiKeyIds: StateFlow<Map<String, String>> = hot(settingsManager.activeApiKeyIds, emptyMap())
@@ -286,6 +288,12 @@ class SettingsRepository(
     fun updateModelAlias(model: String, alias: String, showProviderName: Boolean? = null) {
         scope.launch {
             settingsManager.updateModelAlias(model, alias, showProviderName)
+        }
+    }
+
+    fun saveModelContextWindow(model: String, tokens: Int?) {
+        scope.launch {
+            runCatching { settingsManager.saveModelContextWindow(model, tokens) }
         }
     }
 
