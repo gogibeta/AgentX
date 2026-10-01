@@ -259,12 +259,7 @@ class GenerationRequestBuilder(
         modelId: String? = null,
     ): ConversationSettings {
         return ConversationSettings(
-            contextWindow = ModelContextWindowResolver.resolve(
-                canonicalModelId = modelId,
-                modelWindows = settings.modelContextWindows.value,
-                conversationOverride = overrides.contextWindow,
-                globalWindow = settings.maxContextWindow.value,
-            ),
+            contextWindow = ModelContextWindowResolver.resolve(modelId, settings.modelContextWindows.value, overrides.contextWindow, settings.maxContextWindow.value),
             temperature = overrides.temperature ?: settings.defaultTemperature.value,
             maxTokens = overrides.maxTokens ?: settings.defaultMaxTokens.value,
             topP = overrides.topP ?: settings.defaultTopP.value,
