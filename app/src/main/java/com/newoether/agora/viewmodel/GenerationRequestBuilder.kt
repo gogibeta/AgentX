@@ -79,7 +79,6 @@ class GenerationRequestBuilder(
     internal fun resolveProviderKey(modelId: String, report: (String) -> Unit): ProviderKey? {
         val providerName = providerRegistry.providerForModel(modelId)
         // Round-robin keys so parallel work spreads over rate limits (failover via alternateApiKeys).
-        // Strict test mocks stub resolveActiveKey() only, so fall back to it.
         val activeKey = runCatching {
             com.newoether.agora.api.ApiKeyRotation.pickForRequest(
                 settings.apiKeys.value, settings.activeApiKeyIds.value, providerName,
@@ -258,7 +257,6 @@ class GenerationRequestBuilder(
         modelId: String? = null,
     ): ConversationSettings {
         // On-device engine limit: the prompt budget can never exceed the loaded nCtx.
-        // Strict test mocks don't stub localChatModels; fail open to null (no cap).
         val localPrefix = "${Constants.PROVIDER_LOCAL}:"
         val localModelNCtx = runCatching {
             modelId?.takeIf { it.startsWith(localPrefix) }?.let { id ->
@@ -423,7 +421,6 @@ class GenerationRequestBuilder(
                 conversationOverride = conversationOverride,
                 promptSettings = capturePromptSettings(),
             )
-            // Resolve once here so the indicator + diagnostics price the real system prompt.
             val resolvedSnapshot = resolvePromptTemplate(promptTemplate, selectedModelId)
             baseConfig.copy(
                 effectiveSystemPrompt = resolvedSnapshot.systemPrompt,
@@ -641,12 +638,10 @@ class GenerationRequestBuilder(
             agentProjectFolder = agent.projectFolder,
             autoCompactEnabled = agent.autoCompactEnabled,
             autoCompactIntervalTurns = agent.autoCompactIntervalTurns,
-            // Jev: runCatching → defaults keeps this strict-mock-safe (see AGENTS.md).
             typeSafeApiKey = runCatching { settings.jevSettings.pickKey() }.getOrNull() ?: "",
             typeSafeBaseUrl = runCatching { settings.jevSettings.effectiveBaseUrl() }.getOrDefault(""),
             jevModel = runCatching { settings.jevSettings.jevModel.value }.getOrDefault(""),
             jevEnabled = runCatching { settings.jevSettings.jevEnabled.value }.getOrDefault(false),
-            // Social: runCatching → defaults keeps this strict-mock-safe too.
             socialEnabled = runCatching { settings.socialSettings.socialEnabled.value }.getOrDefault(false),
             socialWorkerBaseUrl = runCatching { settings.socialSettings.socialWorkerBaseUrl.value }.getOrDefault(""),
             socialUseBareRealm = runCatching { settings.socialSettings.socialBareRealm.value }.getOrDefault(false),
