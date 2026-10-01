@@ -255,7 +255,7 @@
     <string name="agent_jev_missing">Not set - add your key under Providers, TypeSafe entry, for smarter routing and re-rank.</string>
     <string name="agent_autocompact_title">Auto-compact context</string>
     <string name="agent_autocompact_enable">Prune useless tool outputs</string>
-    <string name="agent_autocompact_enable_desc">Every %1$d tool turns, Jev drops low-value tool outputs from the model's view. Full history is always kept. Only runs when Jev is enabled.</string>
+    <string name="agent_autocompact_enable_desc">Every %1$d tool turns, Jev drops low-value tool outputs from the model\'s view. Full history is always kept. Only runs when Jev is enabled.</string>
     <string name="agent_autocompact_interval">Checkpoint every</string>
     <string name="agent_autocompact_interval_turns">%1$d tool turns</string>
     <string name="agent_autocompact_notice">Compacted %1$d low-value tool outputs</string>
