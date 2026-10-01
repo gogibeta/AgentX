@@ -180,10 +180,38 @@ class ChromiumLauncher(
         downloadsDir.mkdirs()
     }
 
+    /**
+     * Kill orphaned Chromium processes left in the sandbox by previous crashes.
+     * A half-started Chromium can hold the debug port without ever answering
+     * /json/version (ProcessSingleton also swallows relaunches); clearing them
+     * first is what makes the next launch actually bind.
+     */
+    private fun killStaleSandboxChromium(filesDir: File, rootfsDir: File) {
+        try {
+            val libDir = appContext.applicationInfo.nativeLibraryDir
+            val prootBin = "$libDir/libproot_exec.so"
+            if (!File(prootBin).exists() || !rootfsDir.exists()) return
+            val args = listOf(
+                prootBin,
+                "--rootfs=" + rootfsDir.absolutePath,
+                "-0", "-L",
+                "/bin/sh", "-c",
+                "pkill -f 'chromium.*remote-debugging-port' 2>/dev/null; exit 0",
+            )
+            val builder = ProcessBuilder(args).redirectErrorStream(true)
+            val proc = builder.start()
+            proc.waitFor(10, TimeUnit.SECONDS)
+            proc.destroyForcibly()
+        } catch (_: Exception) {
+            // Best-effort only; launch proceeds regardless.
+        }
+    }
+
     private fun launchLocked(): Boolean {
         return try {
             val filesDir = appContext.filesDir
             val rootfsDir = File(filesDir, "alpine-rootfs")
+            killStaleSandboxChromium(filesDir, rootfsDir)
             val libDir = appContext.applicationInfo.nativeLibraryDir
             val prootBin = "$libDir/libproot_exec.so"
             if (!File(prootBin).exists()) {
@@ -203,7 +231,11 @@ class ChromiumLauncher(
                 append("command -v chromium >/dev/null 2>&1 || { echo CHROMIUM_MISSING >&2; exit 3; }; ")
                 append("exec chromium --headless=new ")
                 append("--no-sandbox ") // proot runs as root (-0); Chromium's own sandbox needs namespaces unavailable here
+                append("--disable-setuid-sandbox ")
+                append("--no-zygote ") // proot cannot trap the zygote's clone(); without this the browser dies on spawn
                 append("--disable-gpu ")
+                append("--disable-gpu-process-crash-limit ") // GPU child crash-loops FATAL after 6 respawns under proot
+                append("--disable-software-rasterizer ")
                 // NOTE: --remote-debugging-port takes a bare port number ONLY.
                 // "127.0.0.1:9333" fails to parse and DevTools never binds
                 // (local browser was completely unusable until this was fixed).
