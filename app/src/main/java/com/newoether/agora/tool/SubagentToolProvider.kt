@@ -1,5 +1,9 @@
 package com.newoether.agora.tool
 
+import com.newoether.agora.api.ToolDefinition
+import com.newoether.agora.api.ToolFunction
+import com.newoether.agora.api.ToolParameters
+import com.newoether.agora.api.ToolProperty
 import com.newoether.agora.automation.ChildGenerationRunner
 import com.newoether.agora.automation.ChildRequest
 import com.newoether.agora.automation.ChildResult

@@ -32,7 +32,7 @@ import kotlinx.coroutines.sync.withLock
  *    `@webview_devtools_remote_<pid>` abstract socket (device-local only, like
  *    the existing 127.0.0.1:9333 sandbox port; never exposed publicly).
  * 2. A tiny 127.0.0.1 TCP bridge forwards bytes to that abstract socket, so
- *    the existing HTTP `/json/*` + WebSocket CDP machinery works unchanged.
+ *    the existing HTTP /json endpoints + WebSocket CDP machinery work unchanged.
  * 3. The WebView uses the app's persistent WebView profile — cookies, storage
  *    and logins survive restarts with no extra download.
  *
