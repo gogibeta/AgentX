@@ -79,9 +79,14 @@ class JevPreferenceStoreTest {
         val s = store()
         s.setJevEnabled(true)
         s.setJevApiKeys(listOf("k1", "k2", "k3"))
-        // Wait for both flows to settle before picking.
+        // Wait for both flows to settle before picking. pickKey() reads
+        // decisionApiKeys (a separate hot flow on the IO scope), so wait on
+        // THAT flow explicitly — jevApiKeys settling first does not imply
+        // decisionApiKeys has observed the same emission (StateFlow race,
+        // same as the pickKey_usesActiveProviderKeys fix).
         s.jevApiKeys.first { it.size == 3 }
         s.jevEnabled.first { it }
+        s.decisionApiKeys.first { it == listOf("k1", "k2", "k3") }
         assertEquals("k1", s.pickKey())
         assertEquals("k2", s.pickKey())
         assertEquals("k3", s.pickKey())
@@ -97,6 +102,9 @@ class JevPreferenceStoreTest {
         assertEquals(null, s.pickKey())
         s.setJevEnabled(true)
         s.jevEnabled.first { it }
+        // pickKey() reads decisionApiKeys (separate hot flow); wait for it to
+        // observe the keys before asserting, avoiding the StateFlow race.
+        s.decisionApiKeys.first { it == listOf("k1") }
         assertEquals("k1", s.pickKey())
     }
 
