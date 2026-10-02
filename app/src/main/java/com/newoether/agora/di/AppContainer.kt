@@ -41,6 +41,8 @@ import com.newoether.agora.browser.BrowserPreferenceStore
 import com.newoether.agora.browser.BrowserSession
 import com.newoether.agora.browser.BrowserToolProvider
 import com.newoether.agora.browser.ChromiumLauncher
+import com.newoether.agora.browser.GeckoViewBrowserBackend
+import com.newoether.agora.browser.BrowserEngineManager
 import com.newoether.agora.browser.WebViewBrowserBackend
 import com.newoether.agora.browser.cdp.CdpClient
 import com.newoether.agora.security.ApprovalGate
