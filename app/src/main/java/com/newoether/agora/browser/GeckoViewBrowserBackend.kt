@@ -25,6 +25,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * GECKOVIEW backend — Mozilla's Gecko engine (non-Chromium) for AgentX.
