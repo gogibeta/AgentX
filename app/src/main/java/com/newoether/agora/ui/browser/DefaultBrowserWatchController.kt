@@ -140,6 +140,14 @@ class DefaultBrowserWatchController(
         frameJob = scope.launch(Dispatchers.IO) {
             var consecutiveFailures = 0
             while (isActive && _sessionActive.value) {
+                // Gate on a real, committed CDP session — not just recent
+                // diagnostic events. A failed tool call still records an
+                // event (making the session look "active") while no session
+                // exists; capturing then only adds -32001 noise (III.2).
+                if (session.currentBackendMode() == null) {
+                    delay(FRAME_INTERVAL_MS)
+                    continue
+                }
                 // Skip screenshot polling while a live view is embedded —
                 // it renders itself and the user can touch it directly.
                 if (_liveWebView.value == null && _liveGeckoView.value == null) {

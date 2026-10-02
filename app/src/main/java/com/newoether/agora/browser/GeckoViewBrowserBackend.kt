@@ -19,6 +19,7 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate
 import org.mozilla.geckoview.GeckoView
 import org.mozilla.geckoview.WebExtension
+import org.mozilla.geckoview.WebExtensionController
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -111,10 +112,33 @@ class GeckoViewBrowserBackend(
             DebugLog.d(TAG, "ensureStarted: GeckoView backend ready")
             true
         } catch (e: Exception) {
-            DebugLog.w(TAG, "ensureStarted failed: ${e.javaClass.simpleName}: ${e.message?.take(200)}")
+            // InstallException carries its reason in getCode(), NOT in message
+            // (III.3) — log the code, the full toString, and the stack trace so
+            // the failure is diagnosable instead of "InstallException: null".
+            val code = (e as? WebExtensionController.InstallException)?.code
+            DebugLog.w(TAG, "ensureStarted failed: $e (installCode=$code)")
+            DebugLog.w(TAG, "ensureStarted stack:\n${e.stackTrace.take(12).joinToString("\n")}")
             false
         }
     }
+
+    /**
+     * Pre-flight: warm the GeckoRuntime at app start so a broken GeckoView
+     * installation fails fast with a clear log instead of surfacing at the
+     * first tool call (III.3). Idempotent and never throws.
+     */
+    suspend fun preflight(): Boolean = runCatching {
+        withContext(Dispatchers.Main) {
+            runtime ?: GeckoRuntime.create(appContext).also {
+                runtime = it
+                DebugLog.d(TAG, "preflight: GeckoRuntime created OK")
+            }
+        }
+        true
+    }.onFailure { e ->
+        val code = (e as? WebExtensionController.InstallException)?.code
+        DebugLog.w(TAG, "preflight: GeckoRuntime init failed: $e (installCode=$code)")
+    }.getOrDefault(false)
 
     /**
      * FAST observation: the latest pushed element table. Zero round trips —

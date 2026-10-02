@@ -18,6 +18,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -272,14 +273,23 @@ class CdpClient(
 
     /** openPage() without the connectivity check — for use inside the reconnect path. */
     private suspend fun openPageDirect(url: String): String {
-        val createResult = invokeDirect(
-            method = "Target.createTarget",
-            params = buildJsonObject { put("url", url) },
-            sessionId = null,
-            timeoutMs = INVOKE_TIMEOUT_MS,
-        )
-        val newTargetId = (createResult["targetId"] as? JsonPrimitive)?.contentOrNull
-            ?: throw CdpException("createTarget_missing_targetId")
+        // Reuse a spare about:blank page when one exists instead of always
+        // creating a target: a failed connect used to leak one about:blank
+        // target per attempt on the remote end (III.2).
+        val reusedTargetId = findSpareBlankPage()
+        if (reusedTargetId != null) {
+            DebugLog.d(TAG, "openPage: reusing existing about:blank target")
+        }
+        val newTargetId = reusedTargetId ?: run {
+            val createResult = invokeDirect(
+                method = "Target.createTarget",
+                params = buildJsonObject { put("url", url) },
+                sessionId = null,
+                timeoutMs = INVOKE_TIMEOUT_MS,
+            )
+            (createResult["targetId"] as? JsonPrimitive)?.contentOrNull
+                ?: throw CdpException("createTarget_missing_targetId")
+        }
         val attachResult = invokeDirect(
             method = "Target.attachToTarget",
             params = buildJsonObject {
@@ -296,6 +306,29 @@ class CdpClient(
         pageUrl = url
         return newSessionId
     }
+
+    /**
+     * Best-effort lookup of an unattached about:blank page target to reuse
+     * instead of creating a new one. Returns null when the lookup fails or
+     * no spare page exists — the caller then falls back to
+     * Target.createTarget. Never throws.
+     */
+    private suspend fun findSpareBlankPage(): String? = runCatching {
+        val result = invokeDirect(
+            method = "Target.getTargets",
+            params = buildJsonObject {},
+            sessionId = null,
+            timeoutMs = INVOKE_TIMEOUT_MS,
+        )
+        (result["targetInfos"] as? JsonArray)
+            ?.mapNotNull { it as? JsonObject }
+            ?.firstOrNull { info ->
+                (info["type"] as? JsonPrimitive)?.contentOrNull == "page" &&
+                    (info["url"] as? JsonPrimitive)?.contentOrNull == "about:blank" &&
+                    (info["attached"] as? JsonPrimitive)?.contentOrNull != "true"
+            }
+            ?.let { (it["targetId"] as? JsonPrimitive)?.contentOrNull }
+    }.getOrNull()
 
     /**
      * Reconnect with backoff and reattach to the stored target (scry: an idle

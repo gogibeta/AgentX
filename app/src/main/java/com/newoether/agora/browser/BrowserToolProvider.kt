@@ -175,13 +175,17 @@ class BrowserToolProvider(
             )
             outcome.json
         } catch (e: Exception) {
-            val outcome = "error:${e.javaClass.simpleName}"
+            // Stable, human-readable error identity. NEVER use
+            // e.javaClass.simpleName here: R8 obfuscates it in release builds
+            // (e.g. "ja1"), which made every browser failure undiagnosable
+            // from logs (III.1). The code below is derived from the message.
+            val (code, detail, hint) = errorParts(e)
+            val outcome = "error:$code"
             BrowserDiagnostics.record(
                 ctx, actionName(name),
                 SystemClock.elapsedRealtime() - started, outcome, emptyMap(),
             )
-            DebugLog.w(TAG, "$name failed: ${e.javaClass.simpleName}")
-            val (code, detail, hint) = errorParts(e)
+            DebugLog.w(TAG, "$name failed: $code — ${e.message?.take(200)}")
             errorJson(name, code, detail, hint)
         }
     }
@@ -212,15 +216,19 @@ class BrowserToolProvider(
                 )
                 emit(ToolExecutionEvent.Completed(result))
             } catch (e: Exception) {
+                val (code, detail, hint) = errorParts(e)
                 BrowserDiagnostics.record(
                     ctx, "screenshot",
-                    SystemClock.elapsedRealtime() - started, "error:${e.javaClass.simpleName}", emptyMap(),
+                    SystemClock.elapsedRealtime() - started, "error:$code", emptyMap(),
                 )
-                val (code, detail, hint) = errorParts(e)
                 emit(ToolExecutionEvent.Completed(ToolExecutionResult(errorJson(name, code, detail, hint), isError = true)))
             }
         } else {
-            emit(ToolExecutionEvent.Completed(ToolExecutionResult(execute(name, arguments, ctx))))
+            val resultJson = execute(name, arguments, ctx)
+            // isError follows the payload: failure JSON carries "error",
+            // success JSON carries "ok":true. The model must see failures
+            // as errors, not as ok results.
+            emit(ToolExecutionEvent.Completed(ToolExecutionResult(resultJson, isError = isErrorJson(resultJson))))
         }
     }
 
@@ -667,6 +675,15 @@ class BrowserToolProvider(
     }
 
     /**
+     * isError follows the payload: failure JSON carries an "error" field,
+     * success JSON carries "ok":true. Never rely on exception class names.
+     */
+    private fun isErrorJson(resultJson: String): Boolean = runCatching {
+        val obj = json.parseToJsonElement(resultJson).jsonObject
+        (obj["error"] as? JsonPrimitive)?.contentOrNull != null
+    }.getOrDefault(false)
+
+    /**
      * Full error triple for the agent: a short machine-readable code, the
      * complete failure detail (CDP method + message, never truncated to a
      * bare code), and an actionable hint. A bare `cdp_error(-32000)` with an
@@ -681,6 +698,10 @@ class BrowserToolProvider(
     private fun hintFor(e: Exception): String {
         val msg = e.message ?: return ""
         return when {
+            msg.startsWith("cdp_error(-32602)") ->
+                "A browser command was rejected for invalid parameters during session setup. " +
+                    "This is an engine bug, not a page problem — retry once; if it repeats, " +
+                    "report the method name above."
             msg.startsWith("cdp_error(-32001)") || msg.startsWith("cdp_error(-32000)") ->
                 "The browser tab's session died (renderer crash, tab closed, or tunnel runner " +
                     "restarted). AgentX already re-attached and retried once. Navigate to the page " +

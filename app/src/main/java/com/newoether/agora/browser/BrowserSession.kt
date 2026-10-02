@@ -386,7 +386,11 @@ class BrowserSession(
 
     private suspend fun connectLocal(): Boolean {
         if (!launcher.ensureStarted()) {
-            return connectFailed("local: Chromium failed to start (use Reinstall in browser settings)")
+            val reason = launcher.lastStartFailure
+            return connectFailed(
+                "local: Chromium failed to start" +
+                    (if (!reason.isNullOrBlank()) " ($reason)" else " (use Reinstall in browser settings)"),
+            )
         }
         val version = httpGetJson(
             "http://127.0.0.1:${launcher.debugPort()}/json/version",
@@ -460,13 +464,22 @@ class BrowserSession(
             )
         }
         cdp.openPage("about:blank")
-        // Remote downloads stay on the remote end (default dir); the local
-        // download dir only applies to the LOCAL backend.
-        cdp.invoke(
-            method = "Browser.setDownloadBehavior",
-            params = buildJsonObject { put("behavior", "allow") },
-            sessionId = null,
-        )
+        // Remote downloads stay on the remote end; /tmp always exists and is
+        // writable on the Linux runner. This is an OPTIONAL post-connect step:
+        // it must never abort the connect (III.2) — a -32602 here used to
+        // poison every tool call on the tunnel backend.
+        runCatching {
+            cdp.invoke(
+                method = "Browser.setDownloadBehavior",
+                params = buildJsonObject {
+                    put("behavior", "allow")
+                    put("downloadPath", "/tmp/agentx-downloads")
+                },
+                sessionId = null,
+            )
+        }.onFailure {
+            DebugLog.w(TAG, "tunnel: setDownloadBehavior failed (non-fatal): ${it.message?.take(120)}")
+        }
         DebugLog.d(TAG, "connectTunnel: connected via tunnel endpoint")
         return true
     }
@@ -498,12 +511,17 @@ class BrowserSession(
             return connectFailed("webview: CDP websocket to WebView bridge failed")
         }
         // The WebView profile is persistent; downloads use the default
-        // behavior (files land in the WebView profile dir).
-        cdp.invoke(
-            method = "Browser.setDownloadBehavior",
-            params = buildJsonObject { put("behavior", "allow") },
-            sessionId = null,
-        )
+        // behavior (files land in the WebView profile dir). Optional step:
+        // must never abort the connect (III.2).
+        runCatching {
+            cdp.invoke(
+                method = "Browser.setDownloadBehavior",
+                params = buildJsonObject { put("behavior", "default") },
+                sessionId = null,
+            )
+        }.onFailure {
+            DebugLog.w(TAG, "webview: setDownloadBehavior failed (non-fatal): ${it.message?.take(120)}")
+        }
         DebugLog.d(TAG, "connectWebView: connected via System WebView bridge")
         return true
     }

@@ -68,6 +68,13 @@ class AgentXApplication : Application() {
         // memory. Loading it in its own job keeps the first estimate off the heuristic without
         // delaying the database gate behind it.
         startupScope.launch { O200kBase.ensureLoaded(this@AgentXApplication) }
+        // Pre-flight the GeckoView runtime early so a broken GeckoView install
+        // fails fast with a clear log instead of at the first browser tool
+        // call (III.3). Best-effort: never blocks startup.
+        startupScope.launch {
+            runCatching { awaitContainer()?.geckoViewBrowserBackend?.preflight() }
+                .onFailure { DebugLog.w("AgentXApplication", "GeckoView preflight failed: ${it.message}") }
+        }
         startupScope.launch {
             try {
                 DeveloperDiagnostics.initialize(noBackupFilesDir, startupScope)
