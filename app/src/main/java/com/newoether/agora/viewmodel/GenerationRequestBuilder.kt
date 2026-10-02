@@ -73,7 +73,6 @@ class GenerationRequestBuilder(
     private val appContext: Context,
 ) {
     data class ProviderKey(val providerName: String, val apiKey: String)
-
     /** Resolves the active provider+key for [modelId] and verifies configuration.
      *  Reports the problem through [report] and returns null when the provider is not configured. */
     internal fun resolveProviderKey(modelId: String, report: (String) -> Unit): ProviderKey? {
