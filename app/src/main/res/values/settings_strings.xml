@@ -350,6 +350,7 @@
     <string name="sandbox_alpine_version">Alpine Linux</string>
     <string name="sandbox_disk_usage">Disk Usage</string>
     <string name="sandbox_install">Install</string>
+    <string name="browser_engine_install">Install</string>
     <string name="sandbox_upgrade">Upgrade</string>
     <string name="sandbox_install_packages">Install Packages</string>
     <string name="sandbox_package_name">Package name</string>

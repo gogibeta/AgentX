@@ -28,8 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.newoether.agora.R
 import com.newoether.agora.browser.BrowserBackendMode
 import com.newoether.agora.browser.BrowserEngineManager
 import com.newoether.agora.ui.settings.SettingsGroup
@@ -65,6 +67,9 @@ fun BrowserEngineSection(
                         onUninstall = {
                             scope.launch { manager.uninstallChromium() }
                         },
+                        onInstall = {
+                            scope.launch { manager.installChromium() }
+                        },
                     )
                 }
             }
@@ -78,6 +83,7 @@ private fun EngineRow(
     active: Boolean,
     onSelect: () -> Unit,
     onUninstall: () -> Unit,
+    onInstall: () -> Unit,
 ) {
     val icon = when (engine.mode) {
         BrowserBackendMode.WEBVIEW -> Icons.Default.Language
@@ -146,15 +152,22 @@ private fun EngineRow(
                 }
             }
             BrowserEngineManager.EngineStatus.NOT_INSTALLED -> {
-                Text(
-                    text = when (engine.kind) {
-                        BrowserEngineManager.EngineKind.DOWNLOADABLE -> "Not installed"
-                        BrowserEngineManager.EngineKind.CONFIGURED -> "Not configured"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (engine.kind == BrowserEngineManager.EngineKind.DOWNLOADABLE) {
+                    TextButton(onClick = onInstall) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.browser_engine_install))
+                    }
+                } else {
+                    Text(
+                        text = when (engine.kind) {
+                            BrowserEngineManager.EngineKind.CONFIGURED -> "Not configured"
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             BrowserEngineManager.EngineStatus.WORKING -> {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)

@@ -44,7 +44,7 @@ object DefaultSystemPrompt {
     fun create(locale: Locale = Locale.getDefault()): SystemPromptEntry =
         SystemPromptEntry(
             title = titleForLocale(locale),
-            systemItems = systemItems(),
+            systemItems = systemItems(locale),
             userItems = userItems(),
             assistantItems = assistantItems(),
         )
@@ -207,11 +207,12 @@ object DefaultSystemPrompt {
         left.type == right.type && left.value == right.value
     }
 
-    private fun systemItems(): List<PromptTemplateItem> = listOf(
+    private fun systemItems(locale: Locale): List<PromptTemplateItem> = listOf(
         custom(
             """
             You are a helpful assistant in AgentX.
             Answer in the user's language.
+            The user's app language is ${locale.getDisplayLanguage(Locale.ENGLISH)} (${locale.language}). Always reply in ${locale.getDisplayLanguage(Locale.ENGLISH)} unless the user explicitly writes in or asks for another language. Never switch to Chinese, or any other language, unprompted.
             Be accurate, concise, and honest about uncertainty.
             If the request is unclear, ask a focused clarifying question before answering.
             Do not claim access to tools, files, real-time data, or app capabilities unless AgentX has made them available for the current request.

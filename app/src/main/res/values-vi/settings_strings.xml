@@ -331,6 +331,7 @@
     <string name="sandbox_alpine_version">Alpine Linux</string>
     <string name="sandbox_disk_usage">Dung lượng ổ đĩa</string>
     <string name="sandbox_install">Cài đặt</string>
+    <string name="browser_engine_install">Cài đặt</string>
     <string name="sandbox_upgrade">Nâng cấp</string>
     <string name="sandbox_install_packages">Cài đặt gói (Package)</string>
     <string name="sandbox_package_name">Tên gói</string>

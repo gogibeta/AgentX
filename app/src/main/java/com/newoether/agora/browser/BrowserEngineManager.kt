@@ -1,6 +1,7 @@
 package com.newoether.agora.browser
 
 import android.content.Context
+import com.newoether.agora.sandbox.SandboxManagerFactory
 import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,7 @@ class BrowserEngineManager(
     private val prefs: BrowserPreferenceStore,
     private val chromiumLauncher: ChromiumLauncher,
     private val scope: CoroutineScope,
+    private val sandboxFactory: SandboxManagerFactory? = null,
 ) {
     /** Install state of one engine. */
     data class EngineState(
@@ -84,7 +86,7 @@ class BrowserEngineManager(
                 EngineState(
                     mode = BrowserBackendMode.LOCAL,
                     displayName = "Chromium (sandbox)",
-                    description = "Full Chromium in an Alpine sandbox. Heavy; needs ~1 GB free.",
+                    description = "Full Chromium in the Alpine sandbox (also powers the shell tool). Heavy; needs ~1 GB free.",
                     kind = EngineKind.DOWNLOADABLE,
                     status = if (isChromiumInstalled()) EngineStatus.READY else EngineStatus.NOT_INSTALLED,
                     sizeBytes = chromiumInstallSize(),
@@ -103,6 +105,34 @@ class BrowserEngineManager(
     /** Select the active engine. Takes effect on the next connect. */
     fun setActive(mode: BrowserBackendMode) {
         prefs.setBackendMode(mode)
+    }
+
+    /**
+     * Install (or reinstall) the Chromium sandbox: downloads and extracts the
+     * Alpine rootfs via the shared SandboxManager, then refreshes engine state.
+     * This is the same rootfs the shell tool uses — reinstalling also repairs
+     * a broken shell ("/bin/sh missing").
+     */
+    suspend fun installChromium(): Boolean = withContext(Dispatchers.IO) {
+        setStatus(BrowserBackendMode.LOCAL, EngineStatus.WORKING)
+        val ok = runCatching {
+            val mgr = sandboxFactory?.takeIf { it.isAvailable() }?.create()
+                ?: return@runCatching false
+            mgr.installRootfs()
+            // Wait for the fire-and-forget install to finish (up to ~10 min).
+            val deadline = System.currentTimeMillis() + 10 * 60 * 1000L
+            while (mgr.isInstallingRootfs.value && System.currentTimeMillis() < deadline) {
+                kotlinx.coroutines.delay(1000)
+            }
+            isChromiumInstalled()
+        }.getOrDefault(false)
+        DebugLog.d(TAG, "installChromium: ok=$ok")
+        setStatus(
+            BrowserBackendMode.LOCAL,
+            if (ok) EngineStatus.READY else EngineStatus.ERROR,
+        )
+        refresh()
+        ok
     }
 
     /**

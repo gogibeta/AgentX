@@ -298,6 +298,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         showCustomModelDialog = true
                     },
                     onContextWindowClick = { showModelContextWindowDialog = it },
+                    onDeleteClick = { deletingCustomModel = it },
                     modelContextWindows = modelContextWindows,
                     onEnabledChange = { model, enabled ->
                         viewModel.settings.setEnabledModels(

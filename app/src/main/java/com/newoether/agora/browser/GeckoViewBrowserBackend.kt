@@ -2,8 +2,6 @@ package com.newoether.agora.browser
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.os.Handler
-import android.os.Looper
 import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -86,23 +84,29 @@ class GeckoViewBrowserBackend(
     /**
      * Idempotent start: runtime + session + WebExtension + view.
      * True when the session is open and the bridge extension is installed.
+     *
+     * All GeckoView calls run on the main thread — GeckoRuntime.create(),
+     * GeckoSession.open(), and WebExtensionController.install() all require
+     * it and throw (or deadlock) otherwise.
      */
     suspend fun ensureStarted(): Boolean = startMutex.withLock {
         if (started && session?.isOpen == true) return true
         return try {
-            val rt = runtime ?: GeckoRuntime.create(appContext).also { runtime = it }
-            val sess = GeckoSession().also { session = it }
-            sess.navigationDelegate = navigationDelegate
-            sess.progressDelegate = progressDelegate
-            sess.contentDelegate = contentDelegate
-            sess.open(rt)
-            installBridge(rt)
-            geckoView = createViewOnMainThread(sess)
+            withContext(Dispatchers.Main) {
+                val rt = runtime ?: GeckoRuntime.create(appContext).also { runtime = it }
+                val sess = GeckoSession().also { session = it }
+                sess.navigationDelegate = navigationDelegate
+                sess.progressDelegate = progressDelegate
+                sess.contentDelegate = contentDelegate
+                sess.open(rt)
+                installBridge(rt)
+                geckoView = GeckoView(appContext).also { it.setSession(sess) }
+            }
             started = true
             DebugLog.d(TAG, "ensureStarted: GeckoView backend ready")
             true
         } catch (e: Exception) {
-            DebugLog.w(TAG, "ensureStarted failed: ${e.javaClass.simpleName}: ${e.message?.take(120)}")
+            DebugLog.w(TAG, "ensureStarted failed: ${e.javaClass.simpleName}: ${e.message?.take(200)}")
             false
         }
     }
@@ -213,21 +217,6 @@ class GeckoViewBrowserBackend(
     }
 
     // ── Internals ────────────────────────────────────────────────────────
-
-    private fun createViewOnMainThread(sess: GeckoSession): GeckoView =
-        kotlinx.coroutines.runBlocking(Dispatchers.Main) {
-            GeckoView(appContext).also { it.setSession(sess) }
-        }
-
-    private suspend fun withMain(block: () -> Unit) {
-        if (Looper.myLooper() == Looper.getMainLooper()) block()
-        else suspendCancellableCoroutine { cont ->
-            Handler(Looper.getMainLooper()).post {
-                runCatching(block)
-                cont.resume(Unit)
-            }
-        }
-    }
 
     private suspend fun installBridge(rt: GeckoRuntime) {
         val result: GeckoResult<WebExtension> =

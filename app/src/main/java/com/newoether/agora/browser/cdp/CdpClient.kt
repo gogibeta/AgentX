@@ -1,5 +1,6 @@
 package com.newoether.agora.browser.cdp
 
+import android.os.SystemClock
 import com.newoether.agora.util.DebugLog
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -85,6 +86,9 @@ class CdpClient(
 
     private val _events = MutableSharedFlow<CdpEvent>(extraBufferCapacity = 128)
     val events: SharedFlow<CdpEvent> = _events.asSharedFlow()
+
+    /** Timestamps of recent successful reconnects, for storm detection. */
+    private val reconnectTimes = ArrayDeque<Long>()
 
     fun isConnected(): Boolean = socket != null
 
@@ -182,6 +186,13 @@ class CdpClient(
         val url = wsUrl ?: return false
         return socketMutex.withLock {
             if (socket != null) return true
+            // Circuit breaker: if the socket keeps flapping (connect then
+            // immediate close), stop the reconnect storm and report a stable
+            // failure instead of hammering the relay.
+            if (isReconnectStorm()) {
+                DebugLog.w(TAG, "CDP reconnect storm detected; giving up to avoid hammering the relay")
+                return false
+            }
             for ((attempt, delayMs) in RECONNECT_DELAYS_MS.withIndex()) {
                 if (attempt > 0) {
                     connectionListener?.onReconnectAttempt(attempt, delayMs)
@@ -190,6 +201,7 @@ class CdpClient(
                 }
                 if (!connectLocked(url)) continue
                 val reattached = reattachLocked()
+                recordReconnect()
                 connectionListener?.onReconnected(reattached)
                 DebugLog.d(TAG, "CDP reconnected (reattached=$reattached)")
                 return true
@@ -197,6 +209,25 @@ class CdpClient(
             DebugLog.w(TAG, "CDP reconnect gave up after ${RECONNECT_DELAYS_MS.size} attempts")
             false
         }
+    }
+
+    /**
+     * True when too many reconnects happened too fast — the remote end is
+     * closing the socket as fast as we open it. Back off entirely instead of
+     * looping forever.
+     */
+    private fun isReconnectStorm(): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        while (reconnectTimes.isNotEmpty() && now - reconnectTimes.first() > STORM_WINDOW_MS) {
+            reconnectTimes.removeFirst()
+        }
+        return reconnectTimes.size >= STORM_MAX_RECONNECTS
+    }
+
+    private fun recordReconnect() {
+        val now = SystemClock.elapsedRealtime()
+        reconnectTimes.addLast(now)
+        while (reconnectTimes.size > STORM_MAX_RECONNECTS) reconnectTimes.removeFirst()
     }
 
     suspend fun close() = socketMutex.withLock { closeLocked() }
@@ -348,6 +379,10 @@ class CdpClient(
 
         /** Backoff ladder for reconnect attempts (delays before attempts 2..6). */
         private val RECONNECT_DELAYS_MS = longArrayOf(0L, 1_000L, 2_000L, 4_000L, 8_000L, 15_000L)
+
+        /** Reconnect-storm circuit breaker: max reconnects per window before giving up. */
+        private const val STORM_MAX_RECONNECTS = 5
+        private const val STORM_WINDOW_MS = 30_000L
 
         /**
          * HTTP client tuned for CDP: WebSocket ping every ~20s keeps an idle

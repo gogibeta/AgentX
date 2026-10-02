@@ -281,7 +281,7 @@ class AppContainer(
 
     /** Browser engine registry: install/uninstall/select engines. */
     val browserEngineManager: BrowserEngineManager by lazy {
-        BrowserEngineManager(appContext, browserPreferenceStore, chromiumLauncher, appScope)
+        BrowserEngineManager(appContext, browserPreferenceStore, chromiumLauncher, appScope, sandboxManagerFactory)
     }
 
     val browserToolProvider: BrowserToolProvider by lazy {

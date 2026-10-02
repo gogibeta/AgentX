@@ -61,6 +61,12 @@ class FxEmbedClient(
         val bareRealm: Boolean,
     )
 
+    /** Detailed validation outcome, preserving the failure reason for the UI. */
+    sealed interface ValidateDetailed {
+        data class Ok(val version: String, val bareRealm: Boolean) : ValidateDetailed
+        data class Failed(val reason: String) : ValidateDetailed
+    }
+
     // ── Universal resolver ─────────────────────────────────────────────
 
     /**
@@ -308,15 +314,31 @@ class FxEmbedClient(
          */
         suspend fun validate(rawBaseUrl: String, userAgent: String): ValidateResult? =
             withContext(Dispatchers.IO) {
+                when (val d = validateDetailed(rawBaseUrl, userAgent)) {
+                    is ValidateDetailed.Ok -> ValidateResult(d.version, d.bareRealm)
+                    is ValidateDetailed.Failed -> null
+                }
+            }
+
+        /**
+         * Validate with a human-readable failure reason. Tries `{base}/ai/version`,
+         * then `{base}/version`. Reports the actual HTTP status when the worker
+         * answers with an error (e.g. 401 = bad/missing User-Agent).
+         */
+        suspend fun validateDetailed(rawBaseUrl: String, userAgent: String): ValidateDetailed =
+            withContext(Dispatchers.IO) {
                 val base = rawBaseUrl.trim().trimEnd('/')
-                if (!SocialPreferenceStore.isValidWorkerUrl(base)) return@withContext null
+                if (!SocialPreferenceStore.isValidWorkerUrl(base))
+                    return@withContext ValidateDetailed.Failed("The URL must be a full https:// address.")
                 val headers = mapOf("User-Agent" to userAgent, "Accept" to "application/json")
+                var lastStatus = -1
                 for ((path, bare) in listOf("/ai/version" to false, "/version" to true)) {
                     try {
                         val response = HttpClient.fetchModelsResponse(
                             base + path, headers,
                             callTimeoutMillis = Constants.NETWORK_TOOL_TIMEOUT_MS,
                         )
+                        lastStatus = response.code
                         if (response.code != 200) continue
                         // NOTE: some workers (e.g. the FxEmbed /ai realm) answer
                         // 200 with Markdown here, not {"version":"..."} JSON.
@@ -325,14 +347,22 @@ class FxEmbedClient(
                             ?: response.body.trim().takeIf { it.isNotEmpty() }?.let { "unknown" }
                             ?: continue
                         DebugLog.d(TAG, "validate ok path=$path version=$version")
-                        return@withContext ValidateResult(version, bare)
-                    } catch (_: Exception) {
-                        // Fall through to the next prefix form; a single failure
-                        // is not worth a retry.
+                        return@withContext ValidateDetailed.Ok(version, bare)
+                    } catch (e: Exception) {
+                        DebugLog.w(TAG, "validate path=$path network_error ${e.javaClass.simpleName}")
+                        return@withContext ValidateDetailed.Failed(
+                            "Network error reaching $base$path: ${e.javaClass.simpleName}. Check your connection and the worker URL.",
+                        )
                     }
                 }
-                DebugLog.w(TAG, "validate failed host=${hostOfStatic(base)}")
-                null
+                val reason = when (lastStatus) {
+                    401 -> "Worker returned 401: it rejected the User-Agent ($userAgent). Update the worker to accept it."
+                    403 -> "Worker returned 403: edge challenge from the worker host. Check the worker deployment."
+                    404 -> "Worker returned 404 at both /ai/version and /version. The worker may be outdated — redeploy it."
+                    else -> "No version answered at /ai/version or /version (HTTP $lastStatus). Check the URL and that the worker is deployed."
+                }
+                DebugLog.w(TAG, "validate failed host=${hostOfStatic(base)} status=$lastStatus")
+                ValidateDetailed.Failed(reason)
             }
 
         private fun parseVersion(body: String): String? {

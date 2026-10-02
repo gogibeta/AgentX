@@ -59,14 +59,18 @@ class AutoCompactCheckpoint {
 
             val scored = candidates.take(MAX_DOCUMENTS)
             val jevStartNanos = System.nanoTime()
-            val scores = JevDecisions.relevanceScoresWithError(
-                apiKey = ctx.typeSafeApiKey,
-                baseUrl = ctx.typeSafeBaseUrl,
-                model = ctx.jevModel,
-                query = query,
-                documents = scored.map { describePair(it) },
-            ).getOrElse { return toolPath }
+            // Two-decision compaction (fast-jev-compaction pattern): for each
+            // pair ask TWO Noul questions in one batched request —
+            // keep_call (does knowing this call was made still matter?) and
+            // keep_result (are the result contents still needed, and would
+            // re-running not do?). Three-way outcome per pair:
+            //   keep_result >= T → keep call AND result verbatim
+            //   else keep_call >= T → keep call, truncate result to 300 chars
+            //   else → drop call + result together (never orphan a result)
+            val decisions = twoDecisionScores(ctx, query, scored)
+                .getOrElse { return toolPath }
             val durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L
+            val keptCount = decisions.count { it.keepCall || it.keepResult }
             StructuredDiagnostics.emit(
                 category = StructuredDiagnosticCategory.LLM,
                 name = "auto_compact",
@@ -74,13 +78,11 @@ class AutoCompactCheckpoint {
                 durationMs = durationMs,
                 detail = mapOf(
                     "docs" to scored.size.toString(),
-                    "kept" to CompactAssistToolProvider.partitionKept(
-                        scored.indices.map { it.toString() }, scores, THRESHOLD,
-                    ).size.toString(),
+                    "kept" to keptCount.toString(),
                     "key_fingerprint" to StructuredDiagnostics.keyFingerprint(ctx.typeSafeApiKey),
                 ),
             )
-            val compacted = applyScores(toolPath, scored, scores)
+            val compacted = applyTwoDecisions(toolPath, scored, decisions)
             val dropped = toolPath.size - compacted.size
             if (dropped > 0) onCompacted?.invoke(dropped)
             return compacted
@@ -108,6 +110,93 @@ class AutoCompactCheckpoint {
             .toSet()
         if (dropIds.isEmpty()) return toolPath
         return toolPath.filter { it.id !in dropIds }
+    }
+
+    /** Two Noul probabilities per pair: keep the call? keep the result verbatim? */
+    internal data class PairDecision(val keepCall: Boolean, val keepResult: Boolean)
+
+    /**
+     * One batched Jev request with two Noul questions per pair. Returns the
+     * per-pair decisions, or failure (fail-open: caller keeps everything).
+     */
+    private suspend fun twoDecisionScores(
+        ctx: GenerationContext,
+        query: String,
+        scored: List<Pair<ChatMessage, List<ChatMessage>>>,
+    ): Result<List<PairDecision>> {
+        return try {
+            val questions = mutableMapOf<String, com.newoether.agora.api.typesafe.TypeSafeClient.JevQuestion>()
+            val state = kotlinx.serialization.json.buildJsonObject {
+                scored.forEachIndexed { index, pair ->
+                    val doc = describePair(pair)
+                    put("pair_$index", doc.take(1500))
+                    questions["keep_call_$index"] =
+                        com.newoether.agora.api.typesafe.TypeSafeClient.NoulQuestion(
+                            key = "keep_call_$index",
+                            instructions = "Knowing this tool call was made, with its input, still matters for: \"$query\"?",
+                        )
+                    questions["keep_result_$index"] =
+                        com.newoether.agora.api.typesafe.TypeSafeClient.NoulQuestion(
+                            key = "keep_result_$index",
+                            instructions = "The result's contents are still needed for: \"$query\"? (Re-running the tool would not reproduce them.)",
+                        )
+                }
+            }
+            val decision = com.newoether.agora.api.typesafe.TypeSafeClient.decide(
+                ctx.typeSafeApiKey, ctx.typeSafeBaseUrl, ctx.jevModel, state, questions,
+            )
+            val decisions = scored.indices.map { index ->
+                val keepCall =
+                    (decision.answers["keep_call_$index"] as? com.newoether.agora.api.typesafe.TypeSafeClient.JevAnswer.Noul)
+                        ?.probability?.let { it >= THRESHOLD } ?: false
+                val keepResult =
+                    (decision.answers["keep_result_$index"] as? com.newoether.agora.api.typesafe.TypeSafeClient.JevAnswer.Noul)
+                        ?.probability?.let { it >= THRESHOLD } ?: false
+                PairDecision(keepCall, keepResult)
+            }
+            Result.success(decisions)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Apply two-decision outcomes: keep both verbatim, keep call + truncate
+     * result, or drop the pair. Never orphans a result without its call.
+     * Truncation rewrites only the dropped content's replacement marker — kept
+     * content stays verbatim.
+     */
+    internal fun applyTwoDecisions(
+        toolPath: List<ChatMessage>,
+        scored: List<Pair<ChatMessage, List<ChatMessage>>>,
+        decisions: List<PairDecision>,
+    ): List<ChatMessage> {
+        val dropIds = mutableSetOf<String>()
+        val truncateIds = mutableSetOf<String>()
+        scored.forEachIndexed { index, (call, results) ->
+            val d = decisions.getOrNull(index) ?: return@forEachIndexed
+            when {
+                d.keepResult -> { /* keep call + results verbatim */ }
+                d.keepCall -> {
+                    // Keep the call; truncate results to 300 chars + marker.
+                    results.forEach { truncateIds.add(it.id) }
+                }
+                else -> {
+                    dropIds.add(call.id)
+                    results.forEach { dropIds.add(it.id) }
+                }
+            }
+        }
+        if (dropIds.isEmpty() && truncateIds.isEmpty()) return toolPath
+        return toolPath.mapNotNull { msg ->
+            when {
+                msg.id in dropIds -> null
+                msg.id in truncateIds -> msg.copy(
+                    text = msg.text.take(300) + "\n[…truncated by auto-compact…]",
+                )
+                else -> msg
+            }
+        }
     }
 
     /** Whole tool call+result units, in path order. Results chain from the call message. */

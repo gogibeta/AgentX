@@ -340,6 +340,7 @@
     <string name="sandbox_alpine_version">Alpine Linux</string>
     <string name="sandbox_disk_usage">Uso do disco</string>
     <string name="sandbox_install">Instalar</string>
+    <string name="browser_engine_install">Instalar</string>
     <string name="sandbox_install_packages">Instalar pacotes</string>
     <string name="sandbox_package_name">Nome do pacote</string>
     <string name="sandbox_quick_install">Instalação rápida</string>

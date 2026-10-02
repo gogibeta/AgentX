@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -64,6 +65,7 @@ internal fun LazyListScope.modelProviderGroups(
     modelBlockHeights: MutableMap<String, Float>,
     onAliasClick: ((String) -> Unit)?,
     onDetailsClick: ((String) -> Unit)?,
+    onDeleteClick: ((String) -> Unit)? = null,
     onContextWindowClick: ((String) -> Unit)? = null,
     modelContextWindows: Map<String, Int> = emptyMap(),
     onEnabledChange: (String, Boolean) -> Unit,
@@ -237,6 +239,19 @@ internal fun LazyListScope.modelProviderGroups(
                                                                 R.string.models_custom_details
                                                             ),
                                                         tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(20.dp),
+                                                    )
+                                                }
+                                            }
+                                            if (onDeleteClick != null) {
+                                                IconButton(
+                                                    onClick = { onDeleteClick(model) },
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Delete,
+                                                        contentDescription =
+                                                            stringResource(R.string.delete),
+                                                        tint = MaterialTheme.colorScheme.error,
                                                         modifier = Modifier.size(20.dp),
                                                     )
                                                 }

@@ -130,6 +130,7 @@ class DefaultBrowserWatchController(
     private fun startFrames() {
         if (frameJob?.isActive == true) return
         frameJob = scope.launch(Dispatchers.IO) {
+            var consecutiveFailures = 0
             while (isActive && _sessionActive.value) {
                 // Skip screenshot polling while a live view is embedded —
                 // it renders itself and the user can touch it directly.
@@ -137,9 +138,28 @@ class DefaultBrowserWatchController(
                     runCatching {
                         val frame = session.captureScreenshot(FRAME_TIMEOUT_MS)
                         _screenshot.value = frame
+                    }.onSuccess {
+                        consecutiveFailures = 0
                     }.onFailure {
+                        consecutiveFailures++
+                        // The CDP session is dead (e.g. -32001 "Session with
+                        // given id not found" after the tab closed). Stop
+                        // spamming and mark the session disconnected instead
+                        // of retrying forever.
+                        if (consecutiveFailures >= MAX_FRAME_FAILURES) {
+                            DebugLog.w(
+                                TAG,
+                                "watch frame failed $consecutiveFailures times in a row; " +
+                                    "stopping frame polling: ${it.message}",
+                            )
+                            _sessionActive.value = false
+                            stopFrames()
+                            return@launch
+                        }
                         DebugLog.d(TAG, "watch frame failed: ${it.message}")
                     }
+                } else {
+                    consecutiveFailures = 0
                 }
                 delay(FRAME_INTERVAL_MS)
             }
@@ -180,5 +200,7 @@ class DefaultBrowserWatchController(
         const val SESSION_ACTIVE_WINDOW_MS = 60_000L
         const val FRAME_INTERVAL_MS = 500L // ~2 fps live stream
         const val FRAME_TIMEOUT_MS = 8_000L
+        /** Stop frame polling after this many consecutive failures (dead CDP session). */
+        const val MAX_FRAME_FAILURES = 5
     }
 }
