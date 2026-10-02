@@ -641,6 +641,8 @@
     <string name="browser_backend_tunnel_desc">Your own CDP-over-HTTPS endpoint</string>
     <string name="browser_backend_webview">System WebView</string>
     <string name="browser_backend_webview_desc">On-device System WebView, no sandbox download</string>
+    <string name="browser_backend_geckoview">GeckoView</string>
+    <string name="browser_backend_geckoview_desc">Mozilla engine, fast, no screenshots in the agent loop</string>
     <string name="browser_backend_fallback_note">Tunnel selected but no URL is set \u2014 the local backend is used until you add one.</string>
     <string name="browser_tunnel_group">Tunnel backend</string>
     <string name="browser_tunnel_url">Tunnel URL</string>
