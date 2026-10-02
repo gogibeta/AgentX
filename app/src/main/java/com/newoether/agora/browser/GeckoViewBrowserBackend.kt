@@ -19,7 +19,6 @@ import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoSession.PermissionDelegate
 import org.mozilla.geckoview.GeckoView
 import org.mozilla.geckoview.WebExtension
-import org.mozilla.geckoview.WebExtensionController
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -115,7 +114,7 @@ class GeckoViewBrowserBackend(
             // InstallException carries its reason in getCode(), NOT in message
             // (III.3) — log the code, the full toString, and the stack trace so
             // the failure is diagnosable instead of "InstallException: null".
-            val code = (e as? WebExtensionController.InstallException)?.code
+            val code = (e as? WebExtension.InstallException)?.code
             DebugLog.w(TAG, "ensureStarted failed: $e (installCode=$code)")
             DebugLog.w(TAG, "ensureStarted stack:\n${e.stackTrace.take(12).joinToString("\n")}")
             false
@@ -136,7 +135,7 @@ class GeckoViewBrowserBackend(
         }
         true
     }.onFailure { e ->
-        val code = (e as? WebExtensionController.InstallException)?.code
+        val code = (e as? WebExtension.InstallException)?.code
         DebugLog.w(TAG, "preflight: GeckoRuntime init failed: $e (installCode=$code)")
     }.getOrDefault(false)
 
