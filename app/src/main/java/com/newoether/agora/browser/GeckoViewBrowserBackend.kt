@@ -17,6 +17,7 @@ import org.json.JSONObject
 import org.mozilla.geckoview.GeckoResult
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
+import org.mozilla.geckoview.GeckoSession.PermissionDelegate
 import org.mozilla.geckoview.GeckoView
 import org.mozilla.geckoview.WebExtension
 import java.io.ByteArrayOutputStream
@@ -39,7 +40,7 @@ import kotlin.coroutines.resume
  * 3. Actions (click/type/scroll) go native → background port →
  *    `tabs.sendMessage` → content script → DOM. Responses correlate by reqId.
  * 4. Screenshots exist ONLY for the user's watch panel thumbnails, via
- *    `GeckoSession.capturePixels()` — never fed to the model.
+ *    `GeckoView.capturePixels()` — never fed to the model.
  *
  * Stealth posture: natively-driven GeckoView sets no `navigator.webdriver`
  * flag and carries a genuine Gecko TLS fingerprint (unlike CDP-driven
@@ -92,6 +93,7 @@ class GeckoViewBrowserBackend(
             val sess = GeckoSession().also { session = it }
             sess.navigationDelegate = navigationDelegate
             sess.progressDelegate = progressDelegate
+            sess.contentDelegate = contentDelegate
             sess.open(rt)
             installBridge(rt)
             geckoView = createViewOnMainThread(sess)
@@ -184,9 +186,13 @@ class GeckoViewBrowserBackend(
 
     /** JPEG screenshot for the watch panel. Null on failure. */
     suspend fun captureThumbnail(): ByteArray? {
-        val sess = session ?: return null
+        // capturePixels lives on GeckoView (the compositor surface), not on
+        // GeckoSession, and must be called on the UI thread.
+        val view = geckoView ?: return null
         return try {
-            val bitmap = sess.capturePixels().await()
+            val pixels = CompletableDeferred<GeckoResult<Bitmap>>()
+            withMain { pixels.complete(view.capturePixels()) }
+            val bitmap = pixels.await().await()
             val out = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 60, out)
             out.toByteArray().takeIf { it.isNotEmpty() }
@@ -222,7 +228,7 @@ class GeckoViewBrowserBackend(
         }
     }
 
-    private fun installBridge(rt: GeckoRuntime) {
+    private suspend fun installBridge(rt: GeckoRuntime) {
         val result: GeckoResult<WebExtension> =
             rt.webExtensionController.install("resource://android/assets/geckoview/")
         val ext = result.await()
@@ -249,11 +255,12 @@ class GeckoViewBrowserBackend(
         }
 
         override fun onMessage(
-            nativeMessage: Any,
+            nativeApp: String,
+            message: Any,
             sender: WebExtension.MessageSender,
-        ): Any? {
+        ): GeckoResult<Any>? {
             // Pushed element tables from the content script.
-            handlePushedTable(nativeMessage)
+            handlePushedTable(message)
             return null
         }
     }
@@ -282,11 +289,14 @@ class GeckoViewBrowserBackend(
         override fun onLocationChange(
             session: GeckoSession,
             url: String?,
-            perms: List<String>,
+            perms: List<PermissionDelegate.ContentPermission>,
+            hasUserGesture: Boolean,
         ) {
             url?.let { latestUrl.set(it) }
         }
+    }
 
+    private val contentDelegate = object : GeckoSession.ContentDelegate {
         override fun onTitleChange(session: GeckoSession, title: String?) {
             title?.let { latestTitle.set(it) }
         }
@@ -309,12 +319,20 @@ class GeckoViewBrowserBackend(
 }
 
 /** Await a GeckoResult as a suspend function. */
-private suspend fun <T> GeckoResult<T>.await(): T =
+private suspend fun <T : Any> GeckoResult<T>.await(): T =
     suspendCancellableCoroutine { cont ->
         then(
-            { value -> cont.resume(value); GeckoResult.fromValue(value) },
+            { value ->
+                // OnValueListener receives a nullable value; fail loudly on null.
+                if (value == null) {
+                    cont.resumeWithException(IllegalStateException("GeckoResult completed with null"))
+                } else {
+                    cont.resume(value)
+                }
+                GeckoResult.fromValue(value)
+            },
             { e ->
-                cont.resumeWith(Result.failure(e ?: RuntimeException("GeckoResult failed")))
+                cont.resumeWithException(e ?: RuntimeException("GeckoResult failed"))
                 GeckoResult.fromException(e)
             },
         )
