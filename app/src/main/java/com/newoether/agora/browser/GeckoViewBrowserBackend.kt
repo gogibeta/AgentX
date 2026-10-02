@@ -74,7 +74,7 @@ class GeckoViewBrowserBackend(
     private var started = false
 
     /** Run [block] on the main thread (Gecko API requirement). */
-    private suspend fun <T> withMain(block: suspend () -> T): T =
+    private suspend fun <T> withMain(block: suspend CoroutineScope.() -> T): T =
         withContext(Dispatchers.Main, block)
 
     /** The live GeckoView, for embedding in the watch panel via AndroidView. */

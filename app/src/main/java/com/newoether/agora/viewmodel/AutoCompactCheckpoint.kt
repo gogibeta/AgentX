@@ -8,6 +8,7 @@ import com.newoether.agora.model.Participant
 import com.newoether.agora.tool.CompactAssistToolProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.put
 
 /**
  * v2.4 active Jev projection compaction.
