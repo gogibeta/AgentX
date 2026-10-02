@@ -23,6 +23,8 @@ import com.newoether.agora.R
 import com.newoether.agora.api.typesafe.JevDecisions
 import com.newoether.agora.api.typesafe.TypeSafeClient
 import com.newoether.agora.data.JevPreferenceStore
+import com.newoether.agora.ui.components.AgentXDropdownMenuItem
+import com.newoether.agora.ui.components.AgentXExposedDropdownMenu
 import com.newoether.agora.ui.components.SecretVisibilityToggle
 import com.newoether.agora.ui.components.rememberSecretVisible
 import com.newoether.agora.ui.components.secretVisualTransformation
@@ -317,9 +319,9 @@ private fun DrexModelDropdown(selected: String, onSelected: (String) -> Unit) {
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth().menuAnchor(),
                     )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    AgentXExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                         JevPreferenceStore.DREX_MODELS.forEach { model ->
-                            DropdownMenuItem(
+                            AgentXDropdownMenuItem(
                                 text = { Text(model) },
                                 onClick = {
                                     onSelected(model)

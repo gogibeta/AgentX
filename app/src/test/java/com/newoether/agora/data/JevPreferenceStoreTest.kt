@@ -185,9 +185,11 @@ class JevPreferenceStoreTest {
         assertEquals(60_000L, s.effectiveDecisionTimeoutMs())
         assertEquals(6000, s.effectiveDecisionMaxStateChars())
         s.setDrexModel("drex-v1.0")
+        s.drexModel.first { it == "drex-v1.0" }
         assertEquals("drex-v1.0", s.effectiveDecisionModel())
         // Custom base URL overrides either provider default.
         s.setJevBaseUrl("https://proxy.example")
+        s.jevBaseUrl.first { it == "https://proxy.example" }
         assertEquals("https://proxy.example", s.effectiveDecisionBaseUrl())
     }
 
