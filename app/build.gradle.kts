@@ -22,7 +22,7 @@ android {
     // on JDK 17+ its TLS server needs reflective access to java.net (InetAddress.holder).
     testOptions.unitTests.all { it.jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED") }
     compileSdk {
-        version = release(37)
+        version = release(37, "1")
     }
 
     ndkVersion = "28.2.13676358"
