@@ -59,9 +59,6 @@ interface BrowserWatchController {
      * A floating restore button brings the panel back.
      */
     val panelHidden: StateFlow<Boolean>
-    fun onStop()
-    fun onTakeOver()
-    fun onResume()
     /** Hide the panel but keep the browser session running. */
     fun onHidePanel()
     /** Bring back a hidden panel. */
