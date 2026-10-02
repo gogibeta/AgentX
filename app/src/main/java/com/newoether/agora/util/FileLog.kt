@@ -90,15 +90,15 @@ object FileLog {
         val lines = ArrayDeque<String>()
         try {
             val dir = logDir ?: return emptyList()
-            // Rotated (previous session) first — it holds the older lines.
+            // Oldest first: rotated (previous session), then current, then the
+            // not-yet-flushed queue. Read each source fully (bounded by the
+            // 256 KB window) and keep only the newest maxLines OVERALL, so a
+            // long rotated log can never crowd out the current session's lines.
             for (file in listOf(File(dir, ROTATED), File(dir, FILE))) {
-                if (file.exists()) readTailLines(file, maxLines, lines)
-                if (lines.size >= maxLines) break
+                if (file.exists()) readTailLines(file, Int.MAX_VALUE, lines)
             }
-            queue.forEach { line ->
-                lines.addLast(line)
-                while (lines.size > maxLines) lines.removeFirst()
-            }
+            queue.forEach { line -> lines.addLast(line) }
+            while (lines.size > maxLines) lines.removeFirst()
         } catch (_: Throwable) {
             // ignore
         }

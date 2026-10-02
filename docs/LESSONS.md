@@ -78,3 +78,23 @@
   (`lastConnectFailure()`); `not_connected` tool errors surface that reason
   instead of an empty message. Always thread connect-failure reasons to the
   caller — "not connected" with no cause wastes a full debug round-trip.
+- CDP stale-socket race (2026-10-02): `WebSocketListener.onClosed` fired for a
+  PREVIOUS socket after `connectLocked()` had already installed its
+  replacement; `handleSocketGone()` nulled the live socket and failed all of
+  its pending calls. Fix: pass the firing `WebSocket` into the handler and act
+  only on identity match (`socket !== gone → ignore`). Any socket-death
+  handler must identify WHICH socket died.
+- CDP page recreation vs reattach (2026-10-02): `reattachLocked()` returned a
+  bare Boolean for both "re-attached to the same target" and "target gone,
+  page recreated" — but only the latter invalidates cached DOM node ids.
+  Returning `ReattachResult { REATTACHED, RECREATED, FAILED }` and firing
+  `onPageRecreated()` lets `BrowserSession` drop `snapshotRefs`, so the next
+  click/fill fails fast with "take a new snapshot" instead of a mystery
+  node-not-found. Never conflate "reconnected" with "same page".
+- `FileLog.tailLines()` read the rotated file first and stopped when the
+  limit filled, so a long previous-session log crowded out the current
+  session's newest lines. Fix: aggregate rotated → current → queued, then keep
+  only the newest `maxLines` overall.
+- Tunnel failure messages must be host-only: the stored tunnel URL may carry a
+  user-pasted `?token=` query param — never interpolate the raw URL into a
+  reason that reaches logs or tool results.

@@ -138,6 +138,16 @@ class BrowserSession(
                     mapOf("backend" to (connectedMode?.persisted ?: "-"), "reattached" to reattached.toString()),
                 )
             }
+
+            override fun onPageRecreated() {
+                // The remote page target was re-created (e.g. the runner was
+                // replaced): every DOM node id from earlier snapshots is stale.
+                // Drop the cached refs so the next click/fill fails fast with
+                // "take a new snapshot" instead of a mystery node error.
+                snapshotRefs.clear()
+                report("page_recreated", 0L, "ok", mapOf("backend" to (connectedMode?.persisted ?: "-")))
+                DebugLog.w(TAG, "Page target recreated; snapshot refs invalidated")
+            }
         }
     }
 
@@ -429,8 +439,10 @@ class BrowserSession(
             HEALTH_CHECK_TIMEOUT_MS,
         )
         if (version == null) {
+            // Host-only in the message: the stored URL may carry a pasted
+            // token as a query param, which must never reach logs or tools.
             return connectFailed(
-                "tunnel: endpoint unreachable at $rawUrl/json/version " +
+                "tunnel: endpoint unreachable at https://$host/json/version " +
                     "(relay down, wrong URL, or wrong client token — the relay 401s without the token)",
             )
         }

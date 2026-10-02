@@ -180,6 +180,18 @@ GitHub kills every Actions job before 6 h. Instead of a scheduler:
 
 ### 5.1 Cloudflare side (one time)
 
+> ⚠️ SOURCE DRIFT WARNING (verified 2026-10-02): the `worker/worker.js`
+> currently committed in `polironi10/agentx-cloud-browser` is the OLD
+> KV/tunnelmole-era implementation — it has NO `/relay` endpoint and its
+> `/health` returns `{"backend_age_s":…}` while the LIVE deployed worker
+> answers `{"ok":true,"ts":…}`. Do NOT redeploy from the repo's `worker/`
+> as-is: it would kill the tunnel completely. The live Durable Object worker
+> is the source of truth — export it from the Cloudflare dashboard
+> (Workers & Pages → `agentx-browser` → ... → Download / copy source) and
+> commit that as the new `worker/worker.js` before any redeploy. The runner
+> (`runner/relay.py`) and workflow (`.github/workflows/browser.yml`) in the
+> repo ARE current and match the live DO contract.
+
 1. Cloudflare account (free plan is enough).
 2. Deploy the Worker + DO. Two routes:
    - Dashboard: Workers & Pages → Create → paste the worker source → Deploy →
@@ -196,7 +208,8 @@ Option A — GitHub Actions (as in the PoC):
 
 1. Fork `polironi10/agentx-cloud-browser` (or copy the three files).
 2. Repo secrets: `WORKER_URL` (from §5.1), `RELAY_SECRET` (must match the
-   Worker secret), plus a `GH_PAT` with `actions:write` for self-chaining.
+   Worker secret). Self-chaining uses the built-in `GITHUB_TOKEN` with
+   `actions: write` permission — no personal token needed.
 3. Actions → `cloud-browser` → Run workflow. Watch the logs: you want
    `CDP is up`, `relay uplink established`, `Worker reports browser online`.
 

@@ -66,7 +66,19 @@ interface CdpConnectionListener {
     fun onConnectionLost(reason: String) {}
     fun onReconnectAttempt(attempt: Int, nextDelayMs: Long) {}
     fun onReconnected(reattached: Boolean) {}
+
+    /**
+     * The page target had to be re-created (the old target is gone — e.g. the
+     * remote Chromium was replaced). Every DOM node id from earlier snapshots
+     * is stale; the session layer must drop cached snapshot refs so the agent
+     * takes a fresh snapshot instead of clicking dead nodes.
+     */
+    fun onPageRecreated() {}
 }
+
+/** Outcome of healing a dead page session: re-attached to the same target, the
+ * target was re-created (node ids are stale), or recovery failed entirely. */
+enum class ReattachResult { REATTACHED, RECREATED, FAILED }
 
 /**
  * OkHttp WebSocket JSON-RPC 2.0 client for the Chrome DevTools Protocol.
@@ -177,13 +189,19 @@ class CdpClient(
                 ),
                 "CDP page session died; re-attaching",
             )
-            if (!recoverSession()) {
+            val recovered = recoverSession()
+            if (recovered == ReattachResult.FAILED) {
                 DebugLog.event(
                     "CdpClient",
                     mapOf("backend" to sessionTag, "method" to method, "stage" to "recover_failed"),
                     "session recovery failed; surfacing original error",
                 )
                 throw e
+            }
+            if (recovered == ReattachResult.RECREATED) {
+                // New page target: every DOM node id from earlier snapshots is
+                // stale. Tell the session layer so cached refs are dropped.
+                connectionListener?.onPageRecreated()
             }
             DebugLog.event(
                 "CdpClient",
@@ -205,14 +223,14 @@ class CdpClient(
      * Heal a dead page session while the socket is alive: [ensureConnected]
      * already re-attaches when it had to reopen the socket; when the socket
      * was fine we re-attach (or recreate the page target) explicitly here.
-     * Never throws — false means "could not heal".
+     * Never throws — [ReattachResult.FAILED] means "could not heal".
      */
-    private suspend fun recoverSession(): Boolean {
-        if (!ensureConnected()) return false
+    private suspend fun recoverSession(): ReattachResult {
+        if (!ensureConnected()) return ReattachResult.FAILED
         return try {
             socketMutex.withLock { reattachLocked() }
         } catch (_: Exception) {
-            false
+            ReattachResult.FAILED
         }
     }
 
@@ -303,10 +321,13 @@ class CdpClient(
                     delay(delayMs)
                 }
                 if (!connectLocked(url)) continue
-                val reattached = reattachLocked()
+                val reattachResult = reattachLocked()
                 recordReconnect()
-                connectionListener?.onReconnected(reattached)
-                DebugLog.d(TAG, "CDP reconnected (reattached=$reattached)")
+                connectionListener?.onReconnected(reattachResult != ReattachResult.FAILED)
+                if (reattachResult == ReattachResult.RECREATED) {
+                    connectionListener?.onPageRecreated()
+                }
+                DebugLog.d(TAG, "CDP reconnected (reattach=$reattachResult)")
                 return true
             }
             DebugLog.w(TAG, "CDP reconnect gave up after ${RECONNECT_DELAYS_MS.size} attempts")
@@ -374,18 +395,18 @@ class CdpClient(
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-            handleSocketGone("closed(code=$code)")
+            handleSocketGone(webSocket, "closed(code=$code)")
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
             if (!opened.complete(false)) {
-                handleSocketGone(t.message ?: t.javaClass.simpleName)
+                handleSocketGone(webSocket, t.message ?: t.javaClass.simpleName)
             }
         }
     }
 
     /** Reattach to the stored target after a fresh socket; recreate if it is gone. */
-    private suspend fun reattachLocked(): Boolean {
+    private suspend fun reattachLocked(): ReattachResult {
         val knownTarget = targetId
         return try {
             if (knownTarget != null) {
@@ -412,16 +433,16 @@ class CdpClient(
                     val newSession = (attachResult["sessionId"] as? JsonPrimitive)?.contentOrNull
                     if (newSession != null) {
                         sessionId = newSession
-                        return true
+                        return ReattachResult.REATTACHED
                     }
                 }
             }
             // Target is gone (browser restarted): recreate the page target.
             openPageDirect(pageUrl ?: "about:blank")
-            true
+            ReattachResult.RECREATED
         } catch (e: Exception) {
             DebugLog.w(TAG, "CDP reattach failed: ${e.javaClass.simpleName}")
-            false
+            ReattachResult.FAILED
         }
     }
 
@@ -456,8 +477,15 @@ class CdpClient(
         }
     }
 
-    private fun handleSocketGone(reason: String) {
-        if (socket == null) return
+    /**
+     * Marks the socket dead and fails pending calls — but ONLY when the event
+     * came from the currently-active socket. OkHttp may deliver a late
+     * onClosed/onFailure from a previous socket after [connectLocked] already
+     * installed its replacement; acting on it would kill the live connection
+     * and fail the new socket's calls (stale-socket race).
+     */
+    private fun handleSocketGone(gone: WebSocket, reason: String) {
+        if (socket !== gone) return
         socket = null
         val stale = pending.values.toList()
         pending.clear()
