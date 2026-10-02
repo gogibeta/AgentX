@@ -47,23 +47,27 @@ object JevDecisions {
 
     /** Human-readable, secret-free description of a [JevError]. */
     fun describeError(error: JevError): String = when (error) {
-        JevError.NoKey -> "no Jev API key configured — add one in Settings → Jev to enable"
+        JevError.NoKey -> "no decision-model API key configured — add one in Settings → Jev to enable"
         is JevError.Api -> when (error.status) {
             401 -> "rejected (401): API key invalid or revoked — check the key in Settings → Jev"
-            403 -> "forbidden (403): key lacks Jev access"
+            402 -> "out of credit (402): the account has no spendable credit — top up (Drex: drex.nace.ai dashboard)"
+            403 -> "forbidden (403): key lacks decision-model access"
             404 -> "not found (404): base URL or model wrong — check Settings → Jev (POST /v1/systemone must exist)"
             429 -> "rate-limited (429): too many requests — try again shortly"
-            in 500..599 -> "server error (${error.status}): Jev endpoint is down — try again later"
+            in 500..599 -> "server error (${error.status}): decision endpoint is down — try again later"
             else -> "HTTP ${error.status}: ${error.message}"
         }
         is JevError.Network -> "network error: ${error.message} — check connectivity and base URL"
-        JevError.BadResponse -> "bad response: Jev endpoint answered but the decision could not be decoded"
+        JevError.BadResponse -> "bad response: decision endpoint answered but the decision could not be decoded"
     }
 
     /**
      * One batched `decide` call with a Noul "does this document answer the query?"
      * per candidate. Returns query-keyed probabilities in the same order, or null.
      * Used to re-rank fused web-search hits.
+     *
+     * [timeoutMs] / [maxStateChars] follow the active provider: Drex allows a
+     * 60s timeout and ~4x the state budget (131k vs 32k tokens).
      */
     suspend fun relevanceScores(
         apiKey: String,
@@ -71,8 +75,10 @@ object JevDecisions {
         model: String = TypeSafeClient.DEFAULT_MODEL,
         query: String,
         documents: List<String>,
+        timeoutMs: Long = TypeSafeClient.DEFAULT_TIMEOUT_MS,
+        maxStateChars: Int = 1500,
     ): List<Double>? =
-        relevanceScoresWithError(apiKey, baseUrl, model, query, documents).getOrNull()
+        relevanceScoresWithError(apiKey, baseUrl, model, query, documents, timeoutMs, maxStateChars).getOrNull()
 
     /**
      * Like [relevanceScores] but returns the [JevError] on failure instead of
@@ -85,6 +91,8 @@ object JevDecisions {
         model: String = TypeSafeClient.DEFAULT_MODEL,
         query: String,
         documents: List<String>,
+        timeoutMs: Long = TypeSafeClient.DEFAULT_TIMEOUT_MS,
+        maxStateChars: Int = 1500,
     ): Result<List<Double>> {
         if (documents.isEmpty()) return Result.success(emptyList())
         return try {
@@ -96,10 +104,10 @@ object JevDecisions {
             }.toMap()
             val state = buildJsonObject {
                 documents.forEachIndexed { index, doc ->
-                    put("doc_$index", doc.take(1500))
+                    put("doc_$index", doc.take(maxStateChars))
                 }
             }
-            val decision = TypeSafeClient.decide(apiKey, baseUrl, model, state, questions)
+            val decision = TypeSafeClient.decide(apiKey, baseUrl, model, state, questions, timeoutMs)
             val probs = documents.indices.map { index ->
                 (decision.answers["doc_$index"] as? TypeSafeClient.JevAnswer.Noul)
                     ?.probability
@@ -126,13 +134,14 @@ object JevDecisions {
         questionKey: String,
         instructions: String,
         options: Map<String, String?>,
+        timeoutMs: Long = TypeSafeClient.DEFAULT_TIMEOUT_MS,
     ): Pair<String, Double>? {
         return try {
             val questions = mapOf(
                 questionKey to TypeSafeClient.ChoiceQuestion(questionKey, instructions, options),
             )
             val decision = TypeSafeClient.decide(
-                apiKey, baseUrl, model, JsonPrimitive(state), questions,
+                apiKey, baseUrl, model, JsonPrimitive(state), questions, timeoutMs,
             )
             val ans = decision.answers[questionKey] as? TypeSafeClient.JevAnswer.Choice
                 ?: return null
@@ -151,13 +160,14 @@ object JevDecisions {
         questionKey: String,
         instructions: String,
         levels: List<String>,
+        timeoutMs: Long = TypeSafeClient.DEFAULT_TIMEOUT_MS,
     ): Pair<Double, Double>? {
         return try {
             val questions = mapOf(
                 questionKey to TypeSafeClient.ScoreQuestion(questionKey, instructions, levels),
             )
             val decision = TypeSafeClient.decide(
-                apiKey, baseUrl, model, JsonPrimitive(state), questions,
+                apiKey, baseUrl, model, JsonPrimitive(state), questions, timeoutMs,
             )
             val ans = decision.answers[questionKey] as? TypeSafeClient.JevAnswer.Score
                 ?: return null

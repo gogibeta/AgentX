@@ -96,6 +96,8 @@ class CompactAssistToolProvider : ToolProvider {
                 model = ctx.jevModel,
                 query = "Still needed for: $task",
                 documents = items.map { it.second },
+                timeoutMs = ctx.decisionTimeoutMs,
+                maxStateChars = ctx.decisionMaxStateChars,
             )
             // §6.1 structured `llm` event for the Jev prune decision. Only counts
             // and the outcome are recorded — never the task or item text.
@@ -106,6 +108,7 @@ class CompactAssistToolProvider : ToolProvider {
                     outcome = outcome,
                     durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L,
                     detail = buildMap {
+                        put("decision_provider", ctx.decisionProvider)
                         put("model", ctx.jevModel)
                         put(
                             "key_fingerprint",
@@ -125,7 +128,7 @@ class CompactAssistToolProvider : ToolProvider {
                 emitJevPrune("error")
                 return@withContext errorJson(
                     "jev_unavailable",
-                    JevDecisions.describeError(jevError),
+                    JevDecisions.describeError(jevError) + " [provider: ${ctx.decisionProvider}, model: ${ctx.jevModel}]",
                 )
             }
 

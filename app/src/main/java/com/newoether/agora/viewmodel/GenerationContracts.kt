@@ -118,6 +118,12 @@ data class GenerationContext(
     val typeSafeBaseUrl: String? = null,
     /** Jev model name (e.g. "jev-latest"). Set from Jev settings; no provider picker. */
     val jevModel: String = "jev-latest",
+    /** Active decision provider: "jev" (TypeSafe) or "drex" (Drex by Nace AI). */
+    val decisionProvider: String = "jev",
+    /** Per-attempt HTTP timeout for decision calls (Drex: 60s, Jev: 10s). */
+    val decisionTimeoutMs: Long = 10_000L,
+    /** Per-document state char budget (Drex 6000 vs Jev 1500 — 131k vs 32k tokens). */
+    val decisionMaxStateChars: Int = 1500,
     /** Master Jev toggle from Settings → Jev. Jev features only run when true. */
     val jevEnabled: Boolean = false,
     /** Master Social toggle from Settings → Social. Tools only run when true AND a worker URL is set. */

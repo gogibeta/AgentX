@@ -130,7 +130,7 @@ class AutoCompactCheckpoint {
             val state = kotlinx.serialization.json.buildJsonObject {
                 scored.forEachIndexed { index, pair ->
                     val doc = describePair(pair)
-                    put("pair_$index", doc.take(1500))
+                    put("pair_$index", doc.take(ctx.decisionMaxStateChars))
                     questions["keep_call_$index"] =
                         com.newoether.agora.api.typesafe.TypeSafeClient.NoulQuestion(
                             key = "keep_call_$index",
@@ -145,6 +145,7 @@ class AutoCompactCheckpoint {
             }
             val decision = com.newoether.agora.api.typesafe.TypeSafeClient.decide(
                 ctx.typeSafeApiKey, ctx.typeSafeBaseUrl, ctx.jevModel, state, questions,
+                timeoutMs = ctx.decisionTimeoutMs,
             )
             val decisions = scored.indices.map { index ->
                 val keepCall =

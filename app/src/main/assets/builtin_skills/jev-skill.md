@@ -1,10 +1,41 @@
-# Jev Skill — Typed Decisions for AgentX
+# Decision-Model Skill — Jev / Drex Typed Decisions for AgentX
 
-Jev = TypeSafe System One (`POST /v1/systemone`): typed questions — **Noul**
-(boolean + probability), **Choice** (winner + confidence), **Score** (rubric
-level + confidence) — over unstructured state. Fail-open: null/unavailable =
-no signal, fall back to non-Jev behavior. `jev_unavailable` means not
-configured (Settings → Jev) — don't retry, tell the user.
+Settings → Jev picks the **decision provider**: **Jev** (TypeSafe System One)
+or **Drex** (Nace AI, wire-compatible — same `POST /v1/systemone`, same typed
+questions: **Noul** (boolean + probability), **Choice** (winner +
+confidence), **Score** (rubric level + confidence)). Everything below works
+identically on both; the app routes to the selected provider automatically.
+
+How to know which is active: `prune_context` and decision diagnostics report
+`decision_provider` (`jev` or `drex`) and the model name. Drex models are
+user-selectable in Settings → Jev: `drex-v1.5` (default), `drex-v1.0`,
+`drex-latest` (moving alias, currently v1.5).
+
+Provider differences that matter to you:
+
+| | Jev (TypeSafe) | Drex (Nace AI) |
+|---|---|---|
+| Endpoint | `https://api.typesafe.ai` | `https://drex.nace.ai` |
+| State context window | ~32k tokens | **131,072 tokens** (drex-v1.5) |
+| State budget per doc (app) | 1,500 chars | 6,000 chars |
+| Call timeout (app) | 10s | 60s (model may take ~55s under load) |
+| Keys | up to 20, any format | `nace_sk_…`, max 3 per account |
+| Out-of-credit | — | HTTP 402 `insufficient_credit` (not billed; top up in Drex dashboard) |
+| Validation errors | — | HTTP 422 with `error.issues[]` listing exact `path: message` — fix the body, never retry |
+
+Fail-open: null/unavailable = no signal, fall back to non-Jev behavior.
+`jev_unavailable` means not configured (Settings → Jev) — don't retry, tell
+the user. Never retry 401/402/422; retry 429/529/5xx with backoff (honor
+`retry-after-ms`).
+
+## Search backends (for re-ranking context)
+
+Web search runs on the provider chosen in Settings → Web Search:
+**DuckDuckGo** (scraper), **Monid TinyFish** (API), or **Fusion**
+(DuckDuckGo + TinyFish). Jev/Drex re-ranking (`relevanceScores`) applies to
+the fused hits regardless of backend — it does not care which search way
+produced them. If results look thin, check which backend is selected before
+blaming the decision model.
 
 ## 1. Context pruning (`prune_context`)
 
@@ -99,4 +130,6 @@ review, never auto-act. Use when diagnosing from large log dumps.
   permission to bypass user approval.
 - Probabilities are not proof: high keep-probability ≠ safe to delete;
   Choice confidence measures distribution concentration, not correctness.
-- Keep Jev state small: truncate in the STATE, never in what you keep.
+- Keep decision state small: truncate in the STATE, never in what you keep.
+  On Drex you get ~4x the headroom (131k vs 32k tokens) — prefer Drex for
+  pruning/re-ranking large tool dumps; keep Jev for quick small decisions.
