@@ -1,0 +1,469 @@
+# AgentX Tunnel Browser — llms.txt
+
+> Machine-readable guide to the AgentX "Via tunnel" cloud browser: what it is,
+> how it is built, how to run every piece, how the screen is shown, every
+> feature, and how to test it end to end. Written for an AI coding agent
+> (OpenCode) that wants to stand the system up and drive it.
+>
+> Status: PoC verified end to end 2026-10-01. Reference repo:
+> `polironi10/agentx-cloud-browser`. The Android app consuming it is
+> `gogibeta/AgentX` (Settings → Browser → "Via tunnel" backend).
+
+---
+
+## 1. What this is
+
+A headless Chromium running on a remote machine (a GitHub Actions runner in
+the PoC; any always-on box works) that an Android phone drives over the
+internet through ONE stable Cloudflare Worker URL. The phone speaks the
+Chrome DevTools Protocol (CDP) — the same protocol Chrome's own DevTools
+uses — through the Worker. No third-party tunnel service (no ngrok,
+cloudflared, bore, pinggy, localhost.run, tunnelmole — all six were tried
+and dropped; see §11).
+
+From the app's point of view the tunnel browser is interchangeable with the
+on-device browser: the same 9 browser tools, the same watch panel, the same
+approvals. Only the transport differs.
+
+---
+
+## 2. Architecture
+
+```
+┌──────────────┐   https/wss + ?token=CLIENT_TOKEN   ┌─────────────────────┐
+│  AgentX app  │ ──────────────────────────────────▶ │  Cloudflare Worker  │
+│  (Android)   │   /json/* (CDP HTTP)                 │  ONE stable URL       │
+└──────────────┘   /devtools/* (CDP WebSocket)        │  e.g. https://        │
+                                                   │  agentx-browser.<sub> │
+┌──────────────┐   ?token=CLIENT_TOKEN on every call  │  .workers.dev         │
+│ curl /       │ ──────────────────────────────────▶ └─────────┬───────────┘
+│ websocat /   │                                               │ binding
+│ OpenCode     │                                               ▼
+└──────────────┘                                     ┌─────────────────────┐
+                                                     │ Durable Object      │
+                                                     │ "browser-main"      │
+                                                     │ (singleton, SQLite  │
+                                                     │ backend, hibernates │
+                                                     │ while idle; tracks  │
+                                                     │ runner state itself │
+                                                     │ — NO KV)            │
+                                                     └─────────┬───────────┘
+                                                               ▲ one outbound WSS
+                                                               │ /relay?secret=RELAY_SECRET
+                                                     ┌─────────┴───────────┐
+                                                     │  runner machine     │
+                                                     │  (GitHub Actions)   │
+                                                     │                     │
+                                                     │  relay.py ──▶ Chromium --headless=new
+                                                     │               CDP on 127.0.0.1:9222
+                                                     └─────────────────────┘
+```
+
+Data flow for a page load:
+
+1. App: `GET https://<worker>/json/version?token=<CLIENT_TOKEN>`
+2. Worker → DO → (over the uplink WS) → relay.py → `GET 127.0.0.1:9222/json/version` → Chromium
+3. Response travels back the same chain. `webSocketDebuggerUrl` in the payload
+   is rewritten to point at the Worker.
+4. App opens `wss://<worker>/devtools/browser/<id>?token=<CLIENT_TOKEN>`.
+5. Worker/DO ask relay.py to open `ws://127.0.0.1:9222/devtools/browser/<id>`
+   locally; CDP frames are then shuttled both ways over the uplink.
+
+Key property: the runner makes ONE **outbound** WebSocket to Cloudflare. No
+inbound ports, no firewall holes, no tunnel provider. If the runner dies, the
+stable Worker URL is unaffected — a new runner just opens a fresh uplink and
+the DO swaps it in.
+
+---
+
+## 3. Components
+
+### 3.1 Headless Chromium (on the runner)
+
+Started by `.github/workflows/browser.yml`:
+
+```
+google-chrome --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+  --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/chrome-profile about:blank
+```
+
+Readiness is polled with `curl -sf http://127.0.0.1:9222/json/version`
+(30 tries × 2 s). Nothing else on the runner touches the browser.
+
+### 3.2 relay.py (runner side) — `runner/relay.py`
+
+A ~130-line Python bridge. Env: `WORKER_URL`, `RELAY_SECRET`
+(pip dependency: `websockets` only).
+
+- Connects to `wss://<worker>/relay?secret=<RELAY_SECRET>` (`RELAY_WS`
+  derived from `WORKER_URL` by scheme swap).
+- `ping_interval=20, ping_timeout=20`, 32 MB max frame (screenshots are big).
+- Auto-reconnects with backoff (2 s → 60 s cap). Exits non-zero **only** if
+  Chromium itself is unreachable — the workflow then fails loudly instead of
+  idling.
+- Uplink protocol (JSON messages over the one WS):
+
+| Direction   | Message                                                         |
+|-------------|-----------------------------------------------------------------|
+| DO → runner | `{"type":"http","id":N,"method":"GET","path":"/json/version","body":""}` |
+| runner → DO | `{"type":"http_res","id":N,"status":200,"body":"{...}"}`        |
+| DO → runner | `{"type":"ws_open","id":N,"path":"/devtools/browser/abc"}`      |
+| DO → runner | `{"type":"ws_msg","id":N,"data":"{cdp frame}"}`  (client→Chrome) |
+| DO → runner | `{"type":"ws_close","id":N}`                                    |
+| runner → DO | `{"type":"ws_msg","id":N,"data":"{cdp frame}"}`  (Chrome→client) |
+| runner → DO | `{"type":"ws_closed","id":N}`                                   |
+
+HTTP is proxied with `urllib` (10 s timeout); each `ws_open` spawns a local
+`ws://127.0.0.1:9222<path>` connection plus an asyncio pump task back to the
+uplink.
+
+### 3.3 Cloudflare Worker + Durable Object "browser-main"
+
+- The Worker is the public face: ONE stable `https://…workers.dev` URL.
+- The Durable Object `browser-main` is a singleton holding the current
+  runner uplink. Free-plan SQLite backend (`new_sqlite_classes` migration —
+  required on the free plan; the deploy script sets this up). It hibernates
+  while idle, so it costs nothing when nobody is browsing.
+- No KV, no tunnel-URL registry: the DO knows the runner because the runner
+  holds the uplink open. Runner restarts = new uplink, zero client downtime
+  (except: active CDP WebSockets are closed with **code 1001** when the uplink
+  is replaced — clients MUST reconnect; the app's CDP client does this).
+- Two secrets (Cloudflare Worker secrets, never in code):
+  - `RELAY_SECRET` — runner registration; the uplink WS requires
+    `/relay?secret=<RELAY_SECRET>`.
+  - `CLIENT_TOKEN` — every client call requires `?token=<CLIENT_TOKEN>`
+    (query param; the app uses this form). Missing/wrong → **401**.
+
+### 3.4 The AgentX app (client)
+
+`app/src/main/java/com/newoether/agora/browser/BrowserSession.kt`
+(`connectTunnel()`), UI in `SettingsBrowserPage.kt` (tunnel group).
+
+Connect sequence, exactly as implemented:
+
+1. Read tunnel URL (must be `https`, trailing slash trimmed) + client token
+   from settings. Both live in the always-visible tunnel settings group, so
+   they can be entered before selecting the backend.
+2. Health check: `GET {url}/json/version?token=<token>` (10 s timeout,
+   browser-like `User-Agent`; the relay 401s without the token).
+   **Probe the `/json/version` path — the bare root `/` always 404s, even
+   with a correct token.**
+3. Take `webSocketDebuggerUrl` from the version payload, extract its path
+   (fallback `/devtools/browser`), rebuild as
+   `wss://<host><path>?token=<token>`. The token is never logged.
+4. Open the CDP WebSocket, `Target.createTarget("about:blank")`,
+   `Browser.setDownloadBehavior(allow)` (remote downloads stay on the
+   runner by default).
+5. All later CDP traffic goes through `CdpClient`, which self-heals dead
+   page sessions (re-attach + one retry) and reports errors as
+   `cdp_error(<code>):<method>: <message>` with an actionable hint.
+
+---
+
+## 4. How it stays up (no cron needed)
+
+GitHub kills every Actions job before 6 h. Instead of a scheduler:
+
+- Each run **dispatches its own successor** via the GitHub API at ~4 h 50 m
+  (`timeout-minutes: 355`; the workflow has `actions: write` permission and
+  deliberately NO concurrency group so overlap is allowed).
+- The successor boots Chromium, opens a new uplink; the DO swaps it in. The
+  client keeps using the same Worker URL and never notices.
+- A heartbeat commit (`.heartbeat`) keeps the repo active.
+- A separate 30-minute watchdog (`cloud-browser-watchdog`) re-dispatches the
+  workflow if the chain ever breaks.
+
+---
+
+## 5. Setup: run your own, step by step
+
+### 5.1 Cloudflare side (one time)
+
+1. Cloudflare account (free plan is enough).
+2. Deploy the Worker + DO. Two routes:
+   - Dashboard: Workers & Pages → Create → paste the worker source → Deploy →
+     Settings → Variables → add secret variables `RELAY_SECRET` and
+     `CLIENT_TOKEN` (generate with `openssl rand -hex 32`) → Bindings → add
+     the Durable Object binding with the `new_sqlite_classes` migration.
+   - API: `worker/deploy-worker.py` does the same via the Cloudflare API
+     (needs a `custom.cloudflare` API token; prints the resulting worker URL).
+3. Note the stable URL: `https://<name>.<subdomain>.workers.dev`.
+
+### 5.2 Runner side
+
+Option A — GitHub Actions (as in the PoC):
+
+1. Fork `polironi10/agentx-cloud-browser` (or copy the three files).
+2. Repo secrets: `WORKER_URL` (from §5.1), `RELAY_SECRET` (must match the
+   Worker secret), plus a `GH_PAT` with `actions:write` for self-chaining.
+3. Actions → `cloud-browser` → Run workflow. Watch the logs: you want
+   `CDP is up`, `relay uplink established`, `Worker reports browser online`.
+
+Option B — any always-on machine (VPS, home server):
+
+```bash
+# 1. Chromium (Debian/Ubuntu)
+sudo apt install chromium  # or download google-chrome
+# 2. Start headless with CDP
+chromium --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage \
+  --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/chrome-profile about:blank &
+# 3. Bridge it to the Worker
+pip install websockets
+WORKER_URL=https://<name>.<subdomain>.workers.dev \
+RELAY_SECRET=<your-relay-secret> \
+python3 runner/relay.py
+```
+
+`relay.py` prints `relay: connected to DO` when the uplink is live.
+
+### 5.3 App side (Android)
+
+1. Install the AgentX APK (any build ≥ v2.3.0).
+2. Settings → Browser → tunnel group (always visible):
+   - Tunnel URL: `https://<name>.<subdomain>.workers.dev` (https only).
+   - Client token: your `CLIENT_TOKEN`.
+   - Tap **Validate** → expect the browser name (e.g. `Chrome/154…`). Failure
+     codes are machine-readable: `bad_url`, `http_401` (wrong token),
+     `http_404` (probed the wrong path), `timeout`, `network`.
+3. Backend mode → **Via tunnel**. The next browser tool call connects.
+4. Settings → Browser → **Live diagnostics log** shows the on-device log
+   stream (CDP entries carry backend + method + full error) with 2 s
+   auto-refresh, filter, pause, and copy — this is how you watch what the
+   app is doing without USB.
+
+---
+
+## 6. Protocol contract (for testing with curl / code)
+
+Base: `https://<worker>` (replace `<T>` with your `CLIENT_TOKEN`).
+**Always send a browser-like `User-Agent`** — Cloudflare's edge 403-blocks
+bare library UAs (`Python-urllib/3.12` is rejected; okhttp/curl/browser UAs
+are fine).
+
+```bash
+UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0 Safari/537.36"
+W=https://<name>.<subdomain>.workers.dev
+T=<CLIENT_TOKEN>
+
+# Public health (no token): is a runner uplink live?
+curl -s -A "$UA" "$W/health"
+# → {"ok":true,"backend_age_s":123}   or 503 {"ok":false,"reason":"no backend registered"}
+
+# Chromium descriptor (token required)
+curl -s -A "$UA" "$W/json/version?token=$T"
+# → {"Browser":"Chrome/154.0.8037.57", ..., "webSocketDebuggerUrl":"wss://<worker>/devtools/browser/<id>"}
+#    NOTE: the wss URL is rewritten to point at the Worker, token NOT included — you add ?token=.
+
+# List targets
+curl -s -A "$UA" "$W/json/list?token=$T"
+
+# Open a new tab (PUT)
+curl -s -A "$UA" -X PUT "$W/json/new?token=$T"
+```
+
+CDP over WebSocket (needs a WS client — `websocat`, or Python `websockets`):
+
+```
+wss://<worker>/devtools/browser/<id>?token=<T>
+```
+
+Then speak JSON-RPC 1:1 as with local CDP:
+
+```json
+// open a page target
+{"id":1,"method":"Target.createTarget","params":{"url":"about:blank"}}
+// attach
+{"id":2,"method":"Target.attachToTarget","params":{"targetId":"<targetId>","flatten":true}}
+// navigate (use the sessionId from attachedToTarget)
+{"id":3,"method":"Page.navigate","params":{"url":"https://example.com"},"sessionId":"<sessionId>"}
+// screenshot
+{"id":4,"method":"Page.captureScreenshot","params":{"format":"jpeg","quality":60},"sessionId":"<sessionId>"}
+// → {"id":4,"result":{"data":"<base64 jpeg>"},"sessionId":"..."}
+```
+
+Full CDP reference: https://chromedevtools.github.io/devtools-protocol/
+
+Uplink-swap behavior: when a successor runner takes over, the DO closes
+active client WebSockets with **code 1001**. Treat 1001 as "reconnect and
+re-attach", not as an error — the app's `CdpClient` does exactly this, plus
+re-attaching dead page sessions itself (`-32001`, `-32000` with
+session/target/context markers → re-attach + retry once).
+
+---
+
+## 7. How the screen is shown
+
+There is no video stream. The "screen" is a screenshot pipeline:
+
+1. **Watch panel (in-app):** while a browser session is active, the app
+   captures `Page.captureScreenshot` (720p JPEG) at ~2–4 fps in a background
+   loop and shows it in a card above the chat, with a one-line narration of
+   the agent's last action ("Clicked 'Add to cart' on example.com"), the URL
+   bar, and buttons: **Stop**, **Take over** (you drive, the agent pauses),
+   **Hide** (eye icon — hides the card *without stopping* the session; a
+   floating eye button restores it), and inline **Approve/Deny** when a gated
+   action needs you.
+2. **`browser_screenshot` tool:** the agent's on-demand screenshot (base64
+   JPEG attachment) for pages where the accessibility snapshot is not enough
+   (canvas, maps, CAPTCHAs).
+3. **Take-over mode:** the live page is rendered natively and your touches go
+   straight to it; the agent loop pauses until you hand back control.
+
+If you are testing headless with OpenCode: poll `Page.captureScreenshot`
+over the WS and save the base64 to a `.jpg` — that IS the screen.
+
+---
+
+## 8. All features
+
+**Transport / backends (app Settings → Browser):**
+- `local` — on-device Chromium (proot/Alpine sandbox, persistent profile).
+- `tunnel` — this document (remote Chromium via Cloudflare DO relay).
+- `webview` — Android System WebView via the 127.0.0.1 CDP bridge (lightest).
+- `geckoview` — Mozilla GeckoView, no CDP (content-script element table).
+
+**Browser tools (what the agent — or you, over CDP — can do):**
+| Tool | What it does |
+|---|---|
+| `browser_navigate` | Go to URL (http/https only; domain allowlist gate on first visit) |
+| `browser_snapshot` | Accessibility tree with compact refs (`@e1`, `@e2`), viewport-only, truncated — the agent's "eyes" most of the time (2–8 KB, not screenshots) |
+| `browser_click` | Click a `@ref` |
+| `browser_fill` | Type into a `@ref`; accepts a `cred_id` for vault-injected secrets (model never sees the value) |
+| `browser_key` | Named keys (Enter, Tab, Escape…) |
+| `browser_scroll` | Scroll by direction/pixels |
+| `browser_screenshot` | JPEG screenshot attachment |
+| `browser_extract` | Whitelisted extractor scripts only (the model never runs page JS) |
+| `browser_download_status` | Download progress (remote backend: files stay on the runner) |
+| `browser_takeover` | Pause the agent loop; the user drives |
+
+**Safety rails:**
+- **ApprovalGate:** downloads, form submits, POSTs with personal data, and
+  payments pop a native dialog OUTSIDE the chat (prompt-injection resistant),
+  with once / this-task / session / always scope. Pending approvals stay
+  visible even if the watch panel is hidden.
+- **CredentialVault:** site credentials in Android Keystore (AES-256-GCM);
+  the agent only ever sees `cred_id` surrogates, injected via the trusted
+  input path. Every use is audit-logged (site, field, timestamp — never the
+  value).
+- **Secret redaction:** tool results are scrubbed of all known secrets
+  (API keys, tokens) before reaching the model.
+
+**Observability:**
+- **Structured diagnostics pipeline** (browser / LLM / tool / network /
+  system) with a live tail, shareable bundle export, and a floating debug
+  overlay.
+- **Live diagnostics log card** (Settings → Browser): the on-device log with
+  previous-session rotation, auto-refresh, filter, pause, copy — CDP/browser
+  entries carry backend + method + full error message, so the actual cause of
+  a failure is visible instead of a bare `cdp_error(-32000)`.
+- **CDP self-healing:** dead page sessions (renderer crash, tab closed,
+  runner swap) are detected by signature and re-attached with one retry;
+  connect failures surface a plain-language reason per backend.
+
+---
+
+## 9. Test it yourself (OpenCode recipes)
+
+```bash
+UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0 Safari/537.36"
+W=https://<name>.<subdomain>.workers.dev
+T=<CLIENT_TOKEN>
+
+# 1. Runner alive?
+curl -s -A "$UA" "$W/health"                                    # {"ok":true,...}
+
+# 2. Chromium reachable through the relay?
+curl -s -A "$UA" "$W/json/version?token=$T" | head -c 200       # "Browser":"Chrome/..."
+
+# 3. New tab + navigate + screenshot over WS (Python)
+pip install websockets
+python3 - <<'EOF'
+import asyncio, json, base64, urllib.request
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0 Safari/537.36"}
+W, T = "https://<worker>", "<token>"
+ver = json.load(urllib.request.urlopen(urllib.request.Request(f"{W}/json/version?token={T}", headers=UA)))
+# webSocketDebuggerUrl points at the Worker already (the relay rewrites it);
+# the client token travels as ?token= (it is never part of the payload).
+from urllib.parse import urlparse
+ws_path = urlparse(ver["webSocketDebuggerUrl"]).path
+ws_url = W.replace("https://", "wss://") + ws_path + f"?token={T}"
+async def main():
+    import websockets
+    async with websockets.connect(ws_url, max_size=32*1024*1024) as ws:
+        send = lambda i, m, p={}, s=None: ws.send(json.dumps({"id":i,"method":m,"params":p,**({"sessionId":s} if s else {})}))
+        recv = lambda: json.loads(await ws.recv())
+        await send(1, "Target.createTarget", {"url": "about:blank"})
+        target_id = (await recv())["result"]["targetId"]
+        await send(2, "Target.attachToTarget", {"targetId": target_id, "flatten": True})
+        session_id = (await recv())["result"]["sessionId"]
+        await send(3, "Page.navigate", {"url": "https://example.com"}, session_id)
+        await recv()
+        await send(4, "Page.captureScreenshot", {"format": "jpeg", "quality": 60}, session_id)
+        r = await recv()
+        open("/tmp/screen.jpg", "wb").write(base64.b64decode(r["result"]["data"]))
+        print("saved /tmp/screen.jpg")
+asyncio.run(main())
+EOF
+```
+
+Expected: `/tmp/screen.jpg` shows example.com rendered by the REMOTE Chromium.
+
+---
+
+## 10. Gotchas / troubleshooting
+
+| Symptom | Cause → fix |
+|---|---|
+| `401 unauthorized` | Missing/wrong `?token=` → check `CLIENT_TOKEN` matches the Worker secret |
+| `404` on `/` | Normal — the Worker only serves `/json/*`, `/devtools/*`, `/health`, `/relay` |
+| `403` from curl/Python | Bare library User-Agent edge-blocked → send a browser-like UA |
+| Validate says `timeout`/`network` | Runner down or chain broken → check Actions runs / re-dispatch workflow |
+| WS closed with code **1001** | Successor runner swapped the uplink → reconnect + re-attach (normal) |
+| Bare `cdp_error(-32000)` on every call | Dead page session (fixed app-side ≥ beta5: auto re-attach + retry; full `method: message` now surfaces) |
+| Screenshots huge / slow | Lower quality (`"quality":40`) or captureClip to the viewport |
+| `/health` → `no backend registered` (503) | relay.py not connected → check runner logs for `connected to DO` |
+
+History that shaped this design: cloudflared quick tunnels (edge 403 on
+datacenter IPs), localhost.run (no URL without a TTY), pinggy (60-min cap),
+ngrok (payment method required), bore (URL printed, zero data forwarded),
+tunnelmole (empty HTTP 500s) — then the DO relay, which has none of these
+failure modes because the runner only ever makes an outbound WSS.
+
+---
+
+## 11. Costs & limits (all free tier)
+
+- Cloudflare Workers: 100 k requests/day — PoC use is far below.
+- Durable Objects (SQLite): 100 k requests/day + 13,000 GB-s/day; hibernates
+  while idle, so idle costs ~zero. CDP traffic is tiny.
+- GitHub Actions: 2,000 min/month on the free plan per account — the PoC uses
+  a dummy account; each chained run is ~5 h, so ~13 runs/month ≈ 3,900 min:
+  **use a self-hosted runner (Option B, §5.2) for anything beyond the PoC.**
+- KV: not used. No signup or payment anywhere except the free Cloudflare
+  account.
+
+---
+
+## 12. Repo map
+
+```
+polironi10/agentx-cloud-browser/
+  .github/workflows/browser.yml   runner: Chromium + relay uplink + self-chain
+  runner/relay.py                  CDP ↔ DO bridge (the uplink protocol lives here)
+  worker/worker.js                 Worker + BrowserRelay Durable Object
+  worker/deploy-worker.py          API deploy (DO binding, new_sqlite_classes)
+  README.md                        operator overview
+
+gogibeta/AgentX (Android app, relevant files)
+  app/.../browser/BrowserSession.kt        connectTunnel(): the client contract
+  app/.../browser/cdp/CdpClient.kt         CDP client: self-healing, error detail
+  app/.../browser/BrowserToolProvider.kt   9 tools, approvals, vault hooks
+  app/.../ui/settings/SettingsBrowserPage.kt  tunnel group, Validate, live log card
+  app/.../ui/settings/BrowserLiveLogCard.kt   live diagnostics viewer
+  app/.../ui/browser/                  watch panel, hide/restore, take-over
+  docs/V230_ARCHITECTURE_PLAN.md §1.6      verification notes (2026-10-01)
+```
+
+*End of llms.txt — last updated 2026-10-02.*
