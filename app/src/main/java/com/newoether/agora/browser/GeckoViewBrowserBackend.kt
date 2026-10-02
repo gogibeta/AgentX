@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import org.mozilla.geckoview.GeckoResult
@@ -71,6 +72,10 @@ class GeckoViewBrowserBackend(
 
     @Volatile
     private var started = false
+
+    /** Run [block] on the main thread (Gecko API requirement). */
+    private suspend fun <T> withMain(block: suspend () -> T): T =
+        withContext(Dispatchers.Main, block)
 
     /** The live GeckoView, for embedding in the watch panel via AndroidView. */
     fun liveView(): GeckoView? = geckoView
