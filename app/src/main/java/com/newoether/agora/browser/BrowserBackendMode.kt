@@ -11,11 +11,15 @@ package com.newoether.agora.browser
  * - [WEBVIEW]: Android System WebView on-device via its
  *   `@webview_devtools_remote_<pid>` abstract socket, bridged to 127.0.0.1 by
  *   [WebViewBrowserBackend]. No sandbox download, no extra process.
+ * - [GECKOVIEW]: Mozilla GeckoView engine (non-Chromium) via its native API +
+ *   a bundled WebExtension content script for fast element-table observation
+ *   (no screenshots in the agent loop). See [GeckoViewBrowserBackend].
  */
 enum class BrowserBackendMode(val persisted: String) {
     LOCAL("local"),
     TUNNEL("tunnel"),
-    WEBVIEW("webview");
+    WEBVIEW("webview"),
+    GECKOVIEW("geckoview");
 
     companion object {
         fun fromPersisted(raw: String?): BrowserBackendMode =

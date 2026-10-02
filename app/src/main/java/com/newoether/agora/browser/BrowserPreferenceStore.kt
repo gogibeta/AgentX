@@ -110,7 +110,11 @@ class BrowserPreferenceStore(
     }
 
     fun setTunnelUrl(url: String) = scope.launch {
-        val trimmed = url.trim()
+        // Normalize: trim whitespace AND trailing slashes. connectTunnel()
+        // builds "$url/json/version" by string concat — a trailing slash would
+        // produce "//json/version" → 404 while Validate (OkHttp path builder)
+        // still passes. This was the "validate ok, connect fails" bug.
+        val trimmed = url.trim().trimEnd('/')
         store.edit { prefs ->
             if (trimmed.isEmpty()) prefs.remove(BROWSER_TUNNEL_URL)
             else prefs[BROWSER_TUNNEL_URL] = trimmed

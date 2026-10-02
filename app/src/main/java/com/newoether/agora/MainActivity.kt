@@ -235,6 +235,8 @@ class MainActivity : ComponentActivity() {
                             container.browserPreferenceStore,
                         com.newoether.agora.ui.browser.LocalBrowserDataController provides
                             container.chromiumLauncher,
+                        com.newoether.agora.ui.browser.LocalBrowserEngineManager provides
+                            container.browserEngineManager,
                     ) {
                         com.newoether.agora.ui.security.ApprovalDialogHost(
                             gate = container.approvalGate,

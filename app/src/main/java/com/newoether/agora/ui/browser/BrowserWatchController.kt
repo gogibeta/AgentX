@@ -39,6 +39,18 @@ interface BrowserWatchController {
      * referential equality, so every new frame is delivered.
      */
     val screenshot: StateFlow<ByteArray?>
+    /**
+     * Live WebView to embed directly when the connected backend is System
+     * WebView. The panel shows this INSTEAD of screenshots: the browser is
+     * truly visible and the user can touch it (take-control). Null for the
+     * Chromium/tunnel backends, which stay on the screenshot stream.
+     */
+    val liveWebView: StateFlow<android.webkit.WebView?>
+    /**
+     * Live GeckoView to embed when the connected backend is GeckoView.
+     * Same visible + touchable behavior as [liveWebView]. Null otherwise.
+     */
+    val liveGeckoView: StateFlow<android.view.View?>
     /** Take-over mode: the user drives the browser, the agent loop is paused. */
     val takeoverActive: StateFlow<Boolean>
     /** Non-null while a gated action awaits a decision. */
@@ -63,3 +75,7 @@ val LocalBrowserPreferenceStore =
 
 /** Wipe hook for the persistent profile, once stream A registers it. */
 val LocalBrowserDataController = compositionLocalOf<BrowserDataController?> { null }
+
+/** Engine registry (install/uninstall/select), once registered. */
+val LocalBrowserEngineManager =
+    compositionLocalOf<com.newoether.agora.browser.BrowserEngineManager?> { null }

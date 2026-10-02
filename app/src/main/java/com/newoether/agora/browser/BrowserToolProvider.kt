@@ -288,6 +288,27 @@ class BrowserToolProvider(
         if (!session.ensureConnected()) {
             return ActionOutcome("snapshot", errorJson("browser_snapshot", "not_connected", ""))
         }
+        // GECKOVIEW: the content script pushes a pre-formatted element table —
+        // zero round trips, no screenshots. Refs are the table's integers.
+        if (session.isGeckoView()) {
+            val table = session.geckoElementTable()
+            val refs = parseGeckoRefs(table)
+            session.storeSnapshotRefs(refs)
+            val truncated = table.length >= SNAPSHOT_MAX_CHARS
+            return ActionOutcome(
+                "snapshot",
+                buildJsonObject {
+                    put("type", "browser")
+                    put("tool", "browser_snapshot")
+                    put("snapshot", table.take(SNAPSHOT_MAX_CHARS))
+                    put("truncated", truncated)
+                }.toString(),
+                mapOf(
+                    "chars" to table.length.toString(),
+                    "backend" to "geckoview",
+                ),
+            )
+        }
         val tree = session.axSnapshot(ctx.toolTimeoutMs)
         val (text, refs) = compactAxTree(tree)
         session.storeSnapshotRefs(refs)
@@ -312,6 +333,23 @@ class BrowserToolProvider(
             ?: return ActionOutcome("click", errorJson("browser_click", "no_ref", ""))
         if (!session.ensureConnected()) {
             return ActionOutcome("click", errorJson("browser_click", "not_connected", ""))
+        }
+        // GECKOVIEW: refs are the content-script integers; direct action, no
+        // CDP resolution, no coordinates, no screenshots.
+        if (session.isGeckoView()) {
+            val n = ref.toIntOrNull()
+                ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
+            val ok = session.geckoClick(n)
+            return ActionOutcome(
+                "click",
+                buildJsonObject {
+                    put("type", "browser")
+                    put("tool", "browser_click")
+                    put("ok", ok)
+                    put("ref", ref)
+                }.toString(),
+                mapOf("ref" to ref, "backend" to "geckoview"),
+            )
         }
         val binding = session.resolveRef(ref)
             ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
@@ -347,6 +385,23 @@ class BrowserToolProvider(
         }
         if (!session.ensureConnected()) {
             return ActionOutcome("fill", errorJson("browser_fill", "not_connected", ""))
+        }
+        // GECKOVIEW: direct content-script fill, no CDP resolution.
+        if (session.isGeckoView()) {
+            val n = ref.toIntOrNull()
+                ?: return ActionOutcome("fill", errorJson("browser_fill", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
+            val ok = session.geckoFill(n, secret ?: text!!)
+            return ActionOutcome(
+                "fill",
+                buildJsonObject {
+                    put("type", "browser")
+                    put("tool", "browser_fill")
+                    put("ok", ok)
+                    put("ref", ref)
+                    put("via", if (credId != null) "vault" else "text")
+                }.toString(),
+                mapOf("ref" to ref, "backend" to "geckoview"),
+            )
         }
         val binding = session.resolveRef(ref)
             ?: return ActionOutcome("fill", errorJson("browser_fill", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
@@ -562,6 +617,24 @@ class BrowserToolProvider(
             }
         }
         return lines.joinToString("\n").take(SNAPSHOT_MAX_CHARS) to refs
+    }
+
+    /**
+     * Parse a GeckoView content-script element table (`[N] role "name" …`
+     * lines) into snapshot refs. The agent sees `[N]` and passes `N` back;
+     * the integer doubles as the backend id for the click/fill paths.
+     */
+    private fun parseGeckoRefs(table: String): Map<String, BrowserSnapshotRef> {
+        val refs = LinkedHashMap<String, BrowserSnapshotRef>()
+        val lineRe = Regex("""^\[(\d+)\]\s+(\S+)(?:\s+"([^"]*)")?""")
+        for (line in table.lineSequence()) {
+            val m = lineRe.find(line.trim()) ?: continue
+            val n = m.groupValues[1]
+            val role = m.groupValues[2]
+            val name = m.groupValues[3]
+            refs[n] = BrowserSnapshotRef(n, n.toLongOrNull() ?: -1L, role, name)
+        }
+        return refs
     }
 
     private fun tool(

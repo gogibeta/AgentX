@@ -65,6 +65,7 @@ class BrowserSession(
     private val prefs: BrowserPreferenceStore,
     private val launcher: ChromiumLauncher,
     private val webViewBackend: WebViewBrowserBackend,
+    private val geckoBackend: GeckoViewBrowserBackend,
     private val cdp: CdpClient,
     private val healthHttp: OkHttpClient,
     private val scope: CoroutineScope,
@@ -81,6 +82,18 @@ class BrowserSession(
     var eventReporter: BrowserEventReporter? = null
 
     val cdpClient: CdpClient get() = cdp
+
+    /**
+     * Live WebView for the watch panel (AndroidView). Non-null only when the
+     * connected backend is WEBVIEW and [WebViewBrowserBackend.ensureStarted]
+     * has run. Attaching it makes the browser visible and touchable
+     * (take-control); screenshots are skipped while it is attached.
+     */
+    fun liveWebView(): android.webkit.WebView? =
+        if (connectedMode == BrowserBackendMode.WEBVIEW) webViewBackend.liveWebView() else null
+
+    /** The currently connected backend, if any. */
+    fun connectedBackend(): BrowserBackendMode? = connectedMode
 
     private val json = Json { ignoreUnknownKeys = true }
     private val mutex = Mutex()
@@ -140,6 +153,7 @@ class BrowserSession(
             BrowserBackendMode.LOCAL -> connectLocal()
             BrowserBackendMode.TUNNEL -> connectTunnel()
             BrowserBackendMode.WEBVIEW -> connectWebView()
+            BrowserBackendMode.GECKOVIEW -> connectGeckoView()
         }
         val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
         if (ok) {
@@ -165,6 +179,7 @@ class BrowserSession(
 
     /** Navigate and wait for load (fail-open: returns loaded=false on timeout). */
     suspend fun navigate(url: String, timeoutMs: Long): Boolean {
+        if (isGeckoView()) return geckoNavigate(url)
         // Subscribe before navigating so the load event cannot be missed.
         val loadEvent = scope.async(Dispatchers.Default) {
             withTimeoutOrNull(LOAD_WAIT_MS) {
@@ -275,6 +290,10 @@ class BrowserSession(
 
     /** Viewport JPEG screenshot; returns raw bytes (base64-decoded). */
     suspend fun captureScreenshot(timeoutMs: Long): ByteArray {
+        if (isGeckoView()) {
+            return geckoThumbnail()
+                ?: throw com.newoether.agora.browser.cdp.CdpException("screenshot_missing_data")
+        }
         val result = cdp.invoke(
             method = "Page.captureScreenshot",
             params = buildJsonObject {
@@ -355,7 +374,10 @@ class BrowserSession(
     }
 
     private suspend fun connectTunnel(): Boolean {
-        val rawUrl = prefs.tunnelUrl.value.trim()
+        // Normalize: a stored URL with a trailing slash would produce
+        // "//json/version" → 404 (Validate uses OkHttp's path builder which is
+        // slash-safe, so it passed while connect failed).
+        val rawUrl = prefs.tunnelUrl.value.trim().trimEnd('/')
         if (rawUrl.isBlank()) {
             DebugLog.w(TAG, "connectTunnel: no tunnel URL configured")
             return false
@@ -442,6 +464,49 @@ class BrowserSession(
         DebugLog.d(TAG, "connectWebView: connected via System WebView bridge")
         return true
     }
+
+    /**
+     * GECKOVIEW backend: Mozilla Gecko via [GeckoViewBrowserBackend]. No CDP —
+     * the session delegates navigation/observation/actions to the backend's
+     * native API + WebExtension bridge. The element table is pushed by the
+     * content script (zero round trips, no screenshots in the agent loop).
+     */
+    private suspend fun connectGeckoView(): Boolean {
+        if (!geckoBackend.ensureStarted()) {
+            DebugLog.w(TAG, "connectGeckoView: GeckoView backend failed to start")
+            return false
+        }
+        DebugLog.d(TAG, "connectGeckoView: connected via GeckoView backend")
+        return true
+    }
+
+    // ── GeckoView delegation (used by tools when connectedMode == GECKOVIEW) ─
+
+    /** True when the GeckoView backend is the connected one. */
+    fun isGeckoView(): Boolean = connectedMode == BrowserBackendMode.GECKOVIEW
+
+    /**
+     * FAST element table for GeckoView: the content-script-pushed
+     * `[ref] role "name" · value · state` text. Zero round trips.
+     */
+    fun geckoElementTable(): String = geckoBackend.snapshot()
+
+    /** Live GeckoView for the watch panel (AndroidView). */
+    fun liveGeckoView(): android.view.View? =
+        if (isGeckoView()) geckoBackend.liveView() else null
+
+    suspend fun geckoNavigate(url: String): Boolean = geckoBackend.navigate(url)
+
+    suspend fun geckoClick(ref: Int): Boolean = geckoBackend.click(ref)
+
+    suspend fun geckoFill(ref: Int, text: String): Boolean =
+        geckoBackend.typeText(ref, text)
+
+    suspend fun geckoThumbnail(): ByteArray? = geckoBackend.captureThumbnail()
+
+    fun geckoUrl(): String = geckoBackend.currentUrl()
+
+    fun geckoTitle(): String = geckoBackend.currentTitle()
 
     /** `ws://anything/devtools/browser/x` → `/devtools/browser/x`. Null when unparseable. */
     private fun extractWsPath(debuggerUrl: String): String? {

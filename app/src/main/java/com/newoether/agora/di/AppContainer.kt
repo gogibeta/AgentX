@@ -260,6 +260,7 @@ class AppContainer(
             browserPreferenceStore,
             chromiumLauncher,
             webViewBrowserBackend,
+            geckoViewBrowserBackend,
             browserCdpClient,
             HttpClient.client,
             appScope,
@@ -269,6 +270,16 @@ class AppContainer(
     /** v2.4 WebView CDP backend: System WebView + 127.0.0.1 bridge (no sandbox). */
     val webViewBrowserBackend: WebViewBrowserBackend by lazy {
         WebViewBrowserBackend(appContext, appScope)
+    }
+
+    /** GeckoView backend: Mozilla engine + WebExtension bridge (no screenshots). */
+    val geckoViewBrowserBackend: GeckoViewBrowserBackend by lazy {
+        GeckoViewBrowserBackend(appContext, appScope)
+    }
+
+    /** Browser engine registry: install/uninstall/select engines. */
+    val browserEngineManager: BrowserEngineManager by lazy {
+        BrowserEngineManager(appContext, browserPreferenceStore, chromiumLauncher, appScope)
     }
 
     val browserToolProvider: BrowserToolProvider by lazy {

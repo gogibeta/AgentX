@@ -1,5 +1,6 @@
 package com.newoether.agora.ui.browser
 
+import androidx.compose.ui.viewinterop.AndroidView
 import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -95,6 +96,8 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
     val pageTitle by controller.pageTitle.collectAsState()
     val narration by controller.narration.collectAsState()
     val frame by controller.screenshot.collectAsState()
+    val liveWebView by controller.liveWebView.collectAsState()
+    val liveGeckoView by controller.liveGeckoView.collectAsState()
     val takeoverActive by controller.takeoverActive.collectAsState()
     val pendingApproval by controller.pendingApproval.collectAsState()
     var approvalDialogFor by remember { mutableStateOf<BrowserApprovalRequest?>(null) }
@@ -146,7 +149,7 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
             ) {
                 Column {
                     Spacer(Modifier.height(8.dp))
-                    BrowserFrame(frame = frame)
+                    BrowserFrame(frame = frame, webView = liveWebView, geckoView = liveGeckoView)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = narration.ifBlank { stringResource(R.string.browser_narration_idle) },
@@ -230,9 +233,29 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
     }
 }
 
-/** Latest screenshot frame; placeholder box while the first frame is on its way. */
+/**
+ * Browser viewport. When a live engine view is connected (System WebView or
+ * GeckoView backend), it is embedded directly (visible + touchable — this is
+ * also how take-control works: the user just touches it). Otherwise the
+ * latest screenshot frame; placeholder box while the first frame is on its way.
+ */
 @Composable
-private fun BrowserFrame(frame: ByteArray?) {
+private fun BrowserFrame(
+    frame: ByteArray?,
+    webView: android.webkit.WebView?,
+    geckoView: android.view.View?,
+) {
+    val liveView: android.view.View? = webView ?: geckoView
+    if (liveView != null) {
+        AndroidView(
+            factory = { liveView },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(12.dp)),
+        )
+        return
+    }
     val bitmap = remember(frame) {
         frame?.takeIf { it.isNotEmpty() }?.let { bytes ->
             runCatching {

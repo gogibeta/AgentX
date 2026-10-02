@@ -121,6 +121,7 @@ private fun BrowserSettingsContent(
 ) {
     val dataController = LocalBrowserDataController.current
     val watchController = LocalBrowserWatchController.current
+    val engineManager = com.newoether.agora.ui.browser.LocalBrowserEngineManager.current
     val browserEnabled by store.browserEnabled.collectAsState()
     val backendMode by store.backendMode.collectAsState()
     val tunnelUrl by store.tunnelUrl.collectAsState()
@@ -196,6 +197,17 @@ private fun BrowserSettingsContent(
         // The tunnel group is always visible (not only in TUNNEL mode): the mode
         // dropdown refuses to switch to TUNNEL while the URL is blank, so hiding
         // the fields behind the mode made the URL impossible to enter.
+        com.newoether.agora.ui.browser.BrowserEngineSection(
+            manager = engineManager,
+            activeMode = backendMode,
+            onSelectMode = { mode ->
+                if (mode == BrowserBackendMode.TUNNEL && tunnelUrl.isBlank()) {
+                    viewModel.emitSnackbar(noUrlMessage)
+                } else {
+                    engineManager?.setActive(mode) ?: store.setBackendMode(mode)
+                }
+            },
+        )
         SettingsGroup(title = stringResource(R.string.browser_tunnel_group), items = buildList {
                 add {
                     SettingsIconContent(icon = Icons.Default.Link) {
@@ -376,6 +388,7 @@ private fun BackendModeDropdown(
                     BrowserBackendMode.LOCAL -> R.string.browser_backend_local
                     BrowserBackendMode.TUNNEL -> R.string.browser_backend_tunnel
                     BrowserBackendMode.WEBVIEW -> R.string.browser_backend_webview
+                    BrowserBackendMode.GECKOVIEW -> R.string.browser_backend_geckoview
                 },
             ),
             onValueChange = {},
@@ -446,6 +459,25 @@ private fun BackendModeDropdown(
                 onClick = {
                     expanded = false
                     onSelect(BrowserBackendMode.WEBVIEW)
+                },
+            )
+            AgentXDropdownMenuItem(
+                text = {
+                    Column {
+                        Text(
+                            stringResource(R.string.browser_backend_geckoview),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        )
+                        Text(
+                            stringResource(R.string.browser_backend_geckoview_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onSelect(BrowserBackendMode.GECKOVIEW)
                 },
             )
         }

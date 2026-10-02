@@ -50,6 +50,14 @@ class WebViewBrowserBackend(
     @Volatile
     private var webView: WebView? = null
 
+    /**
+     * The live WebView, for embedding in the watch panel via AndroidView.
+     * Attaching it to the view hierarchy makes the browser VISIBLE (it is
+     * created headless) and touchable (take-control). Null until [ensureStarted].
+     * Must only be attached/detached on the main thread (AndroidView handles this).
+     */
+    fun liveWebView(): WebView? = webView
+
     @Volatile
     private var serverSocket: ServerSocket? = null
 

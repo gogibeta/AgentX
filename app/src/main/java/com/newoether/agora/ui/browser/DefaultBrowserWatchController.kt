@@ -46,6 +46,12 @@ class DefaultBrowserWatchController(
     private val _screenshot = MutableStateFlow<ByteArray?>(null)
     override val screenshot: StateFlow<ByteArray?> = _screenshot.asStateFlow()
 
+    private val _liveWebView = MutableStateFlow<android.webkit.WebView?>(null)
+    override val liveWebView: StateFlow<android.webkit.WebView?> = _liveWebView.asStateFlow()
+
+    private val _liveGeckoView = MutableStateFlow<android.view.View?>(null)
+    override val liveGeckoView: StateFlow<android.view.View?> = _liveGeckoView.asStateFlow()
+
     private val _takeoverActive = MutableStateFlow(false)
     override val takeoverActive: StateFlow<Boolean> = _takeoverActive.asStateFlow()
 
@@ -71,6 +77,10 @@ class DefaultBrowserWatchController(
                 _sessionActive.value = active
                 _narration.value = narrate(last.name, last.outcome, last.detail)
                 (last.detail["host"] ?: last.detail["url"])?.let { _pageUrl.value = it }
+                // Live views (System WebView / GeckoView backends): the panel embeds
+                // them directly instead of the screenshot stream.
+                _liveWebView.value = runCatching { session.liveWebView() }.getOrNull()
+                _liveGeckoView.value = runCatching { session.liveGeckoView() }.getOrNull()
                 if (active) startFrames() else stopFrames()
             }
         }
@@ -121,11 +131,15 @@ class DefaultBrowserWatchController(
         if (frameJob?.isActive == true) return
         frameJob = scope.launch(Dispatchers.IO) {
             while (isActive && _sessionActive.value) {
-                runCatching {
-                    val frame = session.captureScreenshot(FRAME_TIMEOUT_MS)
-                    _screenshot.value = frame
-                }.onFailure {
-                    DebugLog.d(TAG, "watch frame failed: ${it.message}")
+                // Skip screenshot polling while a live view is embedded —
+                // it renders itself and the user can touch it directly.
+                if (_liveWebView.value == null && _liveGeckoView.value == null) {
+                    runCatching {
+                        val frame = session.captureScreenshot(FRAME_TIMEOUT_MS)
+                        _screenshot.value = frame
+                    }.onFailure {
+                        DebugLog.d(TAG, "watch frame failed: ${it.message}")
+                    }
                 }
                 delay(FRAME_INTERVAL_MS)
             }
