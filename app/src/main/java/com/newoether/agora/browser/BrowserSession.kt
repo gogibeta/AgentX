@@ -110,6 +110,18 @@ class BrowserSession(
     @Volatile
     private var downloadEventsCollecting = false
 
+    /**
+     * Why the last [ensureConnected] attempt failed, in plain words
+     * ("tunnel /json/version unreachable", "Chromium failed to start", …).
+     * Surfaced to the agent on `not_connected` so a connect failure is never
+     * a bare code with an empty message again.
+     */
+    @Volatile
+    private var lastConnectFailure: String? = null
+
+    /** Human-readable reason for the most recent connect failure, if any. */
+    fun lastConnectFailure(): String? = lastConnectFailure
+
     init {
         cdp.connectionListener = object : CdpConnectionListener {
             override fun onConnectionLost(reason: String) {
@@ -148,6 +160,9 @@ class BrowserSession(
             cdp.close()
             connectedMode = null
         }
+        // Tag the CDP client so every error and log line names the backend
+        // that actually failed — no more guessing which of the four it was.
+        cdp.sessionTag = mode.persisted
         val startedAt = android.os.SystemClock.elapsedRealtime()
         val ok = when (mode) {
             BrowserBackendMode.LOCAL -> connectLocal()
@@ -158,12 +173,23 @@ class BrowserSession(
         val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
         if (ok) {
             connectedMode = mode
+            lastConnectFailure = null
             startDownloadEventCollection()
             report("connect", elapsed, "ok", mapOf("backend" to mode.persisted))
         } else {
-            report("connect", elapsed, "error:connect_failed", mapOf("backend" to mode.persisted))
+            report(
+                "connect", elapsed, "error:connect_failed",
+                mapOf("backend" to mode.persisted, "reason" to (lastConnectFailure ?: "?").take(80)),
+            )
         }
         ok
+    }
+
+    /** Record a connect failure with a human-readable reason; returns false for `?:` chains. */
+    private fun connectFailed(reason: String): Boolean {
+        lastConnectFailure = reason
+        DebugLog.w(TAG, reason)
+        return false
     }
 
     /** Currently connected backend, or null when not connected. */
@@ -350,16 +376,20 @@ class BrowserSession(
 
     private suspend fun connectLocal(): Boolean {
         if (!launcher.ensureStarted()) {
-            DebugLog.w(TAG, "connectLocal: Chromium failed to start")
-            return false
+            return connectFailed("local: Chromium failed to start (use Reinstall in browser settings)")
         }
         val version = httpGetJson(
             "http://127.0.0.1:${launcher.debugPort()}/json/version",
             HEALTH_CHECK_TIMEOUT_MS,
-        ) ?: return false
+        ) ?: return connectFailed(
+            "local: Chromium did not answer /json/version on 127.0.0.1:${launcher.debugPort()} " +
+                "(process started but DevTools never bound — reinstall Chromium)",
+        )
         val wsUrl = (version["webSocketDebuggerUrl"] as? JsonPrimitive)?.contentOrNull
-            ?: return false
-        if (!cdp.connect(wsUrl)) return false
+            ?: return connectFailed("local: /json/version answered but had no webSocketDebuggerUrl")
+        if (!cdp.connect(wsUrl)) {
+            return connectFailed("local: CDP websocket to local Chromium failed")
+        }
         cdp.openPage("about:blank")
         // Downloads land in the app-owned dir (bound into the sandbox), never auto-cleaned.
         cdp.invoke(
@@ -379,20 +409,17 @@ class BrowserSession(
         // slash-safe, so it passed while connect failed).
         val rawUrl = prefs.tunnelUrl.value.trim().trimEnd('/')
         if (rawUrl.isBlank()) {
-            DebugLog.w(TAG, "connectTunnel: no tunnel URL configured")
-            return false
+            return connectFailed("tunnel: no tunnel URL configured (enter it in browser settings)")
         }
         val tunnelUri = runCatching { Uri.parse(rawUrl) }.getOrNull()
         val host = tunnelUri?.host
         if (tunnelUri?.scheme != "https" || host.isNullOrBlank()) {
             // Security (scry): tunnel backend requires a user-supplied HTTPS URL.
-            DebugLog.w(TAG, "connectTunnel: tunnel URL must be https")
-            return false
+            return connectFailed("tunnel: tunnel URL must be https")
         }
         val token = prefs.tunnelClientToken.value
         if (token.isBlank()) {
-            DebugLog.w(TAG, "connectTunnel: tunnel client token not set")
-            return false
+            return connectFailed("tunnel: client token not set (enter it in browser settings)")
         }
         // Health check before connect (§1.3.0): GET /json/version → 200.
         // The relay 401s without the client token, so it must travel here too
@@ -402,8 +429,10 @@ class BrowserSession(
             HEALTH_CHECK_TIMEOUT_MS,
         )
         if (version == null) {
-            DebugLog.w(TAG, "connectTunnel: tunnel endpoint unreachable (/json/version)")
-            return false
+            return connectFailed(
+                "tunnel: endpoint unreachable at $rawUrl/json/version " +
+                    "(relay down, wrong URL, or wrong client token — the relay 401s without the token)",
+            )
         }
         // Derive the debugger WS path from the version payload, then pin it to
         // the user's host with the client token. The token is never logged.
@@ -413,8 +442,10 @@ class BrowserSession(
         val wsUrl = "wss://$host$path$separator" + "token=" +
             URLEncoder.encode(token, Charsets.UTF_8.name())
         if (!cdp.connect(wsUrl)) {
-            DebugLog.w(TAG, "connectTunnel: CDP websocket to tunnel endpoint failed")
-            return false
+            return connectFailed(
+                "tunnel: CDP websocket failed (relay answered HTTP but refused the WS upgrade — " +
+                    "check the relay logs; the runner may be offline)",
+            )
         }
         cdp.openPage("about:blank")
         // Remote downloads stay on the remote end (default dir); the local
@@ -436,23 +467,23 @@ class BrowserSession(
      */
     private suspend fun connectWebView(): Boolean {
         if (!webViewBackend.ensureStarted()) {
-            DebugLog.w(TAG, "connectWebView: WebView backend failed to start")
-            return false
+            return connectFailed("webview: System WebView backend failed to start")
         }
         val port = webViewBackend.debugPort()
         val targets = httpGetJsonArray(
             "http://127.0.0.1:$port/json/list",
             HEALTH_CHECK_TIMEOUT_MS,
-        ) ?: return false
+        ) ?: return connectFailed("webview: bridge /json/list unreachable on 127.0.0.1:$port")
         val page = targets.mapNotNull { it as? JsonObject }
             .firstOrNull { (it["type"] as? JsonPrimitive)?.contentOrNull == "page" }
-            ?: return false
+            ?: return connectFailed("webview: no page target in bridge /json/list")
         val targetId = (page["id"] as? JsonPrimitive)?.contentOrNull
-        if (targetId.isNullOrBlank()) return false
+        if (targetId.isNullOrBlank()) {
+            return connectFailed("webview: page target had no id")
+        }
         val wsUrl = webViewTargetWsUrl(port, targetId)
         if (!cdp.connect(wsUrl)) {
-            DebugLog.w(TAG, "connectWebView: CDP websocket to WebView bridge failed")
-            return false
+            return connectFailed("webview: CDP websocket to WebView bridge failed")
         }
         // The WebView profile is persistent; downloads use the default
         // behavior (files land in the WebView profile dir).
@@ -473,8 +504,7 @@ class BrowserSession(
      */
     private suspend fun connectGeckoView(): Boolean {
         if (!geckoBackend.ensureStarted()) {
-            DebugLog.w(TAG, "connectGeckoView: GeckoView backend failed to start")
-            return false
+            return connectFailed("geckoview: GeckoView backend failed to start")
         }
         DebugLog.d(TAG, "connectGeckoView: connected via GeckoView backend")
         return true

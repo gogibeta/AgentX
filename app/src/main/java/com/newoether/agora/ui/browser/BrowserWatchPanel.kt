@@ -30,10 +30,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Web
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -79,13 +82,46 @@ fun BrowserWatchPanelHost(
     if (controller == null) return
     val sessionActive by controller.sessionActive.collectAsState()
     val takeoverActive by controller.takeoverActive.collectAsState()
+    val panelHidden by controller.panelHidden.collectAsState()
     AnimatedVisibility(
-        visible = sessionActive || takeoverActive,
+        visible = (sessionActive || takeoverActive) && !panelHidden,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
         modifier = modifier,
     ) {
         BrowserWatchPanel(controller = controller)
+    }
+}
+
+/**
+ * Floating restore button, shown while the watch panel is hidden but the
+ * browser session is still running. Tapping it brings the panel back without
+ * touching the session. Place in the same chat-surface Box as
+ * [ChatBrowserWatchCard].
+ */
+@Composable
+fun BoxScope.ChatBrowserWatchRestoreFab() {
+    val controller = LocalBrowserWatchController.current ?: return
+    val sessionActive by controller.sessionActive.collectAsState()
+    val takeoverActive by controller.takeoverActive.collectAsState()
+    val panelHidden by controller.panelHidden.collectAsState()
+    AnimatedVisibility(
+        visible = panelHidden && (sessionActive || takeoverActive),
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 12.dp),
+    ) {
+        FloatingActionButton(
+            onClick = controller::onShowPanel,
+            modifier = Modifier.size(48.dp),
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ) {
+            Icon(
+                Icons.Default.Visibility,
+                contentDescription = stringResource(R.string.browser_show),
+            )
+        }
     }
 }
 
@@ -138,6 +174,12 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
                     Icon(
                         if (collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                         contentDescription = stringResource(if (collapsed) R.string.expand else R.string.collapse),
+                    )
+                }
+                IconButton(onClick = controller::onHidePanel) {
+                    Icon(
+                        Icons.Default.VisibilityOff,
+                        contentDescription = stringResource(R.string.browser_hide),
                     )
                 }
             }
@@ -367,4 +409,7 @@ fun BoxScope.ChatBrowserWatchCard() {
             .widthIn(max = 840.dp)
             .fillMaxWidth(),
     )
+    // Floating restore button, visible only while the panel is hidden but the
+    // session keeps running.
+    ChatBrowserWatchRestoreFab()
 }

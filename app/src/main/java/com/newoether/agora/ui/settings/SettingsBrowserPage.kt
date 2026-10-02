@@ -293,6 +293,13 @@ private fun BrowserSettingsContent(
                         )
                     }
                 }
+                // Live diagnostics log: the USB-logcat signal (CDP/browser
+                // entries now carry backend + method + full error), including
+                // the previous session's rotated log, readable and copyable
+                // in an AI-friendly one-line-per-event format.
+                add {
+                    BrowserLiveLogCard()
+                }
             })
 
         SettingsGroup(title = stringResource(R.string.browser_data_group), items = listOf {

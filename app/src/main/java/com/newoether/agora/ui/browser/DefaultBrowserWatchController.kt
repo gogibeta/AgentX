@@ -59,6 +59,14 @@ class DefaultBrowserWatchController(
     override val pendingApproval: StateFlow<BrowserApprovalRequest?> =
         _pendingApproval.asStateFlow()
 
+    /**
+     * Panel hidden by the user (Hide button). The session, screenshot frames,
+     * live views, and takeover state all keep running — only the card is
+     * gone, until the floating restore button brings it back.
+     */
+    private val _panelHidden = MutableStateFlow(false)
+    override val panelHidden: StateFlow<Boolean> = _panelHidden.asStateFlow()
+
     private var frameJob: Job? = null
 
     init {
@@ -175,8 +183,21 @@ class DefaultBrowserWatchController(
         scope.launch(Dispatchers.IO) {
             runCatching { session.close() }
             _sessionActive.value = false
+            _panelHidden.value = false
             stopFrames()
         }
+    }
+
+    override fun onHidePanel() {
+        // Hide only: the session, frame polling, and takeover state are
+        // untouched, so the browser keeps running in the background.
+        _panelHidden.value = true
+        DebugLog.d(TAG, "Watch panel hidden (session keeps running)")
+    }
+
+    override fun onShowPanel() {
+        _panelHidden.value = false
+        DebugLog.d(TAG, "Watch panel restored")
     }
 
     override fun onTakeOver() {

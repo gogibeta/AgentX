@@ -63,3 +63,18 @@
 - `ask_models` swallowed provider failures as opaque "provider_error"; it now
   returns the real (truncated) provider message, and accepts a per-call
   `models` array to ask specific models for one verification pass.
+- CDP "all backends give cdp error" (2026-10-02): the page *session* died
+  while the *socket* stayed alive (renderer crash, tab closed, tunnel-runner
+  restart/DO uplink swap, WebView recreated). `ensureConnected()` only checked
+  the socket, so every later `invoke()` failed forever with a bare
+  `cdp_error(-32000)`/`-32001` — and `BrowserToolProvider.errorCode()` truncated
+  even the message away, so the agent saw only the numeric code. Fix:
+  `CdpClient.invoke()` now detects session-invalid signatures, re-attaches
+  (or recreates the page target) and retries once; errors carry
+  `cdp_error(code):method: message` plus backend tag, and tool errors include
+  full `message` + actionable `hint`. Never truncate a diagnostic error to a
+  bare code again — the code alone is undebuggable.
+- `BrowserSession` now records WHY each backend connect failed
+  (`lastConnectFailure()`); `not_connected` tool errors surface that reason
+  instead of an empty message. Always thread connect-failure reasons to the
+  caller — "not connected" with no cause wastes a full debug round-trip.

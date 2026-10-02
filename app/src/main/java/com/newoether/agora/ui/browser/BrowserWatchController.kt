@@ -53,6 +53,19 @@ interface BrowserWatchController {
     val liveGeckoView: StateFlow<android.view.View?>
     /** Take-over mode: the user drives the browser, the agent loop is paused. */
     val takeoverActive: StateFlow<Boolean>
+    /**
+     * The user hid the watch panel WITHOUT stopping the session: screenshots,
+     * the live view, and the agent's browser tools keep running underneath.
+     * A floating restore button brings the panel back.
+     */
+    val panelHidden: StateFlow<Boolean>
+    fun onStop()
+    fun onTakeOver()
+    fun onResume()
+    /** Hide the panel but keep the browser session running. */
+    fun onHidePanel()
+    /** Bring back a hidden panel. */
+    fun onShowPanel()
     /** Non-null while a gated action awaits a decision. */
     val pendingApproval: StateFlow<BrowserApprovalRequest?>
     fun onStop()

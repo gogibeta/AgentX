@@ -181,7 +181,8 @@ class BrowserToolProvider(
                 SystemClock.elapsedRealtime() - started, outcome, emptyMap(),
             )
             DebugLog.w(TAG, "$name failed: ${e.javaClass.simpleName}")
-            errorJson(name, errorCode(e), "")
+            val (code, detail, hint) = errorParts(e)
+            errorJson(name, code, detail, hint)
         }
     }
 
@@ -200,7 +201,7 @@ class BrowserToolProvider(
             session.diagnosticContext = ctx
             try {
                 if (!session.ensureConnected()) {
-                    emit(ToolExecutionEvent.Completed(ToolExecutionResult(errorJson(name, "not_connected", ""), isError = true)))
+                    emit(ToolExecutionEvent.Completed(ToolExecutionResult(notConnected(name), isError = true)))
                     return@flow
                 }
                 val result = captureScreenshotResult(ctx)
@@ -215,7 +216,8 @@ class BrowserToolProvider(
                     ctx, "screenshot",
                     SystemClock.elapsedRealtime() - started, "error:${e.javaClass.simpleName}", emptyMap(),
                 )
-                emit(ToolExecutionEvent.Completed(ToolExecutionResult(errorJson(name, errorCode(e), ""), isError = true)))
+                val (code, detail, hint) = errorParts(e)
+                emit(ToolExecutionEvent.Completed(ToolExecutionResult(errorJson(name, code, detail, hint), isError = true)))
             }
         } else {
             emit(ToolExecutionEvent.Completed(ToolExecutionResult(execute(name, arguments, ctx))))
@@ -266,7 +268,7 @@ class BrowserToolProvider(
             return ActionOutcome("navigate", errorJson("browser_navigate", "bad_url", "Only http(s) URLs are allowed."))
         }
         if (!session.ensureConnected()) {
-            return ActionOutcome("navigate", errorJson("browser_navigate", "not_connected", ""))
+            return ActionOutcome("navigate", notConnected("browser_navigate"))
         }
         val loaded = session.navigate(url, ctx.toolTimeoutMs)
         return ActionOutcome(
@@ -286,7 +288,7 @@ class BrowserToolProvider(
 
     private suspend fun snapshot(ctx: GenerationContext): ActionOutcome {
         if (!session.ensureConnected()) {
-            return ActionOutcome("snapshot", errorJson("browser_snapshot", "not_connected", ""))
+            return ActionOutcome("snapshot", notConnected("browser_snapshot"))
         }
         // GECKOVIEW: the content script pushes a pre-formatted element table —
         // zero round trips, no screenshots. Refs are the table's integers.
@@ -332,7 +334,7 @@ class BrowserToolProvider(
         val ref = argStr(args(arguments), "ref")
             ?: return ActionOutcome("click", errorJson("browser_click", "no_ref", ""))
         if (!session.ensureConnected()) {
-            return ActionOutcome("click", errorJson("browser_click", "not_connected", ""))
+            return ActionOutcome("click", notConnected("browser_click"))
         }
         // GECKOVIEW: refs are the content-script integers; direct action, no
         // CDP resolution, no coordinates, no screenshots.
@@ -384,7 +386,7 @@ class BrowserToolProvider(
             return ActionOutcome("fill", errorJson("browser_fill", "credential_not_found", "No credential for id."))
         }
         if (!session.ensureConnected()) {
-            return ActionOutcome("fill", errorJson("browser_fill", "not_connected", ""))
+            return ActionOutcome("fill", notConnected("browser_fill"))
         }
         // GECKOVIEW: direct content-script fill, no CDP resolution.
         if (session.isGeckoView()) {
@@ -426,7 +428,7 @@ class BrowserToolProvider(
         val key = argStr(args(arguments), "key")
             ?: return ActionOutcome("key", errorJson("browser_key", "no_key", ""))
         if (!session.ensureConnected()) {
-            return ActionOutcome("key", errorJson("browser_key", "not_connected", ""))
+            return ActionOutcome("key", notConnected("browser_key"))
         }
         val mapped = NAMED_KEYS.entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
         if (mapped != null) {
@@ -454,7 +456,7 @@ class BrowserToolProvider(
         val direction = (argStr(a, "direction") ?: "down").lowercase()
         val pixels = argInt(a, "pixels", 400).coerceIn(1, 5000)
         if (!session.ensureConnected()) {
-            return ActionOutcome("scroll", errorJson("browser_scroll", "not_connected", ""))
+            return ActionOutcome("scroll", notConnected("browser_scroll"))
         }
         val (dx, dy) = when (direction) {
             "up" -> 0.0 to -pixels.toDouble()
@@ -477,7 +479,7 @@ class BrowserToolProvider(
 
     private suspend fun screenshot(ctx: GenerationContext): ActionOutcome {
         if (!session.ensureConnected()) {
-            return ActionOutcome("screenshot", errorJson("browser_screenshot", "not_connected", ""))
+            return ActionOutcome("screenshot", notConnected("browser_screenshot"))
         }
         val attachment = captureScreenshotAttachment(ctx)
         return ActionOutcome(
@@ -650,17 +652,60 @@ class BrowserToolProvider(
         ),
     )
 
-    private fun errorJson(tool: String, error: String, message: String): String =
+    private fun errorJson(tool: String, error: String, message: String, hint: String = ""): String =
         buildJsonObject {
             put("type", "browser")
             put("tool", tool)
             put("error", error)
             if (message.isNotBlank()) put("message", message)
+            if (hint.isNotBlank()) put("hint", hint)
         }.toString()
 
     private fun errorCode(e: Exception): String = when (e) {
         is CdpException -> e.message?.substringBefore(':')?.take(40) ?: "cdp_error"
         else -> "error"
+    }
+
+    /**
+     * Full error triple for the agent: a short machine-readable code, the
+     * complete failure detail (CDP method + message, never truncated to a
+     * bare code), and an actionable hint. A bare `cdp_error(-32000)` with an
+     * empty message is never emitted anymore.
+     */
+    private fun errorParts(e: Exception): Triple<String, String, String> {
+        val detail = (e.message ?: e.javaClass.simpleName).take(DETAIL_MAX_CHARS)
+        return Triple(errorCode(e), detail, hintFor(e))
+    }
+
+    /** Actionable guidance per failure signature, so the agent can recover on its own. */
+    private fun hintFor(e: Exception): String {
+        val msg = e.message ?: return ""
+        return when {
+            msg.startsWith("cdp_error(-32001)") || msg.startsWith("cdp_error(-32000)") ->
+                "The browser tab's session died (renderer crash, tab closed, or tunnel runner " +
+                    "restarted). AgentX already re-attached and retried once. Navigate to the page " +
+                    "again, then retry the action."
+            msg.startsWith("cdp_timeout:") ->
+                "The browser did not answer in time — it may be busy loading or the device is " +
+                    "slow. Wait a moment and retry; if it repeats, the page may be hanging the renderer."
+            msg.startsWith("cdp_not_connected") || msg.startsWith("cdp_send_failed") ||
+                msg.startsWith("cdp_disconnected") || msg.startsWith("cdp_closed") ->
+                "No live CDP connection. Re-run the tool (it reconnects automatically); if it " +
+                    "still fails, check the browser backend in Settings."
+            else -> ""
+        }
+    }
+
+    /** `not_connected` now carries WHY the backend failed to connect. */
+    private fun notConnected(tool: String): String {
+        val reason = session.lastConnectFailure()
+        return errorJson(
+            tool,
+            "not_connected",
+            reason ?: "The browser backend is not connected.",
+            "Fix the cause above (e.g. enter the tunnel URL and token, or reinstall " +
+                "Chromium in browser settings), then retry the tool.",
+        )
     }
 
     private fun actionName(tool: String): String = tool.removePrefix("browser_")
@@ -669,6 +714,8 @@ class BrowserToolProvider(
         private const val TAG = "BrowserToolProvider"
         private const val MAX_SNAPSHOT_NODES = 200
         private const val SNAPSHOT_MAX_CHARS = 8000
+        /** Cap on the failure detail surfaced to the agent (full method + message, not a bare code). */
+        private const val DETAIL_MAX_CHARS = 300
 
         private val TOOL_NAMES = setOf(
             "browser_navigate", "browser_snapshot", "browser_click", "browser_fill",

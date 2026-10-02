@@ -37,6 +37,30 @@ class CdpException(message: String, cause: Throwable? = null) : Exception(messag
 /** A CDP event (a message with `method` and no `id`), e.g. `Page.loadEventFired`. */
 data class CdpEvent(val method: String, val params: JsonObject)
 
+/**
+ * True when a CDP failure message means the page session died while the socket
+ * may still be alive: stale/unknown session id, closed/destroyed target, or a
+ * dead execution context. These are the errors that used to surface to the
+ * agent as a bare `cdp_error(-32000)` on every subsequent tool call, forever —
+ * the socket-level reconnect never ran because the socket was fine.
+ */
+internal fun isSessionInvalidError(message: String?): Boolean {
+    if (message == null) return false
+    if (message.startsWith("cdp_disconnected")) return true
+    if (!message.startsWith("cdp_error(")) return false
+    val code = message.substringAfter("cdp_error(", "").substringBefore(")", "").toIntOrNull()
+    // -32001 is always session/target death ("Session with given id not found").
+    if (code == -32001) return true
+    if (code != -32000) return false
+    val lower = message.lowercase()
+    return SESSION_INVALID_MARKERS.any { it in lower }
+}
+
+private val SESSION_INVALID_MARKERS = listOf(
+    "session", "target", "context", "not found", "no such", "closed",
+    "destroyed", "crashed", "detached", "invalid id",
+)
+
 /** Lifecycle callbacks for the CDP socket; the session layer forwards these to diagnostics. */
 interface CdpConnectionListener {
     fun onConnectionLost(reason: String) {}
@@ -63,9 +87,21 @@ class CdpClient(
 ) {
     var connectionListener: CdpConnectionListener? = null
 
+    /**
+     * Backend that owns this client (`local`, `tunnel`, `webview`), set by
+     * [BrowserSession] on connect. Attached to error messages and diagnostics
+     * so a failure can be attributed without guessing.
+     */
+    @Volatile
+    var sessionTag: String = "cdp"
+
     private val json = Json { ignoreUnknownKeys = true }
     private val nextId = AtomicLong(1)
-    private val pending = ConcurrentHashMap<Long, CompletableDeferred<JsonObject>>()
+
+    /** In-flight calls, keyed by JSON-RPC id. The method name is kept so error
+     * messages can say WHICH command failed, not just the numeric code. */
+    private val pending = ConcurrentHashMap<Long, PendingCall>()
+    private data class PendingCall(val method: String, val deferred: CompletableDeferred<JsonObject>)
     private val socketMutex = Mutex()
 
     @Volatile
@@ -100,6 +136,14 @@ class CdpClient(
     /**
      * Send one JSON-RPC command and await its response.
      *
+     * Self-healing: when the failure signature says the page *session* died
+     * (stale session id, closed target, dead execution context) the client
+     * re-attaches to the stored target — recreating the page target when the
+     * browser went away — and retries the command exactly once. This closes
+     * the hole where every tool call after a renderer crash / tunnel-runner
+     * restart / tab close failed forever with a bare `cdp_error(-32000)`
+     * while the socket itself looked healthy.
+     *
      * @param sessionId page-target session; null for browser-level domains
      *   (`Target.*`, `Browser.*`). Defaults to the attached page session.
      */
@@ -110,7 +154,66 @@ class CdpClient(
         timeoutMs: Long = INVOKE_TIMEOUT_MS,
     ): JsonObject {
         if (!ensureConnected()) throw CdpException("cdp_not_connected")
-        return invokeDirect(method, params, sessionId, timeoutMs)
+        // Remember whether this call targeted the page session: the retry
+        // must reuse a browser-level (null) session id verbatim instead of
+        // forcing the page session onto `Target.*`/`Browser.*` commands.
+        val usedPageSession = sessionId != null
+        return try {
+            invokeDirect(method, params, sessionId, timeoutMs)
+        } catch (e: CdpException) {
+            if (!isSessionInvalidError(e.message)) throw e
+            DebugLog.w(
+                TAG,
+                "CDP session invalid during $method (backend=$sessionTag); " +
+                    "re-attaching and retrying once: ${e.message?.take(160)}",
+            )
+            DebugLog.event(
+                "CdpClient",
+                mapOf(
+                    "backend" to sessionTag,
+                    "method" to method,
+                    "stage" to "session_recover",
+                    "error" to (e.message?.take(160) ?: ""),
+                ),
+                "CDP page session died; re-attaching",
+            )
+            if (!recoverSession()) {
+                DebugLog.event(
+                    "CdpClient",
+                    mapOf("backend" to sessionTag, "method" to method, "stage" to "recover_failed"),
+                    "session recovery failed; surfacing original error",
+                )
+                throw e
+            }
+            DebugLog.event(
+                "CdpClient",
+                mapOf("backend" to sessionTag, "method" to method, "stage" to "recovered_retry"),
+                "session re-attached; retrying command once",
+            )
+            // Retry on the (possibly new) page session; a second failure
+            // surfaces with full method + message detail.
+            invokeDirect(
+                method,
+                params,
+                if (usedPageSession) this.sessionId else null,
+                timeoutMs,
+            )
+        }
+    }
+
+    /**
+     * Heal a dead page session while the socket is alive: [ensureConnected]
+     * already re-attaches when it had to reopen the socket; when the socket
+     * was fine we re-attach (or recreate the page target) explicitly here.
+     * Never throws — false means "could not heal".
+     */
+    private suspend fun recoverSession(): Boolean {
+        if (!ensureConnected()) return false
+        return try {
+            socketMutex.withLock { reattachLocked() }
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** invoke() without the connectivity check — for use inside the reconnect path. */
@@ -128,7 +231,7 @@ class CdpClient(
             if (sessionId != null) put("sessionId", sessionId)
         }.toString()
         val deferred = CompletableDeferred<JsonObject>()
-        pending[id] = deferred
+        pending[id] = PendingCall(method, deferred)
         try {
             val current = socket ?: throw CdpException("cdp_not_connected")
             if (!current.send(message)) throw CdpException("cdp_send_failed")
@@ -330,14 +433,18 @@ class CdpClient(
         } ?: return
         val id = (root["id"] as? JsonPrimitive)?.longOrNull
         if (id != null) {
-            val deferred = pending.remove(id) ?: return
+            val call = pending.remove(id) ?: return
             val error = root["error"] as? JsonObject
             if (error != null) {
                 val message = (error["message"] as? JsonPrimitive)?.contentOrNull ?: "unknown"
                 val code = (error["code"] as? JsonPrimitive)?.intOrNull
-                deferred.completeExceptionally(CdpException("cdp_error($code):$message"))
+                // The method that failed travels with the error: the agent and
+                // the log reader see WHAT failed, not just a numeric code.
+                call.deferred.completeExceptionally(
+                    CdpException("cdp_error($code):${call.method}: $message"),
+                )
             } else {
-                deferred.complete((root["result"] as? JsonObject) ?: buildJsonObject {})
+                call.deferred.complete((root["result"] as? JsonObject) ?: buildJsonObject {})
             }
             return
         }
@@ -355,7 +462,7 @@ class CdpClient(
         val stale = pending.values.toList()
         pending.clear()
         val failure = CdpException("cdp_disconnected:$reason")
-        stale.forEach { it.completeExceptionally(failure) }
+        stale.forEach { it.deferred.completeExceptionally(failure) }
         connectionListener?.onConnectionLost(reason)
         DebugLog.w(TAG, "CDP socket gone: $reason")
     }
@@ -369,7 +476,7 @@ class CdpClient(
         val stale = pending.values.toList()
         pending.clear()
         val failure = CdpException("cdp_closed")
-        stale.forEach { it.completeExceptionally(failure) }
+        stale.forEach { it.deferred.completeExceptionally(failure) }
     }
 
     companion object {
