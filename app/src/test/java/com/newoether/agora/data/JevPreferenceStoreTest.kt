@@ -207,13 +207,19 @@ class JevPreferenceStoreTest {
         // Drex active → Drex keys round-robin.
         s.setDecisionProvider("drex")
         s.decisionProvider.first { it == "drex" }
+        // decisionApiKeys is a separate hot flow — wait for it to observe the switch,
+        // otherwise pickKey() can still see the stale Jev key list.
+        s.decisionApiKeys.first { it == listOf("d1", "d2") }
         assertEquals("d1", s.pickKey())
         assertEquals("d2", s.pickKey())
         assertEquals("d1", s.pickKey())
-        // Configured gate follows the active provider's keys.
+        // Configured gate follows the active provider's keys: on while Drex keys exist...
+        s.jevConfigured.first { it }
         s.setDrexApiKeys(emptyList())
         s.drexApiKeys.first { it.isEmpty() }
-        assertFalse(s.jevConfigured.first { !it })
+        // ...and off once they're cleared (wait for the gate flow to observe it).
+        s.jevConfigured.first { !it }
+        assertFalse(s.jevConfigured.value)
     }
 
 
