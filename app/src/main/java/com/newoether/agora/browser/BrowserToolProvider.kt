@@ -209,7 +209,7 @@ class BrowserToolProvider(
             session.diagnosticContext = ctx
             try {
                 if (!session.ensureConnected()) {
-                    emit(ToolExecutionEvent.Completed(ToolExecutionResult(notConnected(name), isError = true)))
+                    emit(ToolExecutionEvent.Completed(ToolExecutionResult(notConnected(session, name), isError = true)))
                     return@flow
                 }
                 val result = captureScreenshotResult(session, ctx)
