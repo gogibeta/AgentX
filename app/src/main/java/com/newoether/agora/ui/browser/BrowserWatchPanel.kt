@@ -424,19 +424,19 @@ fun BrowserPopupDialog(
                     .padding(horizontal = 8.dp)
                     .padding(bottom = 8.dp),
             ) {
-                if (webView != null) {
-                    // B4: stable factory keyed on the WebView instance — a
+                // B4: stable factory keyed on the WebView instance — a
                     // fresh lambda every recomposition made reparent timing
-                    // nondeterministic. Capture the non-null view: remember()
-                    // does not smart-cast the outer nullable.
-                    val nonNullView: android.webkit.WebView = webView
-                    val panelFactory = remember(nonNullView) {
+                    // nondeterministic. Assign to a local val first: the
+                    // delegated `by` property does not smart-cast.
+                    val currentWebView = webView
+                    if (currentWebView != null) {
+                    val panelFactory = remember(currentWebView) {
                         { ctx: android.content.Context ->
                             android.widget.FrameLayout(ctx).also { container ->
-                                (nonNullView.parent as? android.view.ViewGroup)
-                                    ?.removeView(nonNullView)
+                                (currentWebView.parent as? android.view.ViewGroup)
+                                    ?.removeView(currentWebView)
                                 container.addView(
-                                    nonNullView,
+                                    currentWebView,
                                     android.widget.FrameLayout.LayoutParams(
                                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
