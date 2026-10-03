@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -60,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.newoether.agora.R
 import com.newoether.agora.ui.components.DialogWindowEdgeToEdge
 
@@ -128,6 +131,7 @@ fun BoxScope.ChatBrowserWatchRestoreFab() {
 @Composable
 private fun BrowserWatchPanel(controller: BrowserWatchController) {
     var collapsed by rememberSaveable { mutableStateOf(false) }
+    var fullscreen by rememberSaveable { mutableStateOf(false) }
     val pageUrl by controller.pageUrl.collectAsState()
     val pageTitle by controller.pageTitle.collectAsState()
     val narration by controller.narration.collectAsState()
@@ -176,6 +180,15 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
                         contentDescription = stringResource(if (collapsed) R.string.expand else R.string.collapse),
                     )
                 }
+                IconButton(onClick = { fullscreen = !fullscreen }) {
+                    Icon(
+                        if (fullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        contentDescription = stringResource(
+                            if (fullscreen) R.string.browser_fullscreen_exit
+                            else R.string.browser_fullscreen,
+                        ),
+                    )
+                }
                 IconButton(onClick = controller::onHidePanel) {
                     Icon(
                         Icons.Default.VisibilityOff,
@@ -191,7 +204,29 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
             ) {
                 Column {
                     Spacer(Modifier.height(8.dp))
-                    BrowserFrame(frame = frame, webView = liveWebView, geckoView = liveGeckoView)
+                    if (fullscreen) {
+                        // The live engine view is reparented into the
+                        // fullscreen dialog (a View can have only one
+                        // parent); show a placeholder here meanwhile.
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerLow),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            IconButton(onClick = { fullscreen = false }) {
+                                Icon(
+                                    Icons.Default.FullscreenExit,
+                                    contentDescription = stringResource(R.string.browser_fullscreen_exit),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    } else {
+                        BrowserFrame(frame = frame, webView = liveWebView, geckoView = liveGeckoView)
+                    }
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = narration.ifBlank { stringResource(R.string.browser_narration_idle) },
@@ -273,6 +308,86 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
             onDismiss = { approvalDialogFor = null },
         )
     }
+
+    if (fullscreen) {
+        FullscreenBrowserDialog(
+            frame = frame,
+            webView = liveWebView,
+            geckoView = liveGeckoView,
+            onDismiss = { fullscreen = false },
+        )
+    }
+}
+
+/**
+ * Full-screen browser view. Live engine views (System WebView / GeckoView)
+ * are reparented here — touchable, so the user can drive the page directly
+ * with takeover — while the panel shows a placeholder. The screenshot stream
+ * (tunnel / local Chromium) renders full-size instead.
+ */
+@Composable
+private fun FullscreenBrowserDialog(
+    frame: ByteArray?,
+    webView: android.webkit.WebView?,
+    geckoView: android.view.View?,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        DialogWindowEdgeToEdge()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+        ) {
+            val liveView: android.view.View? = webView ?: geckoView
+            if (liveView != null) {
+                AndroidView(
+                    factory = { ctx ->
+                        android.widget.FrameLayout(ctx).also { container ->
+                            // Detach from the panel first: a View can have
+                            // only one parent, and disposal ordering between
+                            // the panel and this dialog is not guaranteed.
+                            (liveView.parent as? android.view.ViewGroup)
+                                ?.removeView(liveView)
+                            container.addView(
+                                liveView,
+                                android.widget.FrameLayout.LayoutParams(
+                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                ),
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                BrowserFrame(
+                    frame = frame,
+                    webView = null,
+                    geckoView = null,
+                    frameModifier = Modifier.fillMaxSize(),
+                )
+            }
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f),
+                        RoundedCornerShape(12.dp),
+                    ),
+            ) {
+                Icon(
+                    Icons.Default.FullscreenExit,
+                    contentDescription = stringResource(R.string.browser_fullscreen_exit),
+                )
+            }
+        }
+    }
 }
 
 /**
@@ -286,14 +401,16 @@ private fun BrowserFrame(
     frame: ByteArray?,
     webView: android.webkit.WebView?,
     geckoView: android.view.View?,
+    modifier: Modifier = Modifier,
+    frameModifier: Modifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(16f / 9f),
 ) {
     val liveView: android.view.View? = webView ?: geckoView
     if (liveView != null) {
         AndroidView(
             factory = { liveView },
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+            modifier = modifier.then(frameModifier)
                 .clip(RoundedCornerShape(12.dp)),
         )
         return
@@ -306,9 +423,7 @@ private fun BrowserFrame(
         }
     }
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f)
+        modifier = modifier.then(frameModifier)
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow),
         contentAlignment = Alignment.Center,

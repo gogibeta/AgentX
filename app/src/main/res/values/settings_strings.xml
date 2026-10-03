@@ -711,6 +711,8 @@
     <string name="browser_approval_approve_once">Approve once</string>
     <string name="browser_hide">Hide</string>
     <string name="browser_show">Show browser</string>
+    <string name="browser_fullscreen">Full screen</string>
+    <string name="browser_fullscreen_exit">Exit full screen</string>
     <string name="browser_live_log_title">Live diagnostics log</string>
     <string name="browser_live_log_desc">The on-device log stream, including the previous session. Browser entries now carry the backend, the CDP method, and the full error message, so the actual cause of a failure is visible here.</string>
     <string name="browser_live_log_filter_hint">Filter (e.g. CdpClient, ERROR)</string>

@@ -137,6 +137,17 @@ class GeckoViewBrowserBackend(
     }.onFailure { e ->
         val code = (e as? WebExtension.InstallException)?.code
         DebugLog.w(TAG, "preflight: GeckoRuntime init failed: $e (installCode=$code)")
+        // Log the cause chain + stack: without it a bare
+        // "IllegalStateException: Failed to initialize GeckoRuntime" is not
+        // diagnosable (ABI mismatch, missing omni.ja, profile dir, ...).
+        var cause: Throwable? = e.cause
+        var depth = 0
+        while (cause != null && depth < 4) {
+            DebugLog.w(TAG, "preflight: caused by: $cause")
+            cause = cause.cause
+            depth++
+        }
+        DebugLog.w(TAG, "preflight stack:\n${e.stackTrace.take(15).joinToString("\n")}")
     }.getOrDefault(false)
 
     /**

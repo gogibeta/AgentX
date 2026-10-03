@@ -510,6 +510,12 @@ class BrowserSession(
         if (!cdp.connect(wsUrl)) {
             return connectFailed("webview: CDP websocket to WebView bridge failed")
         }
+        // The bridge URL is target-scoped (/devtools/page/<id>): the socket
+        // IS the page session. Drop any stale target/session inherited from a
+        // previous backend, otherwise every command fails with -32001
+        // "Session with given id not found" and reattach cannot heal it
+        // (Target.* is invalid on a target-scoped connection).
+        cdp.clearPageSession()
         // The WebView profile is persistent; downloads use the default
         // behavior (files land in the WebView profile dir). Optional step:
         // must never abort the connect (III.2).

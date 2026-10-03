@@ -141,6 +141,24 @@ class CdpClient(
 
     fun isConnected(): Boolean = socket != null
 
+    /**
+     * Forget any attached page target/session.
+     *
+     * Used when (re)connecting to a *target-scoped* DevTools endpoint
+     * (`/devtools/page/<id>`, as served by the System WebView bridge): the
+     * connection is already bound to the page, so commands must go out
+     * sessionless. A stale session id inherited from a previous backend
+     * (tunnel/local) would make every command fail with
+     * `cdp_error(-32001): Session with given id not found`, and the reattach
+     * path cannot heal it because `Target.*` is not valid on a target-scoped
+     * connection. pageUrl is kept for diagnostics.
+     */
+    fun clearPageSession() {
+        targetId = null
+        sessionId = null
+        DebugLog.d(TAG, "page session cleared (target-scoped endpoint)")
+    }
+
     /** Open the debugger WebSocket. Idempotent; replaces any previous socket. */
     suspend fun connect(url: String): Boolean = socketMutex.withLock {
         connectLocked(url)

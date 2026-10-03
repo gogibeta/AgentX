@@ -98,3 +98,24 @@
 - Tunnel failure messages must be host-only: the stored tunnel URL may carry a
   user-pasted `?token=` query param — never interpolate the raw URL into a
   reason that reaches logs or tool results.
+- WebView target-scoped CDP sessions (2026-10-03): `connectWebView()` opens a
+  target-level WebSocket (`/devtools/page/<id>`) where the connection IS the
+  page session — no `Target.attachToTarget`, no session id. But `CdpClient`
+  kept the stale `targetId`/`sessionId` from the previously used backend, so
+  every command went out with a dead session id and failed
+  `cdp_error(-32001): Session with given id not found`; the self-healing
+  reattach then failed too because `Target.*` is invalid on a target-scoped
+  connection. Fix: `CdpClient.clearPageSession()` called right after the
+  WebView connect. Rule: whenever you connect to a target-scoped endpoint,
+  explicitly drop inherited page-session state — never assume a fresh
+  `CdpClient` — and never run the browser-level reattach path against it.
+- GeckoView `WebExtension.InstallException.code == -1` is the generic/unknown
+  install failure, and `GeckoRuntime.create()` throwing a bare
+  `IllegalStateException("Failed to initialize GeckoRuntime")` is not
+  diagnosable. Fix: preflight now logs the cause chain and the full stack, so
+  the next log bundle says WHY (ABI, omni.ja, profile dir). Never log only an
+  exception's `toString()` when the cause is the actual diagnostic.
+- Watch-frame polling stops after 5 consecutive failures but restarts on the
+  next browser tool event; a degraded tunnel runner (long-lived GitHub runner,
+  >30s screenshot latency) therefore looks like "no live view". The timeout
+  is the symptom — check runner health before blaming the app.
