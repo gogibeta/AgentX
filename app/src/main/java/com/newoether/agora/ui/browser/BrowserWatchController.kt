@@ -29,6 +29,11 @@ data class BrowserApprovalRequest(
 interface BrowserWatchController {
     /** True while a browser session/tool is active; the panel is hidden otherwise. */
     val sessionActive: StateFlow<Boolean>
+    /**
+     * The chat currently on screen. The chat UI sets this; the panel then
+     * shows THAT chat's browser session, so two chats never share one browser.
+     */
+    val activeConversationId: kotlinx.coroutines.flow.MutableStateFlow<String?>
     val pageUrl: StateFlow<String>
     val pageTitle: StateFlow<String>
     /** One-line action narration, e.g. "Clicked 'Add to cart' on example.com". */
@@ -43,14 +48,9 @@ interface BrowserWatchController {
      * Live WebView to embed directly when the connected backend is System
      * WebView. The panel shows this INSTEAD of screenshots: the browser is
      * truly visible and the user can touch it (take-control). Null for the
-     * Chromium/tunnel backends, which stay on the screenshot stream.
+     * tunnel backend, which stays on the screenshot stream.
      */
     val liveWebView: StateFlow<android.webkit.WebView?>
-    /**
-     * Live GeckoView to embed when the connected backend is GeckoView.
-     * Same visible + touchable behavior as [liveWebView]. Null otherwise.
-     */
-    val liveGeckoView: StateFlow<android.view.View?>
     /** Take-over mode: the user drives the browser, the agent loop is paused. */
     val takeoverActive: StateFlow<Boolean>
     /**
@@ -63,11 +63,19 @@ interface BrowserWatchController {
     fun onHidePanel()
     /** Bring back a hidden panel. */
     fun onShowPanel()
+    /**
+     * Open the browser for the current chat (chat composer button): connects
+     * the chat's session if needed and unhides the panel. The browser keeps
+     * whatever page the chat's session already had.
+     */
+    fun onOpenBrowser()
     /** Non-null while a gated action awaits a decision. */
     val pendingApproval: StateFlow<BrowserApprovalRequest?>
     fun onStop()
     fun onTakeOver()
     fun onResume()
+    /** History-back in the visible chat's browser; the session keeps running. */
+    fun onGoBack()
     fun onApprove(requestId: String)
     fun onDeny(requestId: String)
 }

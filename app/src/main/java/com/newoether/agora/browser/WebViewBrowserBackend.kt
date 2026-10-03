@@ -14,6 +14,8 @@ import java.io.OutputStream
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,17 +48,29 @@ class WebViewBrowserBackend(
 ) {
     private val startMutex = Mutex()
 
-    /** Strong reference: a GC'd WebView would kill the DevTools socket. */
-    @Volatile
-    private var webView: WebView? = null
+    /**
+     * One WebView per browser session (keyed by conversation id, "default"
+     * when the agent runs outside a chat). Strong references: a GC'd WebView
+     * would kill its DevTools target. This is what lets two chats drive two
+     * independent browsers with no overlap.
+     */
+    private val webViews = ConcurrentHashMap<String, WebView>()
+
+    /** DevTools page-target id per session, resolved at WebView creation. */
+    private val targetIds = ConcurrentHashMap<String, String>()
 
     /**
-     * The live WebView, for embedding in the watch panel via AndroidView.
-     * Attaching it to the view hierarchy makes the browser VISIBLE (it is
-     * created headless) and touchable (take-control). Null until [ensureStarted].
-     * Must only be attached/detached on the main thread (AndroidView handles this).
+     * The live WebView for a session, for embedding in the watch panel via
+     * AndroidView. Attaching it to the view hierarchy makes the browser
+     * VISIBLE (it is created headless) and touchable (take-control). Null
+     * until [ensureStarted] for that session. Must only be attached/detached
+     * on the main thread (AndroidView handles this).
      */
-    fun liveWebView(): WebView? = webView
+    fun liveWebView(sessionKey: String = DEFAULT_SESSION_KEY): WebView? =
+        webViews[sessionKey]
+
+    /** DevTools page-target id for a session's WebView. Null until created. */
+    fun targetIdFor(sessionKey: String): String? = targetIds[sessionKey]
 
     @Volatile
     private var serverSocket: ServerSocket? = null
@@ -71,29 +85,81 @@ class WebViewBrowserBackend(
         devtoolsSocketNameForPid(Process.myPid())
 
     /**
-     * Create the WebView (main thread), enable DevTools, and start the TCP
-     * bridge. Idempotent; true when the bridge is accepting connections.
+     * Start the TCP bridge (once) and create the session's WebView (main
+     * thread) with DevTools enabled. Idempotent per session; true when the
+     * session's WebView has a DevTools page target.
+     *
+     * Order matters: the WebView comes first (it creates the
+     * `@webview_devtools_remote_<pid>` abstract socket), then the bridge
+     * (which waits for that socket), then the target diff. The mutex
+     * serializes concurrent sessions so two chats can never grab each
+     * other's page target.
      */
-    suspend fun ensureStarted(): Boolean = startMutex.withLock {
-        if (bridgePort != 0 && webView != null && serverSocket?.isClosed == false) return true
-        return try {
-            val wv = createWebViewOnMainThread()
-            webView = wv
-            val socketName = devtoolsSocketName()
-            if (!waitForAbstractSocket(socketName, SOCKET_WAIT_MS)) {
-                DebugLog.w(TAG, "ensureStarted: DevTools socket @$socketName never appeared")
-                return false
+    suspend fun ensureStarted(sessionKey: String = DEFAULT_SESSION_KEY): Boolean =
+        startMutex.withLock {
+            try {
+                if (webViews[sessionKey] != null && targetIds[sessionKey] != null) return true
+                val ownedBefore = targetIds.values.toSet()
+                if (webViews[sessionKey] == null) {
+                    webViews[sessionKey] = createWebViewOnMainThread()
+                }
+                if (!ensureBridgeLocked()) return false
+                val targetId = waitForNewPageTarget(ownedBefore, TARGET_WAIT_MS)
+                if (targetId == null) {
+                    DebugLog.w(TAG, "ensureStarted: no new page target for session $sessionKey")
+                    return false
+                }
+                targetIds[sessionKey] = targetId
+                DebugLog.d(TAG, "ensureStarted: session $sessionKey -> target $targetId")
+                true
+            } catch (e: Exception) {
+                DebugLog.w(TAG, "ensureStarted failed: ${e.javaClass.simpleName}: ${e.message?.take(120)}")
+                false
             }
-            val server = ServerSocket(BRIDGE_PORT_ANY, BRIDGE_BACKLOG, InetAddress.getByName("127.0.0.1"))
-            bridgePort = server.localPort
-            serverSocket = server
-            scope.launch(Dispatchers.IO) { acceptLoop(server, socketName) }
-            DebugLog.d(TAG, "ensureStarted: CDP bridge 127.0.0.1:$bridgePort -> @$socketName")
-            true
-        } catch (e: Exception) {
-            DebugLog.w(TAG, "ensureStarted failed: ${e.javaClass.simpleName}: ${e.message?.take(120)}")
-            false
         }
+
+    /** Start the 127.0.0.1 → abstract-socket bridge once. */
+    private fun ensureBridgeLocked(): Boolean {
+        if (bridgePort != 0 && serverSocket?.isClosed == false) return true
+        val socketName = devtoolsSocketName()
+        if (!waitForAbstractSocket(socketName, SOCKET_WAIT_MS)) {
+            DebugLog.w(TAG, "ensureBridge: DevTools socket @$socketName never appeared")
+            return false
+        }
+        val server = ServerSocket(BRIDGE_PORT_ANY, BRIDGE_BACKLOG, InetAddress.getByName("127.0.0.1"))
+        bridgePort = server.localPort
+        serverSocket = server
+        scope.launch(Dispatchers.IO) { acceptLoop(server, socketName) }
+        DebugLog.d(TAG, "ensureBridge: CDP bridge 127.0.0.1:$bridgePort -> @$socketName")
+        return true
+    }
+
+    /** Page-target ids currently served by the bridge. Empty on failure. */
+    private fun listPageTargetIds(): Set<String> = runCatching {
+        val port = bridgePort
+        if (port == 0) return emptySet()
+        val conn = URL("http://127.0.0.1:$port/json/list").openConnection()
+        conn.connectTimeout = 5_000
+        conn.readTimeout = 5_000
+        val body = conn.getInputStream().bufferedReader().readText()
+        // Minimal parse: every target id appears as "id":"<id>".
+        val typePage = Regex("\"type\"\\s*:\\s*\"page\"")
+        val idRe = Regex("\"id\"\\s*:\\s*\"([^\"]+)\"")
+        body.split(Regex("\\},\\s*\\{"))
+            .filter { typePage.containsMatchIn(it) }
+            .mapNotNull { idRe.find(it)?.groupValues?.get(1) }
+            .toSet()
+    }.getOrDefault(emptySet())
+
+    /** Wait for a page target that was not in [before]; null on timeout. */
+    private fun waitForNewPageTarget(before: Set<String>, timeoutMs: Long): String? {
+        val deadline = SystemClock.elapsedRealtime() + timeoutMs
+        while (SystemClock.elapsedRealtime() < deadline) {
+            val fresh = listPageTargetIds() - before
+            if (fresh.isNotEmpty()) return fresh.first()
+            Thread.sleep(TARGET_POLL_MS)
+        }
+        return null
     }
 
     /**
@@ -110,6 +176,12 @@ class WebViewBrowserBackend(
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.mediaPlaybackRequiresUserGesture = false
+                            // Desktop view: sites serve their desktop layout
+                            // (no "rotate your device" overlays) and the agent
+                            // sees the full page, muse.ai-style.
+                            settings.userAgentString = DESKTOP_UA
+                            settings.useWideViewPort = true
+                            settings.loadWithOverviewMode = true
                             loadUrl("about:blank")
                         }
                     },
@@ -194,6 +266,18 @@ class WebViewBrowserBackend(
         private const val SOCKET_POLL_MS = 200L
         private const val FORWARD_POLL_MS = 50L
         private const val COPY_BUFFER_BYTES = 8192
+        private const val TARGET_WAIT_MS = 10_000L
+        private const val TARGET_POLL_MS = 200L
+        const val DEFAULT_SESSION_KEY = "default"
+
+        /**
+         * Desktop Chrome UA so sites serve the desktop layout inside the
+         * on-device browser popup (avoids mobile "rotate your device"
+         * interstitials that intercept the agent's input).
+         */
+        private const val DESKTOP_UA =
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
         /**
          * Abstract DevTools socket name for [pid]. The WebView opens

@@ -15,15 +15,17 @@ class WebViewBrowserBackendTest {
     }
 
     @Test
-    fun `fromPersisted still parses local and tunnel`() {
-        assertEquals(BrowserBackendMode.LOCAL, BrowserBackendMode.fromPersisted("local"))
+    fun `fromPersisted parses tunnel`() {
         assertEquals(BrowserBackendMode.TUNNEL, BrowserBackendMode.fromPersisted("tunnel"))
     }
 
     @Test
-    fun `fromPersisted falls back to local on unknown`() {
-        assertEquals(BrowserBackendMode.LOCAL, BrowserBackendMode.fromPersisted("nope"))
-        assertEquals(BrowserBackendMode.LOCAL, BrowserBackendMode.fromPersisted(null))
+    fun `fromPersisted falls back to webview on unknown or removed modes`() {
+        assertEquals(BrowserBackendMode.WEBVIEW, BrowserBackendMode.fromPersisted("nope"))
+        assertEquals(BrowserBackendMode.WEBVIEW, BrowserBackendMode.fromPersisted(null))
+        // Removed modes ("local", "geckoview") land on the working default.
+        assertEquals(BrowserBackendMode.WEBVIEW, BrowserBackendMode.fromPersisted("local"))
+        assertEquals(BrowserBackendMode.WEBVIEW, BrowserBackendMode.fromPersisted("geckoview"))
     }
 
     @Test

@@ -615,7 +615,7 @@ fun ChatApp(
                                 )
                             )
                             // Live browser watch panel: collapsible card, visible only during an active session.
-                            ChatBrowserWatchCard()
+                            ChatBrowserWatchCard(currentConversationId)
                             }
                         } else if (targetShowLaunch) {
                             ChatWelcomeContent(

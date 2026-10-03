@@ -226,13 +226,6 @@ dependencies {
     implementation(libs.ktor.server.cio)
     // Builds the WebUI's self-signed TLS certificate.
     implementation(libs.bouncycastle.pkix)
-    // GeckoView browser engine (GECKOVIEW backend). Version range: resolves the
-    // latest published 155.x omni build from maven.mozilla.org; pin to an exact
-    // build ID once CI confirms resolution.
-    // Pinned to an exact build (was 155.+): dynamic versions make every build
-    // potentially different. 155.0.20260903215306 is the latest 155.x on
-    // maven.mozilla.org (verified 2026-10-03).
-    implementation("org.mozilla.geckoview:geckoview-omni:155.0.20260903215306")
     testImplementation(libs.ktor.server.test.host)
     debugImplementation(libs.androidx.compose.ui.tooling)
 

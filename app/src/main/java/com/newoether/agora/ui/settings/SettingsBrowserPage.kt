@@ -392,10 +392,8 @@ private fun BackendModeDropdown(
         OutlinedTextField(
             value = stringResource(
                 when (current) {
-                    BrowserBackendMode.LOCAL -> R.string.browser_backend_local
                     BrowserBackendMode.TUNNEL -> R.string.browser_backend_tunnel
                     BrowserBackendMode.WEBVIEW -> R.string.browser_backend_webview
-                    BrowserBackendMode.GECKOVIEW -> R.string.browser_backend_geckoview
                 },
             ),
             onValueChange = {},
@@ -411,25 +409,6 @@ private fun BackendModeDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            AgentXDropdownMenuItem(
-                text = {
-                    Column {
-                        Text(
-                            stringResource(R.string.browser_backend_local),
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        )
-                        Text(
-                            stringResource(R.string.browser_backend_local_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                onClick = {
-                    expanded = false
-                    onSelect(BrowserBackendMode.LOCAL)
-                },
-            )
             AgentXDropdownMenuItem(
                 text = {
                     Column {
@@ -466,25 +445,6 @@ private fun BackendModeDropdown(
                 onClick = {
                     expanded = false
                     onSelect(BrowserBackendMode.WEBVIEW)
-                },
-            )
-            AgentXDropdownMenuItem(
-                text = {
-                    Column {
-                        Text(
-                            stringResource(R.string.browser_backend_geckoview),
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        )
-                        Text(
-                            stringResource(R.string.browser_backend_geckoview_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                onClick = {
-                    expanded = false
-                    onSelect(BrowserBackendMode.GECKOVIEW)
                 },
             )
         }

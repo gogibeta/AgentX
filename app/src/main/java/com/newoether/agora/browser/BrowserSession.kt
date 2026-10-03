@@ -19,10 +19,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import okhttp3.OkHttpClient
@@ -50,25 +52,22 @@ internal fun hostOf(url: String): String =
 /**
  * Unified browser session over all backends (§1.3.0).
  *
- * - LOCAL → `ws://127.0.0.1:<port>` (sandbox Chromium via [ChromiumLauncher]).
  * - TUNNEL → `wss://<user-url>/devtools/...?token=...` (token from encrypted
  *   prefs, never logged). Health-checked with `GET /json/version` before connect.
  * - WEBVIEW → `ws://127.0.0.1:<port>/devtools/page/<id>` (System WebView via
  *   [WebViewBrowserBackend]'s 127.0.0.1 bridge to the app-owned abstract
  *   DevTools socket; page target picked from `GET /json/list`).
  *
- * Switching backends closes the old CDP session and starts a new one. The
- * local Chromium process itself is never killed on a backend switch (scry:
- * never kill a healthy browser; its lifecycle is not tied to a task).
+ * Switching backends closes the old CDP session and starts a new one.
  */
 class BrowserSession(
     private val prefs: BrowserPreferenceStore,
-    private val launcher: ChromiumLauncher,
     private val webViewBackend: WebViewBrowserBackend,
-    private val geckoBackend: GeckoViewBrowserBackend,
     private val cdp: CdpClient,
     private val healthHttp: OkHttpClient,
     private val scope: CoroutineScope,
+    /** Which chat owns this session ("default" outside a chat). One browser per chat. */
+    val sessionKey: String = WebViewBrowserBackend.DEFAULT_SESSION_KEY,
 ) {
     /**
      * Set by the tool provider on every execution so session-level events
@@ -90,7 +89,7 @@ class BrowserSession(
      * (take-control); screenshots are skipped while it is attached.
      */
     fun liveWebView(): android.webkit.WebView? =
-        if (connectedMode == BrowserBackendMode.WEBVIEW) webViewBackend.liveWebView() else null
+        if (connectedMode == BrowserBackendMode.WEBVIEW) webViewBackend.liveWebView(sessionKey) else null
 
     /** The currently connected backend, if any. */
     fun connectedBackend(): BrowserBackendMode? = connectedMode
@@ -175,10 +174,8 @@ class BrowserSession(
         cdp.sessionTag = mode.persisted
         val startedAt = android.os.SystemClock.elapsedRealtime()
         val ok = when (mode) {
-            BrowserBackendMode.LOCAL -> connectLocal()
             BrowserBackendMode.TUNNEL -> connectTunnel()
             BrowserBackendMode.WEBVIEW -> connectWebView()
-            BrowserBackendMode.GECKOVIEW -> connectGeckoView()
         }
         val elapsed = android.os.SystemClock.elapsedRealtime() - startedAt
         if (ok) {
@@ -205,7 +202,7 @@ class BrowserSession(
     /** Currently connected backend, or null when not connected. */
     fun currentBackendMode(): BrowserBackendMode? = connectedMode
 
-    /** Close the CDP session. The local Chromium process keeps running (scry). */
+    /** Close the CDP session. */
     suspend fun close() = mutex.withLock {
         cdp.close()
         connectedMode = null
@@ -215,7 +212,6 @@ class BrowserSession(
 
     /** Navigate and wait for load (fail-open: returns loaded=false on timeout). */
     suspend fun navigate(url: String, timeoutMs: Long): Boolean {
-        if (isGeckoView()) return geckoNavigate(url)
         // Subscribe before navigating so the load event cannot be missed.
         val loadEvent = scope.async(Dispatchers.Default) {
             withTimeoutOrNull(LOAD_WAIT_MS) {
@@ -324,12 +320,47 @@ class BrowserSession(
         )
     }
 
+    /**
+     * History back without closing the browser. WebView: native goBack.
+     * CDP backends: Page.getNavigationHistory + navigateToHistoryEntry.
+     * Returns true when a back navigation actually happened.
+     */
+    suspend fun goBack(timeoutMs: Long): Boolean {
+        if (!ensureConnected()) return false
+        if (connectedMode == BrowserBackendMode.WEBVIEW) {
+            val wv = webViewBackend.liveWebView(sessionKey) ?: return false
+            if (!wv.canGoBack()) return false
+            // Must run on the main thread; block this worker until done.
+            val done = kotlinx.coroutines.CompletableDeferred<Boolean>()
+            wv.post {
+                runCatching {
+                    wv.goBack()
+                    done.complete(true)
+                }.onFailure { done.complete(false) }
+            }
+            return done.await()
+        }
+        return runCatching {
+            val history = cdp.invoke(
+                method = "Page.getNavigationHistory",
+                timeoutMs = timeoutMs,
+            )
+            val entries = history["entries"] as? JsonArray ?: return false
+            val currentIndex = (history["currentIndex"] as? JsonPrimitive)?.intOrNull ?: return false
+            if (currentIndex <= 0 || currentIndex >= entries.size) return false
+            val prev = entries[currentIndex - 1] as? JsonObject ?: return false
+            val id = (prev["id"] as? JsonPrimitive)?.longOrNull ?: return false
+            cdp.invoke(
+                method = "Page.navigateToHistoryEntry",
+                params = buildJsonObject { put("entryId", id) },
+                timeoutMs = timeoutMs,
+            )
+            true
+        }.getOrDefault(false)
+    }
+
     /** Viewport JPEG screenshot; returns raw bytes (base64-decoded). */
     suspend fun captureScreenshot(timeoutMs: Long): ByteArray {
-        if (isGeckoView()) {
-            return geckoThumbnail()
-                ?: throw com.newoether.agora.browser.cdp.CdpException("screenshot_missing_data")
-        }
         val result = cdp.invoke(
             method = "Page.captureScreenshot",
             params = buildJsonObject {
@@ -383,39 +414,6 @@ class BrowserSession(
     fun downloadStatus(): List<BrowserDownloadState> = downloads.values.toList()
 
     // ── backend connect ──
-
-    private suspend fun connectLocal(): Boolean {
-        if (!launcher.ensureStarted()) {
-            val reason = launcher.lastStartFailure
-            return connectFailed(
-                "local: Chromium failed to start" +
-                    (if (!reason.isNullOrBlank()) " ($reason)" else " (use Reinstall in browser settings)"),
-            )
-        }
-        val version = httpGetJson(
-            "http://127.0.0.1:${launcher.debugPort()}/json/version",
-            HEALTH_CHECK_TIMEOUT_MS,
-        ) ?: return connectFailed(
-            "local: Chromium did not answer /json/version on 127.0.0.1:${launcher.debugPort()} " +
-                "(process started but DevTools never bound — reinstall Chromium)",
-        )
-        val wsUrl = (version["webSocketDebuggerUrl"] as? JsonPrimitive)?.contentOrNull
-            ?: return connectFailed("local: /json/version answered but had no webSocketDebuggerUrl")
-        if (!cdp.connect(wsUrl)) {
-            return connectFailed("local: CDP websocket to local Chromium failed")
-        }
-        cdp.openPage("about:blank")
-        // Downloads land in the app-owned dir (bound into the sandbox), never auto-cleaned.
-        cdp.invoke(
-            method = "Browser.setDownloadBehavior",
-            params = buildJsonObject {
-                put("behavior", "allow")
-                put("downloadPath", ChromiumLauncher.SANDBOX_DOWNLOAD_PATH)
-            },
-            sessionId = null,
-        )
-        return true
-    }
 
     private suspend fun connectTunnel(): Boolean {
         // Normalize: a stored URL with a trailing slash would produce
@@ -491,21 +489,14 @@ class BrowserSession(
      * is built against the bridge port.
      */
     private suspend fun connectWebView(): Boolean {
-        if (!webViewBackend.ensureStarted()) {
+        if (!webViewBackend.ensureStarted(sessionKey)) {
             return connectFailed("webview: System WebView backend failed to start")
         }
         val port = webViewBackend.debugPort()
-        val targets = httpGetJsonArray(
-            "http://127.0.0.1:$port/json/list",
-            HEALTH_CHECK_TIMEOUT_MS,
-        ) ?: return connectFailed("webview: bridge /json/list unreachable on 127.0.0.1:$port")
-        val page = targets.mapNotNull { it as? JsonObject }
-            .firstOrNull { (it["type"] as? JsonPrimitive)?.contentOrNull == "page" }
-            ?: return connectFailed("webview: no page target in bridge /json/list")
-        val targetId = (page["id"] as? JsonPrimitive)?.contentOrNull
-        if (targetId.isNullOrBlank()) {
-            return connectFailed("webview: page target had no id")
-        }
+        // Per-session page target: each chat owns its own WebView, so two
+        // chats never share (or fight over) one page.
+        val targetId = webViewBackend.targetIdFor(sessionKey)
+            ?: return connectFailed("webview: no page target for this chat's browser")
         val wsUrl = webViewTargetWsUrl(port, targetId)
         if (!cdp.connect(wsUrl)) {
             return connectFailed("webview: CDP websocket to WebView bridge failed")
@@ -531,48 +522,6 @@ class BrowserSession(
         DebugLog.d(TAG, "connectWebView: connected via System WebView bridge")
         return true
     }
-
-    /**
-     * GECKOVIEW backend: Mozilla Gecko via [GeckoViewBrowserBackend]. No CDP —
-     * the session delegates navigation/observation/actions to the backend's
-     * native API + WebExtension bridge. The element table is pushed by the
-     * content script (zero round trips, no screenshots in the agent loop).
-     */
-    private suspend fun connectGeckoView(): Boolean {
-        if (!geckoBackend.ensureStarted()) {
-            return connectFailed("geckoview: GeckoView backend failed to start")
-        }
-        DebugLog.d(TAG, "connectGeckoView: connected via GeckoView backend")
-        return true
-    }
-
-    // ── GeckoView delegation (used by tools when connectedMode == GECKOVIEW) ─
-
-    /** True when the GeckoView backend is the connected one. */
-    fun isGeckoView(): Boolean = connectedMode == BrowserBackendMode.GECKOVIEW
-
-    /**
-     * FAST element table for GeckoView: the content-script-pushed
-     * `[ref] role "name" · value · state` text. Zero round trips.
-     */
-    fun geckoElementTable(): String = geckoBackend.snapshot()
-
-    /** Live GeckoView for the watch panel (AndroidView). */
-    fun liveGeckoView(): android.view.View? =
-        if (isGeckoView()) geckoBackend.liveView() else null
-
-    suspend fun geckoNavigate(url: String): Boolean = geckoBackend.navigate(url)
-
-    suspend fun geckoClick(ref: Int): Boolean = geckoBackend.click(ref)
-
-    suspend fun geckoFill(ref: Int, text: String): Boolean =
-        geckoBackend.typeText(ref, text)
-
-    suspend fun geckoThumbnail(): ByteArray? = geckoBackend.captureThumbnail()
-
-    fun geckoUrl(): String = geckoBackend.currentUrl()
-
-    fun geckoTitle(): String = geckoBackend.currentTitle()
 
     /** `ws://anything/devtools/browser/x` → `/devtools/browser/x`. Null when unparseable. */
     private fun extractWsPath(debuggerUrl: String): String? {

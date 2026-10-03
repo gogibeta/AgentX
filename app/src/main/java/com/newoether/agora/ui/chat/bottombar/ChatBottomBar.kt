@@ -9,6 +9,7 @@ import androidx.compose.foundation.content.consume
 import androidx.compose.foundation.content.contentReceiver
 import androidx.compose.foundation.content.hasMediaType
 import com.newoether.agora.model.apiModelName
+import com.newoether.agora.ui.browser.BrowserOpenButton
 import com.newoether.agora.model.ContextBudget
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -460,6 +461,9 @@ internal fun ChatBottomBar(
                     },
                     onFiles = { pendingFileOwnerId = composerOwnerId; fileLauncher.launch("*/*") },
                 )
+                // Browser button (muse.ai-style): pops the chat's browser open
+                // in a desktop-view dialog. Each chat gets its own browser.
+                BrowserOpenButton()
                 val activeMenuState = remember { mutableStateOf<String?>(null) }
                 var activeMenu by activeMenuState
                 var lastModelDismissTime by remember { mutableLongStateOf(0L) }

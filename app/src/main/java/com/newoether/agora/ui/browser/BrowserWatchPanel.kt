@@ -1,7 +1,5 @@
 package com.newoether.agora.ui.browser
 
-import android.app.Activity
-import android.content.pm.ActivityInfo
 import androidx.compose.ui.viewinterop.AndroidView
 import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
@@ -27,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
@@ -34,6 +33,8 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Web
@@ -48,7 +49,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,7 +60,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -141,7 +140,6 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
     val narration by controller.narration.collectAsState()
     val frame by controller.screenshot.collectAsState()
     val liveWebView by controller.liveWebView.collectAsState()
-    val liveGeckoView by controller.liveGeckoView.collectAsState()
     val takeoverActive by controller.takeoverActive.collectAsState()
     val pendingApproval by controller.pendingApproval.collectAsState()
     var approvalDialogFor by remember { mutableStateOf<BrowserApprovalRequest?>(null) }
@@ -229,7 +227,7 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
                             }
                         }
                     } else {
-                        BrowserFrame(frame = frame, webView = liveWebView, geckoView = liveGeckoView)
+                        BrowserFrame(frame = frame, webView = liveWebView)
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -314,93 +312,143 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
     }
 
     if (fullscreen) {
-        FullscreenBrowserDialog(
-            frame = frame,
-            webView = liveWebView,
-            geckoView = liveGeckoView,
+        BrowserPopupDialog(
+            controller = controller,
             onDismiss = { fullscreen = false },
         )
     }
 }
 
 /**
- * Full-screen browser view. Live engine views (System WebView / GeckoView)
- * are reparented here — touchable, so the user can drive the page directly
- * with takeover — while the panel shows a placeholder. The screenshot stream
- * (tunnel / local Chromium) renders full-size instead.
+ * Browser popup dialog, muse.ai-style.
+ *
+ * Opens from the chat (browser button) or the watch panel (fullscreen icon):
+ * the chat's browser fills the dialog in DESKTOP view (the WebView uses a
+ * desktop user agent + wide viewport, so sites serve their desktop layout
+ * with no "rotate your device" overlay).
+ *
+ * Deliberately does NOT force landscape: the old forced-rotation dialog
+ * destroyed and recreated the activity on some devices, which killed the
+ * browser session mid-task. Orientation stays as the user holds the phone.
+ *
+ * Top bar: back button (history back, session keeps running), title/URL,
+ * small Take over / Stop icon buttons, and close (hides the dialog — the
+ * browser keeps running in the background; only Stop kills the session).
  */
 @Composable
-private fun FullscreenBrowserDialog(
-    frame: ByteArray?,
-    webView: android.webkit.WebView?,
-    geckoView: android.view.View?,
+fun BrowserPopupDialog(
+    controller: BrowserWatchController,
     onDismiss: () -> Unit,
 ) {
+    val pageUrl by controller.pageUrl.collectAsState()
+    val pageTitle by controller.pageTitle.collectAsState()
+    val frame by controller.screenshot.collectAsState()
+    val webView by controller.liveWebView.collectAsState()
+    val takeoverActive by controller.takeoverActive.collectAsState()
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         DialogWindowEdgeToEdge()
-        // Fullscreen means rotated: force landscape while the dialog is up,
-        // restore the previous orientation on dismiss.
-        val context = LocalContext.current
-        DisposableEffect(Unit) {
-            val activity = context as? Activity
-            val previous = activity?.requestedOrientation
-                ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            onDispose {
-                activity?.requestedOrientation = previous
-            }
-        }
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
         ) {
-            val liveView: android.view.View? = webView ?: geckoView
-            if (liveView != null) {
-                AndroidView(
-                    factory = { ctx ->
-                        android.widget.FrameLayout(ctx).also { container ->
-                            // Detach from the panel first: a View can have
-                            // only one parent, and disposal ordering between
-                            // the panel and this dialog is not guaranteed.
-                            (liveView.parent as? android.view.ViewGroup)
-                                ?.removeView(liveView)
-                            container.addView(
-                                liveView,
-                                android.widget.FrameLayout.LayoutParams(
-                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                ),
-                            )
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                BrowserFrame(
-                    frame = frame,
-                    webView = null,
-                    geckoView = null,
-                    frameModifier = Modifier.fillMaxSize(),
-                )
-            }
-            IconButton(
-                onClick = onDismiss,
+            // ── Top bar: back · title/url · takeover · stop · close ──
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 8.dp, end = 8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f),
-                        RoundedCornerShape(12.dp),
-                    ),
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
             ) {
-                Icon(
-                    Icons.Default.FullscreenExit,
-                    contentDescription = stringResource(R.string.browser_fullscreen_exit),
-                )
+                IconButton(onClick = controller::onGoBack) {
+                    Icon(
+                        Icons.Default.ArrowBack,
+                        contentDescription = stringResource(R.string.browser_back),
+                    )
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = pageTitle.ifBlank { stringResource(R.string.browser_watch_title) },
+                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (pageUrl.isNotBlank()) {
+                        Text(
+                            text = pageUrl,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                // Small control buttons; the viewport below gets the space.
+                if (takeoverActive) {
+                    IconButton(onClick = controller::onResume) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = stringResource(R.string.browser_resume),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                } else {
+                    IconButton(onClick = controller::onTakeOver) {
+                        Icon(
+                            Icons.Default.TouchApp,
+                            contentDescription = stringResource(R.string.browser_takeover),
+                        )
+                    }
+                }
+                IconButton(onClick = controller::onStop) {
+                    Icon(
+                        Icons.Default.Stop,
+                        contentDescription = stringResource(R.string.browser_stop),
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(R.string.browser_close),
+                    )
+                }
+            }
+            // ── Huge viewport: live WebView or screenshot stream ──
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .padding(bottom = 8.dp),
+            ) {
+                if (webView != null) {
+                    AndroidView(
+                        factory = { ctx ->
+                            android.widget.FrameLayout(ctx).also { container ->
+                                val liveView = webView!!
+                                (liveView.parent as? android.view.ViewGroup)
+                                    ?.removeView(liveView)
+                                container.addView(
+                                    liveView,
+                                    android.widget.FrameLayout.LayoutParams(
+                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                                    ),
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    BrowserFrame(
+                        frame = frame,
+                        webView = null,
+                        frameModifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
@@ -408,7 +456,7 @@ private fun FullscreenBrowserDialog(
 
 /**
  * Browser viewport. When a live engine view is connected (System WebView or
- * GeckoView backend), it is embedded directly (visible + touchable — this is
+ * backend), it is embedded directly (visible + touchable — this is
  * also how take-control works: the user just touches it). Otherwise the
  * latest screenshot frame; placeholder box while the first frame is on its way.
  */
@@ -416,13 +464,12 @@ private fun FullscreenBrowserDialog(
 private fun BrowserFrame(
     frame: ByteArray?,
     webView: android.webkit.WebView?,
-    geckoView: android.view.View?,
     modifier: Modifier = Modifier,
     frameModifier: Modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(16f / 9f),
 ) {
-    val liveView: android.view.View? = webView ?: geckoView
+    val liveView: android.view.View? = webView
     if (liveView != null) {
         AndroidView(
             // The same live engine view is reparented between the panel and
@@ -536,13 +583,19 @@ private fun BrowserApprovalDialog(
 
 /**
  * Chat-surface entry point for the live browser watch panel: a collapsible card
- * aligned near the top of the chat, visible only while a browser session is
- * active (the host renders nothing without a controller / active session).
+ * aligned near the top of the chat, visible only while the chat's browser
+ * session is active (the host renders nothing without a controller / active
+ * session). Each chat shows its OWN browser session — switching chats switches
+ * the panel, sessions never overlap.
  */
 @Composable
-fun BoxScope.ChatBrowserWatchCard() {
+fun BoxScope.ChatBrowserWatchCard(conversationId: String?) {
+    val controller = LocalBrowserWatchController.current
+    androidx.compose.runtime.LaunchedEffect(controller, conversationId) {
+        controller?.activeConversationId?.value = conversationId
+    }
     BrowserWatchPanelHost(
-        controller = LocalBrowserWatchController.current,
+        controller = controller,
         modifier = Modifier.align(Alignment.TopCenter)
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .widthIn(max = 840.dp)

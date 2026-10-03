@@ -37,14 +37,14 @@ import com.newoether.agora.viewmodel.ConversationStateRegistry
 import com.newoether.agora.viewmodel.ProviderRegistry
 import com.newoether.agora.viewmodel.ShellConfirmationController
 import com.newoether.agora.api.HttpClient
+import com.newoether.agora.browser.BrowserDiagnostics
+import com.newoether.agora.browser.BrowserEventReporter
 import com.newoether.agora.browser.BrowserPreferenceStore
-import com.newoether.agora.browser.BrowserSession
+import com.newoether.agora.browser.BrowserSessionRegistry
 import com.newoether.agora.browser.BrowserToolProvider
 import com.newoether.agora.browser.ChromiumLauncher
-import com.newoether.agora.browser.GeckoViewBrowserBackend
 import com.newoether.agora.browser.BrowserEngineManager
 import com.newoether.agora.browser.WebViewBrowserBackend
-import com.newoether.agora.browser.cdp.CdpClient
 import com.newoether.agora.security.ApprovalGate
 import com.newoether.agora.security.CredentialVault
 import com.newoether.agora.social.SocialPreferenceStore
@@ -246,27 +246,27 @@ class AppContainer(
         ChromiumLauncher(appContext, HttpClient.client, appScope)
     }
 
-    val browserCdpClient: CdpClient by lazy {
-        CdpClient(
-            // ~20s WebSocket ping: an idle CDP socket is the normal state,
-            // never a dead one — keep it alive, don't cut it.
-            HttpClient.client.newBuilder()
-                .pingInterval(20, TimeUnit.SECONDS)
-                .build(),
-            appScope,
-        )
-    }
-
-    val browserSession: BrowserSession by lazy {
-        BrowserSession(
+    /**
+     * One browser session per chat (see [BrowserSessionRegistry]): opening a
+     * browser in chat A and another in chat B gives two independent browsers
+     * with no overlap. Sessions live until Stop; hiding the watch panel never
+     * closes them.
+     */
+    val browserSessionRegistry: BrowserSessionRegistry by lazy {
+        BrowserSessionRegistry(
             browserPreferenceStore,
-            chromiumLauncher,
             webViewBrowserBackend,
-            geckoViewBrowserBackend,
-            browserCdpClient,
             HttpClient.client,
             appScope,
-        )
+        ).also { registry ->
+            // Session-level events (reconnects, backend switches) join the
+            // audit trail for every per-chat session.
+            registry.onSessionCreated = { session ->
+                session.eventReporter = BrowserEventReporter { action, elapsedMs, outcome, extra ->
+                    BrowserDiagnostics.record(session.diagnosticContext, action, elapsedMs, outcome, extra)
+                }
+            }
+        }
     }
 
     /** v2.4 WebView CDP backend: System WebView + 127.0.0.1 bridge (no sandbox). */
@@ -274,19 +274,14 @@ class AppContainer(
         WebViewBrowserBackend(appContext, appScope)
     }
 
-    /** GeckoView backend: Mozilla engine + WebExtension bridge (no screenshots). */
-    val geckoViewBrowserBackend: GeckoViewBrowserBackend by lazy {
-        GeckoViewBrowserBackend(appContext, appScope)
-    }
-
-    /** Browser engine registry: install/uninstall/select engines. */
+    /** Browser engine registry: pick System WebView or the cloud tunnel. */
     val browserEngineManager: BrowserEngineManager by lazy {
-        BrowserEngineManager(appContext, browserPreferenceStore, chromiumLauncher, appScope, sandboxManagerFactory)
+        BrowserEngineManager(browserPreferenceStore, appScope)
     }
 
     val browserToolProvider: BrowserToolProvider by lazy {
         BrowserToolProvider(
-            browserSession,
+            browserSessionRegistry,
             browserPreferenceStore,
             ToolImageStore(appContext),
             // Credential vault (stream C): resolve cred_id → secret through the
@@ -308,9 +303,9 @@ class AppContainer(
         ApprovalGate(appContext)
     }
 
-    /** Watch-panel controller: feeds the Compose mini-browser from the CDP session. */
+    /** Watch-panel controller: feeds the Compose mini-browser from the chat's CDP session. */
     val browserWatchController: DefaultBrowserWatchController by lazy {
-        DefaultBrowserWatchController(browserSession, approvalGate, appScope)
+        DefaultBrowserWatchController(browserSessionRegistry, approvalGate, appScope)
     }
 
     // ── Social read (Workstream D) ───────────────────────────────

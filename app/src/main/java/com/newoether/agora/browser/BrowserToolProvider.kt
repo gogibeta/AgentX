@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -51,7 +52,7 @@ import kotlinx.serialization.json.put
  * value never enters model context, logs, or diagnostics.
  */
 class BrowserToolProvider(
-    private val session: BrowserSession,
+    private val registry: BrowserSessionRegistry,
     private val prefs: BrowserPreferenceStore,
     private val imageStore: ToolImageStore,
     private val credentialResolver: suspend (credId: String) -> String? = { null },
@@ -59,12 +60,6 @@ class BrowserToolProvider(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    init {
-        // Session-level events (reconnects, backend switches) join the audit trail.
-        session.eventReporter = BrowserEventReporter { action, elapsedMs, outcome, extra ->
-            BrowserDiagnostics.record(session.diagnosticContext, action, elapsedMs, outcome, extra)
-        }
-    }
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> {
         if (!prefs.browserEnabled.value) return emptyList()
@@ -85,7 +80,9 @@ class BrowserToolProvider(
             ),
             tool(
                 "browser_click",
-                "Click the element with the given @eN reference from browser_snapshot.",
+                "Click the element with the given @eN reference. " +
+                    "The result already includes a fresh page snapshot with new @eN refs - " +
+                    "do NOT call browser_snapshot after; keep acting on the returned refs.",
                 mapOf("ref" to ToolProperty("string", "Element reference, e.g. \"@e3\".")),
                 listOf("ref"),
             ),
@@ -93,7 +90,8 @@ class BrowserToolProvider(
                 "browser_fill",
                 "Type into the element with the given @eN reference. Pass text directly, " +
                     "or a vault credential id as cred_id (the secret is typed without ever " +
-                    "entering the conversation).",
+                    "entering the conversation). The result already includes a fresh page " +
+                    "snapshot - do NOT call browser_snapshot after.",
                 mapOf(
                     "ref" to ToolProperty("string", "Element reference, e.g. \"@e3\"."),
                     "text" to ToolProperty("string", "Text to type. Omit when using cred_id."),
@@ -104,13 +102,15 @@ class BrowserToolProvider(
             tool(
                 "browser_key",
                 "Press a key: Enter, Tab, Escape, Backspace, Delete, ArrowUp/Down/Left/Right, " +
-                    "or a single character.",
+                    "or a single character. The result already includes a fresh page " +
+                    "snapshot - do NOT call browser_snapshot after.",
                 mapOf("key" to ToolProperty("string", "Key name, e.g. \"Enter\".")),
                 listOf("key"),
             ),
             tool(
                 "browser_scroll",
-                "Scroll the page with the mouse wheel.",
+                "Scroll the page with the mouse wheel. The result already includes a fresh " +
+                    "page snapshot - do NOT call browser_snapshot after.",
                 mapOf(
                     "direction" to ToolProperty("string", "up, down (default), left or right."),
                     "pixels" to ToolProperty("integer", "Scroll distance in pixels (default 400)."),
@@ -152,21 +152,24 @@ class BrowserToolProvider(
         ctx: GenerationContext,
     ): String = withContext(Dispatchers.IO) {
         val started = SystemClock.elapsedRealtime()
+        // One browser per chat: the session follows the conversation, so two
+        // chats never share (or fight over) one page.
+        val session = registry.get(ctx.conversationId)
         session.diagnosticContext = ctx
         if (!prefs.browserEnabled.value) {
             return@withContext errorJson(name, "browser_disabled", "Browser tools are disabled.")
         }
         try {
             val outcome = when (name) {
-                "browser_navigate" -> navigate(arguments, ctx)
-                "browser_snapshot" -> snapshot(ctx)
-                "browser_click" -> click(arguments, ctx)
-                "browser_fill" -> fill(arguments, ctx)
-                "browser_key" -> pressKey(arguments, ctx)
-                "browser_scroll" -> scroll(arguments, ctx)
-                "browser_screenshot" -> screenshot(ctx)
-                "browser_takeover" -> takeover(arguments)
-                "browser_download_status" -> downloadStatus()
+                "browser_navigate" -> navigate(session, arguments, ctx)
+                "browser_snapshot" -> snapshot(session, ctx)
+                "browser_click" -> click(session, arguments, ctx)
+                "browser_fill" -> fill(session, arguments, ctx)
+                "browser_key" -> pressKey(session, arguments, ctx)
+                "browser_scroll" -> scroll(session, arguments, ctx)
+                "browser_screenshot" -> screenshot(session, ctx)
+                "browser_takeover" -> takeover(session, arguments)
+                "browser_download_status" -> downloadStatus(session)
                 else -> return@withContext errorJson(name, "unknown_tool", "Unknown tool: $name")
             }
             BrowserDiagnostics.record(
@@ -202,13 +205,14 @@ class BrowserToolProvider(
     ): Flow<ToolExecutionEvent> = flow {
         if (name == "browser_screenshot" && prefs.browserEnabled.value) {
             val started = SystemClock.elapsedRealtime()
+            val session = registry.get(ctx.conversationId)
             session.diagnosticContext = ctx
             try {
                 if (!session.ensureConnected()) {
                     emit(ToolExecutionEvent.Completed(ToolExecutionResult(notConnected(name), isError = true)))
                     return@flow
                 }
-                val result = captureScreenshotResult(ctx)
+                val result = captureScreenshotResult(session, ctx)
                 BrowserDiagnostics.record(
                     ctx, "screenshot",
                     SystemClock.elapsedRealtime() - started, "ok",
@@ -268,7 +272,7 @@ class BrowserToolProvider(
     private fun argInt(a: JsonObject, name: String, default: Int): Int =
         (a[name] as? JsonPrimitive)?.intOrNull ?: default
 
-    private suspend fun navigate(arguments: String, ctx: GenerationContext): ActionOutcome {
+    private suspend fun navigate(session: BrowserSession, arguments: String, ctx: GenerationContext): ActionOutcome {
         val url = argStr(args(arguments), "url")
             ?: return ActionOutcome("navigate", errorJson("browser_navigate", "no_url", ""))
         val scheme = runCatching { android.net.Uri.parse(url).scheme?.lowercase() }.getOrNull()
@@ -294,78 +298,71 @@ class BrowserToolProvider(
         )
     }
 
-    private suspend fun snapshot(ctx: GenerationContext): ActionOutcome {
+    private suspend fun snapshot(session: BrowserSession, ctx: GenerationContext): ActionOutcome {
         if (!session.ensureConnected()) {
             return ActionOutcome("snapshot", notConnected("browser_snapshot"))
         }
-        // GECKOVIEW: the content script pushes a pre-formatted element table —
-        // zero round trips, no screenshots. Refs are the table's integers.
-        if (session.isGeckoView()) {
-            val table = session.geckoElementTable()
-            val refs = parseGeckoRefs(table)
-            session.storeSnapshotRefs(refs)
-            val truncated = table.length >= SNAPSHOT_MAX_CHARS
-            return ActionOutcome(
-                "snapshot",
-                buildJsonObject {
-                    put("type", "browser")
-                    put("tool", "browser_snapshot")
-                    put("snapshot", table.take(SNAPSHOT_MAX_CHARS))
-                    put("truncated", truncated)
-                }.toString(),
-                mapOf(
-                    "chars" to table.length.toString(),
-                    "backend" to "geckoview",
-                ),
-            )
-        }
-        val tree = session.axSnapshot(ctx.toolTimeoutMs)
-        val (text, refs) = compactAxTree(tree)
-        session.storeSnapshotRefs(refs)
-        val truncated = text.length >= SNAPSHOT_MAX_CHARS
+        val snap = captureFreshSnapshot(session, ctx) ?: return ActionOutcome(
+            "snapshot",
+            errorJson("browser_snapshot", "snapshot_failed", "Could not read the page."),
+        )
+        val truncated = snap.text.length >= SNAPSHOT_MAX_CHARS
         return ActionOutcome(
             "snapshot",
             buildJsonObject {
                 put("type", "browser")
                 put("tool", "browser_snapshot")
-                put("snapshot", text)
+                put("ok", true)
+                put("snapshot", snap.text)
                 put("truncated", truncated)
             }.toString(),
             mapOf(
-                "chars" to text.length.toString(),
+                "chars" to snap.text.length.toString(),
                 "backend" to (session.currentBackendMode()?.persisted ?: "-"),
             ),
         )
     }
 
-    private suspend fun click(arguments: String, ctx: GenerationContext): ActionOutcome {
+    /**
+     * Read the page and refresh the @eN refs. Every mutating action
+     * (click/fill/key/scroll) calls this and embeds the fresh snapshot in its
+     * own result, so the agent never needs a separate browser_snapshot call
+     * after acting — that halves the tool roundtrips in the browser loop
+     * (the "fast click" behavior). Null when the page cannot be read.
+     */
+    private data class FreshSnapshot(val text: String)
+
+    private suspend fun captureFreshSnapshot(session: BrowserSession, ctx: GenerationContext): FreshSnapshot? =
+        runCatching {
+            val tree = session.axSnapshot(ctx.toolTimeoutMs)
+            val (text, refs) = compactAxTree(tree)
+            session.storeSnapshotRefs(refs)
+            FreshSnapshot(text)
+        }.getOrNull()
+
+    /**
+     * Append the fresh page snapshot to an action's result JSON builder, so
+     * the model sees the new state without another tool call.
+     */
+    private fun JsonObjectBuilder.attachSnapshot(snap: FreshSnapshot?) {
+        if (snap != null) {
+            put("snapshot", snap.text)
+            put("snapshot_truncated", snap.text.length >= SNAPSHOT_MAX_CHARS)
+        }
+    }
+
+    private suspend fun click(session: BrowserSession, arguments: String, ctx: GenerationContext): ActionOutcome {
         val ref = argStr(args(arguments), "ref")
             ?: return ActionOutcome("click", errorJson("browser_click", "no_ref", ""))
         if (!session.ensureConnected()) {
             return ActionOutcome("click", notConnected("browser_click"))
-        }
-        // GECKOVIEW: refs are the content-script integers; direct action, no
-        // CDP resolution, no coordinates, no screenshots.
-        if (session.isGeckoView()) {
-            val n = ref.toIntOrNull()
-                ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
-            val ok = session.geckoClick(n)
-            return ActionOutcome(
-                "click",
-                buildJsonObject {
-                    put("type", "browser")
-                    put("tool", "browser_click")
-                    put("ok", ok)
-                    put("ref", ref)
-                }.toString(),
-                mapOf("ref" to ref, "backend" to "geckoview"),
-            )
         }
         val binding = session.resolveRef(ref)
             ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
         val center = elementCenter(binding, ctx.toolTimeoutMs)
             ?: return ActionOutcome("click", errorJson("browser_click", "not_visible", "Element $ref has no visible bounds."))
         session.mouseClick(center.first, center.second, ctx.toolTimeoutMs)
+        val snap = captureFreshSnapshot(session, ctx)
         return ActionOutcome(
             "click",
             buildJsonObject {
@@ -373,12 +370,13 @@ class BrowserToolProvider(
                 put("tool", "browser_click")
                 put("ok", true)
                 put("ref", ref)
+                attachSnapshot(snap)
             }.toString(),
             mapOf("ref" to ref, "backend" to (session.currentBackendMode()?.persisted ?: "-")),
         )
     }
 
-    private suspend fun fill(arguments: String, ctx: GenerationContext): ActionOutcome {
+    private suspend fun fill(session: BrowserSession, arguments: String, ctx: GenerationContext): ActionOutcome {
         val a = args(arguments)
         val ref = argStr(a, "ref")
             ?: return ActionOutcome("fill", errorJson("browser_fill", "no_ref", ""))
@@ -396,29 +394,13 @@ class BrowserToolProvider(
         if (!session.ensureConnected()) {
             return ActionOutcome("fill", notConnected("browser_fill"))
         }
-        // GECKOVIEW: direct content-script fill, no CDP resolution.
-        if (session.isGeckoView()) {
-            val n = ref.toIntOrNull()
-                ?: return ActionOutcome("fill", errorJson("browser_fill", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
-            val ok = session.geckoFill(n, secret ?: text!!)
-            return ActionOutcome(
-                "fill",
-                buildJsonObject {
-                    put("type", "browser")
-                    put("tool", "browser_fill")
-                    put("ok", ok)
-                    put("ref", ref)
-                    put("via", if (credId != null) "vault" else "text")
-                }.toString(),
-                mapOf("ref" to ref, "backend" to "geckoview"),
-            )
-        }
         val binding = session.resolveRef(ref)
             ?: return ActionOutcome("fill", errorJson("browser_fill", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
         val objectId = session.resolveNode(binding.backendNodeId, ctx.toolTimeoutMs)
             ?: return ActionOutcome("fill", errorJson("browser_fill", "not_found", "Element $ref could not be resolved."))
         session.focusObject(objectId, ctx.toolTimeoutMs)
         session.insertText(secret ?: text!!, ctx.toolTimeoutMs)
+        val snap = captureFreshSnapshot(session, ctx)
         return ActionOutcome(
             "fill",
             buildJsonObject {
@@ -427,12 +409,13 @@ class BrowserToolProvider(
                 put("ok", true)
                 put("ref", ref)
                 put("via", if (credId != null) "vault" else "text")
+                attachSnapshot(snap)
             }.toString(),
             mapOf("ref" to ref, "backend" to (session.currentBackendMode()?.persisted ?: "-")),
         )
     }
 
-    private suspend fun pressKey(arguments: String, ctx: GenerationContext): ActionOutcome {
+    private suspend fun pressKey(session: BrowserSession, arguments: String, ctx: GenerationContext): ActionOutcome {
         val key = argStr(args(arguments), "key")
             ?: return ActionOutcome("key", errorJson("browser_key", "no_key", ""))
         if (!session.ensureConnected()) {
@@ -448,18 +431,20 @@ class BrowserToolProvider(
         } else {
             return ActionOutcome("key", errorJson("browser_key", "unknown_key", "Unknown key: $key"))
         }
+        val snap = captureFreshSnapshot(session, ctx)
         return ActionOutcome(
             "key",
             buildJsonObject {
                 put("type", "browser")
                 put("tool", "browser_key")
                 put("ok", true)
+                attachSnapshot(snap)
             }.toString(),
             mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
         )
     }
 
-    private suspend fun scroll(arguments: String, ctx: GenerationContext): ActionOutcome {
+    private suspend fun scroll(session: BrowserSession, arguments: String, ctx: GenerationContext): ActionOutcome {
         val a = args(arguments)
         val direction = (argStr(a, "direction") ?: "down").lowercase()
         val pixels = argInt(a, "pixels", 400).coerceIn(1, 5000)
@@ -474,22 +459,24 @@ class BrowserToolProvider(
         }
         // Wheel at a fixed viewport point scrolls the page under it.
         session.mouseWheel(120.0, 200.0, dx, dy, ctx.toolTimeoutMs)
+        val snap = captureFreshSnapshot(session, ctx)
         return ActionOutcome(
             "scroll",
             buildJsonObject {
                 put("type", "browser")
                 put("tool", "browser_scroll")
                 put("ok", true)
+                attachSnapshot(snap)
             }.toString(),
             mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
         )
     }
 
-    private suspend fun screenshot(ctx: GenerationContext): ActionOutcome {
+    private suspend fun screenshot(session: BrowserSession, ctx: GenerationContext): ActionOutcome {
         if (!session.ensureConnected()) {
             return ActionOutcome("screenshot", notConnected("browser_screenshot"))
         }
-        val attachment = captureScreenshotAttachment(ctx)
+        val attachment = captureScreenshotAttachment(session, ctx)
         return ActionOutcome(
             "screenshot",
             buildJsonObject {
@@ -506,8 +493,8 @@ class BrowserToolProvider(
         )
     }
 
-    private suspend fun captureScreenshotResult(ctx: GenerationContext): ToolExecutionResult {
-        val attachment = captureScreenshotAttachment(ctx)
+    private suspend fun captureScreenshotResult(session: BrowserSession, ctx: GenerationContext): ToolExecutionResult {
+        val attachment = captureScreenshotAttachment(session, ctx)
         return ToolExecutionResult(
             text = buildJsonObject {
                 put("type", "browser")
@@ -519,12 +506,12 @@ class BrowserToolProvider(
         )
     }
 
-    private suspend fun captureScreenshotAttachment(ctx: GenerationContext): ToolImageAttachment {
+    private suspend fun captureScreenshotAttachment(session: BrowserSession, ctx: GenerationContext): ToolImageAttachment {
         val bytes = session.captureScreenshot(ctx.toolTimeoutMs)
         return imageStore.persistBytes(bytes, "image/jpeg", "browser")
     }
 
-    private suspend fun takeover(arguments: String): ActionOutcome {
+    private suspend fun takeover(session: BrowserSession, arguments: String): ActionOutcome {
         val action = (argStr(args(arguments), "action") ?: "status").lowercase()
         // Takeover does not strictly need a live page, but connecting keeps the
         // state truthful about backend availability.
@@ -539,13 +526,14 @@ class BrowserToolProvider(
             buildJsonObject {
                 put("type", "browser")
                 put("tool", "browser_takeover")
+                put("ok", true)
                 put("takeover", if (active) "active" else "inactive")
             }.toString(),
             mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
         )
     }
 
-    private suspend fun downloadStatus(): ActionOutcome {
+    private suspend fun downloadStatus(session: BrowserSession): ActionOutcome {
         session.ensureConnected()
         val items = buildJsonArray {
             for (d in session.downloadStatus()) {
@@ -562,6 +550,7 @@ class BrowserToolProvider(
             buildJsonObject {
                 put("type", "browser")
                 put("tool", "browser_download_status")
+                put("ok", true)
                 put("downloads", items)
             }.toString(),
             mapOf("backend" to (session.currentBackendMode()?.persisted ?: "-")),
@@ -629,23 +618,7 @@ class BrowserToolProvider(
         return lines.joinToString("\n").take(SNAPSHOT_MAX_CHARS) to refs
     }
 
-    /**
-     * Parse a GeckoView content-script element table (`[N] role "name" …`
-     * lines) into snapshot refs. The agent sees `[N]` and passes `N` back;
-     * the integer doubles as the backend id for the click/fill paths.
-     */
-    private fun parseGeckoRefs(table: String): Map<String, BrowserSnapshotRef> {
-        val refs = LinkedHashMap<String, BrowserSnapshotRef>()
-        val lineRe = Regex("""^\[(\d+)\]\s+(\S+)(?:\s+"([^"]*)")?""")
-        for (line in table.lineSequence()) {
-            val m = lineRe.find(line.trim()) ?: continue
-            val n = m.groupValues[1]
-            val role = m.groupValues[2]
-            val name = m.groupValues[3]
-            refs[n] = BrowserSnapshotRef(n, n.toLongOrNull() ?: -1L, role, name)
-        }
-        return refs
-    }
+
 
     private fun tool(
         name: String,

@@ -704,6 +704,9 @@
     <string name="browser_stop">Stop</string>
     <string name="browser_takeover">Take over</string>
     <string name="browser_takeover_active">You have control \u2014 the agent is paused.</string>
+    <string name="browser_back">Back</string>
+    <string name="browser_close">Close</string>
+    <string name="browser_open">Open browser</string>
     <string name="browser_resume">Resume</string>
     <string name="browser_approve">Approve</string>
     <string name="browser_deny">Deny</string>

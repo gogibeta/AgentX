@@ -1,6 +1,6 @@
 package com.newoether.agora.ui.browser
 
-import com.newoether.agora.browser.BrowserSession
+import com.newoether.agora.browser.BrowserSessionRegistry
 import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
 import com.newoether.agora.diagnostics.StructuredDiagnostics
 import com.newoether.agora.security.ApprovalGate
@@ -26,10 +26,20 @@ import kotlinx.coroutines.launch
  * watch panel as two views of the same truth.
  */
 class DefaultBrowserWatchController(
-    private val session: BrowserSession,
+    private val registry: BrowserSessionRegistry,
     private val gate: ApprovalGate,
     private val scope: CoroutineScope,
 ) : BrowserWatchController {
+
+    /**
+     * The chat currently on screen. The chat UI sets this; the panel then
+     * shows THAT chat's browser session. Switching chats switches the panel
+     * to the other chat's browser — sessions never overlap.
+     */
+    override val activeConversationId = MutableStateFlow<String?>(null)
+
+    /** The browser session for the currently visible chat. */
+    private fun session() = registry.get(activeConversationId.value)
 
     private val _sessionActive = MutableStateFlow(false)
     override val sessionActive: StateFlow<Boolean> = _sessionActive.asStateFlow()
@@ -49,9 +59,6 @@ class DefaultBrowserWatchController(
     private val _liveWebView = MutableStateFlow<android.webkit.WebView?>(null)
     override val liveWebView: StateFlow<android.webkit.WebView?> = _liveWebView.asStateFlow()
 
-    private val _liveGeckoView = MutableStateFlow<android.view.View?>(null)
-    override val liveGeckoView: StateFlow<android.view.View?> = _liveGeckoView.asStateFlow()
-
     private val _takeoverActive = MutableStateFlow(false)
     override val takeoverActive: StateFlow<Boolean> = _takeoverActive.asStateFlow()
 
@@ -70,32 +77,43 @@ class DefaultBrowserWatchController(
     private var frameJob: Job? = null
 
     init {
-        // Activity + narration from the browser event stream.
+        // Activity + narration from the browser event stream, filtered to the
+        // visible chat: browser events carry the conversation id as sessionId
+        // (BrowserDiagnostics.record), so the panel only lights up for the
+        // chat on screen. Re-evaluates both on new events AND on chat switch,
+        // so switching chats immediately swaps the panel to that chat's
+        // browser session.
         scope.launch(Dispatchers.Default) {
-            StructuredDiagnostics.events.collect { events ->
-                val last = events.lastOrNull {
-                    it.category == StructuredDiagnosticCategory.BROWSER.wireName
+            kotlinx.coroutines.flow.combine(
+                StructuredDiagnostics.events,
+                activeConversationId,
+            ) { events, conversationId -> events to conversationId }
+                .collect { (events, conversationId) ->
+                    val last = events.lastOrNull {
+                        it.category == StructuredDiagnosticCategory.BROWSER.wireName &&
+                            (conversationId == null || it.sessionId == conversationId)
+                    }
+                    if (last == null) {
+                        _sessionActive.value = false
+                        _liveWebView.value = null
+                        stopFrames()
+                        return@collect
+                    }
+                    val ageMs = System.currentTimeMillis() - last.ts
+                    val active = ageMs < SESSION_ACTIVE_WINDOW_MS
+                    _sessionActive.value = active
+                    _narration.value = narrate(last.name, last.outcome, last.detail)
+                    (last.detail["host"] ?: last.detail["url"])?.let { _pageUrl.value = it }
+                    // Live view (System WebView backend): the panel embeds it
+                    // directly instead of the screenshot stream.
+                    _liveWebView.value = runCatching { session().liveWebView() }.getOrNull()
+                    if (active) startFrames() else stopFrames()
                 }
-                if (last == null) {
-                    _sessionActive.value = false
-                    return@collect
-                }
-                val ageMs = System.currentTimeMillis() - last.ts
-                val active = ageMs < SESSION_ACTIVE_WINDOW_MS
-                _sessionActive.value = active
-                _narration.value = narrate(last.name, last.outcome, last.detail)
-                (last.detail["host"] ?: last.detail["url"])?.let { _pageUrl.value = it }
-                // Live views (System WebView / GeckoView backends): the panel embeds
-                // them directly instead of the screenshot stream.
-                _liveWebView.value = runCatching { session.liveWebView() }.getOrNull()
-                _liveGeckoView.value = runCatching { session.liveGeckoView() }.getOrNull()
-                if (active) startFrames() else stopFrames()
-            }
         }
         // Takeover flag + pending approvals.
         scope.launch(Dispatchers.Default) {
             while (isActive) {
-                _takeoverActive.value = runCatching { session.isTakeoverActive() }
+                _takeoverActive.value = runCatching { session().isTakeoverActive() }
                     .getOrDefault(false)
                 delay(1_000L)
             }
@@ -144,15 +162,16 @@ class DefaultBrowserWatchController(
                 // diagnostic events. A failed tool call still records an
                 // event (making the session look "active") while no session
                 // exists; capturing then only adds -32001 noise (III.2).
-                if (session.currentBackendMode() == null) {
+                val liveSession = session()
+                if (liveSession.currentBackendMode() == null) {
                     delay(FRAME_INTERVAL_MS)
                     continue
                 }
                 // Skip screenshot polling while a live view is embedded —
                 // it renders itself and the user can touch it directly.
-                if (_liveWebView.value == null && _liveGeckoView.value == null) {
+                if (_liveWebView.value == null) {
                     runCatching {
-                        val frame = session.captureScreenshot(FRAME_TIMEOUT_MS)
+                        val frame = liveSession.captureScreenshot(FRAME_TIMEOUT_MS)
                         _screenshot.value = frame
                     }.onSuccess {
                         consecutiveFailures = 0
@@ -189,10 +208,23 @@ class DefaultBrowserWatchController(
 
     override fun onStop() {
         scope.launch(Dispatchers.IO) {
-            runCatching { session.close() }
+            // Stop kills THIS chat's browser session only; other chats'
+            // sessions keep running untouched.
+            runCatching { registry.close(activeConversationId.value) }
             _sessionActive.value = false
             _panelHidden.value = false
+            _liveWebView.value = null
             stopFrames()
+        }
+    }
+
+    /** History-back in the visible chat's browser; the session keeps running. */
+    override fun onGoBack() {
+        scope.launch(Dispatchers.IO) {
+            val wentBack = runCatching {
+                session().goBack(FRAME_TIMEOUT_MS)
+            }.getOrDefault(false)
+            DebugLog.d(TAG, "browser back: $wentBack")
         }
     }
 
@@ -208,12 +240,24 @@ class DefaultBrowserWatchController(
         DebugLog.d(TAG, "Watch panel restored")
     }
 
+    override fun onOpenBrowser() {
+        _panelHidden.value = false
+        scope.launch(Dispatchers.IO) {
+            // Connect the chat's session (no-op when already connected).
+            // The connect reports a diagnostic event, which flips
+            // sessionActive and makes the panel appear.
+            runCatching { session().ensureConnected() }
+                .onFailure { DebugLog.w(TAG, "openBrowser connect failed: ${it.message}") }
+        }
+        DebugLog.d(TAG, "Browser opened for chat")
+    }
+
     override fun onTakeOver() {
-        session.setTakeover(true)
+        session().setTakeover(true)
     }
 
     override fun onResume() {
-        session.setTakeover(false)
+        session().setTakeover(false)
     }
 
     override fun onApprove(requestId: String) {
