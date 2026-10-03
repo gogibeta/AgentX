@@ -246,7 +246,10 @@ class AnthropicProvider(
         // model accepts one, including with thinking off.
         // A model that cannot stop thinking reports its lowest level here, so a forced-thinking-off
         // caller does not inherit an unrelated high effort.
+        // IMPORTANT: output_config requires thinking.type to be "adaptive" or "disabled" —
+        // never send it alongside "enabled" thinking (the API rejects the request).
         val outputConfig = (resolvedThinking.effort ?: capability.nearestEffort(config.thinkingLevel))
+            ?.takeIf { thinking == null || thinking.type in setOf("adaptive", "disabled") }
             ?.let { AnthropicOutputConfig(effort = it) }
 
         // Convert ToolDefinition to Anthropic format

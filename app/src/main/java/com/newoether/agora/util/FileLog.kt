@@ -80,6 +80,61 @@ object FileLog {
         File(File(context.filesDir, DIR), FILE).absolutePath
 
     /**
+     * Last [maxLines] lines of the session log, oldest-first — including the
+     * rotated previous-session file when the current log alone is shorter, and
+     * anything still queued but not yet flushed to disk. Bounded reads (never
+     * loads multi-MB files whole) so the in-app live log viewer stays cheap.
+     * The one-line-per-event format is already AI-friendly: no cable needed.
+     */
+    fun tailLines(maxLines: Int): List<String> {
+        val lines = ArrayDeque<String>()
+        try {
+            val dir = logDir ?: return emptyList()
+            // Oldest first: rotated (previous session), then current, then the
+            // not-yet-flushed queue. Read each source fully (bounded by the
+            // 256 KB window) and keep only the newest maxLines OVERALL, so a
+            // long rotated log can never crowd out the current session's lines.
+            for (file in listOf(File(dir, ROTATED), File(dir, FILE))) {
+                if (file.exists()) readTailLines(file, Int.MAX_VALUE, lines)
+            }
+            queue.forEach { line -> lines.addLast(line) }
+            while (lines.size > maxLines) lines.removeFirst()
+        } catch (_: Throwable) {
+            // ignore
+        }
+        return lines.toList()
+    }
+
+    /** Append up to [maxLines] trailing lines of [file] into [out], oldest-first. */
+    private fun readTailLines(file: File, maxLines: Int, out: ArrayDeque<String>) {
+        try {
+            // Read at most a 256 KB window from the end — far more than the
+            // viewer asks for — and drop the first partial line.
+            val window = 256 * 1024L
+            val lines: List<String> = if (file.length() <= window) {
+                file.readLines()
+            } else {
+                java.io.RandomAccessFile(file, "r").use { raf ->
+                    raf.seek(raf.length() - window)
+                    val bytes = ByteArray(window.toInt())
+                    raf.readFully(bytes)
+                    String(bytes, Charsets.UTF_8).split("\n").drop(1)
+                }
+            }
+            val tail = if (lines.size <= maxLines) lines else lines.subList(lines.size - maxLines, lines.size)
+            for (raw in tail) {
+                val line = raw.trimEnd('\r')
+                if (line.isNotEmpty()) {
+                    out.addLast(line)
+                    while (out.size > maxLines) out.removeFirst()
+                }
+            }
+        } catch (_: Throwable) {
+            // ignore
+        }
+    }
+
+    /**
      * Test-only: releases the singleton so a test can re-initialize [FileLog]
      * with its own context. Production code never calls this — the session log
      * is meant to be started once per process.
@@ -90,6 +145,22 @@ object FileLog {
         logDir = null
         queue.clear()
         started.set(false)
+    }
+
+    /**
+     * Manual reset from Settings: drop queued lines and truncate the session
+     * + rotated log files so diagnostics start fresh (e.g. right after an app
+     * update). Logging keeps working — a marker line is written and new
+     * entries append after the reset.
+     */
+    fun clear() {
+        queue.clear()
+        synchronized(lock) {
+            val dir = logDir ?: return
+            runCatching { File(dir, FILE).writeText("", Charsets.UTF_8) }
+            runCatching { File(dir, ROTATED).delete() }
+        }
+        event("INFO", "FileLog", emptyMap(), "diagnostics reset by user")
     }
 
     /** Structured event: level + tag + key/value fields + free message. */

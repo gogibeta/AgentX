@@ -1,5 +1,6 @@
 package com.newoether.agora.browser
 
+import android.app.ActivityManager
 import android.content.Context
 import com.newoether.agora.data.BrowserDataController
 import com.newoether.agora.util.DebugLog
@@ -17,7 +18,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * LOCAL browser backend: one long-lived sandbox Chromium with a persistent profile.
+ * Sandbox Chromium runtime for the SHELL tool (no longer a browser backend —
+ * the browser page offers only System WebView + cloud tunnel since beta11).
+ * One long-lived Chromium with a persistent profile.
  *
  * Scry-model rules (§1.3.1, adopted 2026-10-01):
  * - ONE persistent `--user-data-dir` under app-private storage
@@ -87,24 +90,46 @@ class ChromiumLauncher(
             return true
         }
         stopLocked()
+        lastStartFailure = null
+        if (!hasEnoughMemory()) {
+            val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            val info = ActivityManager.MemoryInfo()
+            am?.getMemoryInfo(info)
+            val freeMb = (info.availMem / (1024 * 1024)).toString()
+            lastStartFailure = "only ${freeMb}MB free RAM (< 1536MB): Chromium under proot is " +
+                "not viable on this device right now (LMK would SIGKILL it)"
+            DebugLog.w(TAG, "ensureStarted: $lastStartFailure")
+            return false
+        }
         if (!isSandboxReady()) {
+            lastStartFailure = "sandbox rootfs not installed"
             DebugLog.w(TAG, "ensureStarted: sandbox rootfs not installed; browser unavailable")
             return false
         }
         clearStaleProfileLocks()
-        if (!launchLocked()) return false
+        if (!launchLocked()) {
+            lastStartFailure = "proot launch failed (see log)"
+            return false
+        }
         // Lenient startup: poll for the debug endpoint instead of failing fast.
-        repeat(STARTUP_POLL_ATTEMPTS) {
+        // Liveness-aware: a live-but-slow process keeps its full 90s window;
+        // only a dead process aborts early.
+        repeat(STARTUP_POLL_ATTEMPTS) { attempt ->
             delay(STARTUP_POLL_INTERVAL_MS)
             if (isHealthy()) return true
             val p = process
             if (p == null || !p.isAlive) {
-                DebugLog.w(TAG, "Chromium process died during startup (exit=${p?.exitValue()})")
+                lastStartFailure = "Chromium process died during startup (exit=${p?.exitValue()})"
+                DebugLog.w(TAG, lastStartFailure!!)
                 stopLocked()
                 return false
             }
+            if (attempt > 0 && attempt % 60 == 0) {
+                DebugLog.d(TAG, "Chromium still starting (${attempt * STARTUP_POLL_INTERVAL_MS}ms elapsed, process alive)")
+            }
         }
-        DebugLog.w(TAG, "Chromium did not answer /json/version within startup window")
+        lastStartFailure = "Chromium did not answer /json/version within 90s"
+        DebugLog.w(TAG, lastStartFailure!!)
         // Do NOT leave a half-started browser running: a process that cannot
         // bind DevTools in the window never becomes usable, and orphans pile
         // up and strain the device. Kill it; the next attempt starts clean.
@@ -180,10 +205,38 @@ class ChromiumLauncher(
         downloadsDir.mkdirs()
     }
 
+    /**
+     * Kill orphaned Chromium processes left in the sandbox by previous crashes.
+     * A half-started Chromium can hold the debug port without ever answering
+     * /json/version (ProcessSingleton also swallows relaunches); clearing them
+     * first is what makes the next launch actually bind.
+     */
+    private fun killStaleSandboxChromium(filesDir: File, rootfsDir: File) {
+        try {
+            val libDir = appContext.applicationInfo.nativeLibraryDir
+            val prootBin = "$libDir/libproot_exec.so"
+            if (!File(prootBin).exists() || !rootfsDir.exists()) return
+            val args = listOf(
+                prootBin,
+                "--rootfs=" + rootfsDir.absolutePath,
+                "-0", "-L",
+                "/bin/sh", "-c",
+                "pkill -f 'chromium.*remote-debugging-port' 2>/dev/null; exit 0",
+            )
+            val builder = ProcessBuilder(args).redirectErrorStream(true)
+            val proc = builder.start()
+            proc.waitFor(10, TimeUnit.SECONDS)
+            proc.destroyForcibly()
+        } catch (_: Exception) {
+            // Best-effort only; launch proceeds regardless.
+        }
+    }
+
     private fun launchLocked(): Boolean {
         return try {
             val filesDir = appContext.filesDir
             val rootfsDir = File(filesDir, "alpine-rootfs")
+            killStaleSandboxChromium(filesDir, rootfsDir)
             val libDir = appContext.applicationInfo.nativeLibraryDir
             val prootBin = "$libDir/libproot_exec.so"
             if (!File(prootBin).exists()) {
@@ -203,7 +256,11 @@ class ChromiumLauncher(
                 append("command -v chromium >/dev/null 2>&1 || { echo CHROMIUM_MISSING >&2; exit 3; }; ")
                 append("exec chromium --headless=new ")
                 append("--no-sandbox ") // proot runs as root (-0); Chromium's own sandbox needs namespaces unavailable here
+                append("--disable-setuid-sandbox ")
+                append("--no-zygote ") // proot cannot trap the zygote's clone(); without this the browser dies on spawn
                 append("--disable-gpu ")
+                append("--disable-gpu-process-crash-limit ") // GPU child crash-loops FATAL after 6 respawns under proot
+                append("--disable-software-rasterizer ")
                 // NOTE: --remote-debugging-port takes a bare port number ONLY.
                 // "127.0.0.1:9333" fails to parse and DevTools never binds
                 // (local browser was completely unusable until this was fixed).
@@ -229,7 +286,11 @@ class ChromiumLauncher(
                 "--bind=" + profileDir.absolutePath + ":" + SANDBOX_PROFILE_PATH,
                 "--bind=" + downloadsDir.absolutePath + ":" + SANDBOX_DOWNLOAD_PATH,
                 "-w", "/home/agora",
-                "-0", "--link2symlink", "--kill-on-exit", "-L",
+                // NOTE: --link2symlink intentionally NOT passed. It emulates
+                // symlinks as regular files, which breaks Chromium's
+                // ProcessSingleton lock protocol (SingletonSocket is a
+                // symlink) → "Failed to create socket directory" abort (III.3).
+                "-0", "--kill-on-exit", "-L",
                 "/bin/sh", "-c", chromiumCmd,
             )
             val builder = ProcessBuilder(args).redirectErrorStream(true)
@@ -300,8 +361,23 @@ class ChromiumLauncher(
         private const val TAG = "ChromiumLauncher"
         private const val BROWSER_HEALTH_USER_AGENT = "AgentX/1.0"
         private val STALE_LOCK_FILES = arrayOf("SingletonLock", "SingletonSocket", "SingletonCookie")
-        private const val STARTUP_POLL_ATTEMPTS = 50 // 50 × 500ms ≈ 25s startup window
+        private const val STARTUP_POLL_ATTEMPTS = 180 // 180 × 500ms ≈ 90s startup window
         private const val STARTUP_POLL_INTERVAL_MS = 500L
         private const val PROCESS_STOP_TIMEOUT_MS = 5000L
+        /** Below this free RAM, Chromium under proot is not viable (LMK kills). */
+        private const val MIN_FREE_MEMORY_BYTES = 1_536L * 1024L * 1024L // 1.5 GB
+    }
+
+    /** Human-readable reason for the last ensureStarted() failure, if any. */
+    var lastStartFailure: String? = null
+        private set
+
+    /** False when the device cannot plausibly run Chromium under proot. */
+    private fun hasEnoughMemory(): Boolean {
+        val am = appContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+            ?: return true // unknown: don't block, let the launch attempt speak
+        val info = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(info)
+        return info.availMem >= MIN_FREE_MEMORY_BYTES
     }
 }

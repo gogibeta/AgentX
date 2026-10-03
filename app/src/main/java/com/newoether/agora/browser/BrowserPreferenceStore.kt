@@ -46,14 +46,14 @@ data class TunnelValidation(
  * pattern, so the 800-line-capped SettingsManager/SettingsRepository stay untouched.
  *
  * - [browserEnabled]: master toggle — the browser tools are only offered when on.
- * - [backendMode]: LOCAL (default) or TUNNEL (§1.3.0).
+ * - [backendMode]: WEBVIEW (default) or TUNNEL (§1.3.0).
  * - [tunnelUrl]: user-pasted CDP-over-HTTPS endpoint. The app ships no default.
  * - Client token: encrypted at rest via [SecretCrypto] (Android Keystore-backed),
  *   never logged, never placed in diagnostic output.
  * - [tunnelValidation]: last reachability check (`GET /json/version` → 200) plus
  *   [tunnelValidatedAtMillis] timestamp, written by the settings UI after validating.
  *
- * §1.3.0 rule: TUNNEL with no tunnel URL falls back to [BrowserBackendMode.LOCAL]
+ * §1.3.0 rule: TUNNEL with no tunnel URL falls back to [BrowserBackendMode.WEBVIEW]
  * (see [effectiveMode]); tunnel mode cannot be meaningfully enabled without a URL.
  */
 class BrowserPreferenceStore(
@@ -68,7 +68,7 @@ class BrowserPreferenceStore(
 
     val backendMode: StateFlow<BrowserBackendMode> = store.data
         .map { BrowserBackendMode.fromPersisted(it[BROWSER_BACKEND_MODE]) }
-        .stateIn(scope, SharingStarted.Eagerly, BrowserBackendMode.LOCAL)
+        .stateIn(scope, SharingStarted.Eagerly, BrowserBackendMode.WEBVIEW)
 
     /** Trimmed user-supplied tunnel URL. Blank = not provided. */
     val tunnelUrl: StateFlow<String> = store.data
@@ -90,12 +90,13 @@ class BrowserPreferenceStore(
 
     /**
      * The backend that will actually be used: TUNNEL requires a non-blank tunnel
-     * URL, otherwise we fall back to LOCAL (§1.3.0).
+     * URL, otherwise we fall back to WEBVIEW (§1.3.0). Stale persisted values
+     * ("local", "geckoview") already map to WEBVIEW via [BrowserBackendMode.fromPersisted].
      */
     fun effectiveMode(): BrowserBackendMode {
         val mode = backendMode.value
         return if (mode == BrowserBackendMode.TUNNEL && tunnelUrl.value.isBlank()) {
-            BrowserBackendMode.LOCAL
+            BrowserBackendMode.WEBVIEW
         } else {
             mode
         }
@@ -110,7 +111,11 @@ class BrowserPreferenceStore(
     }
 
     fun setTunnelUrl(url: String) = scope.launch {
-        val trimmed = url.trim()
+        // Normalize: trim whitespace AND trailing slashes. connectTunnel()
+        // builds "$url/json/version" by string concat — a trailing slash would
+        // produce "//json/version" → 404 while Validate (OkHttp path builder)
+        // still passes. This was the "validate ok, connect fails" bug.
+        val trimmed = url.trim().trimEnd('/')
         store.edit { prefs ->
             if (trimmed.isEmpty()) prefs.remove(BROWSER_TUNNEL_URL)
             else prefs[BROWSER_TUNNEL_URL] = trimmed

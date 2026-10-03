@@ -29,6 +29,11 @@ data class BrowserApprovalRequest(
 interface BrowserWatchController {
     /** True while a browser session/tool is active; the panel is hidden otherwise. */
     val sessionActive: StateFlow<Boolean>
+    /**
+     * The chat currently on screen. The chat UI sets this; the panel then
+     * shows THAT chat's browser session, so two chats never share one browser.
+     */
+    val activeConversationId: kotlinx.coroutines.flow.MutableStateFlow<String?>
     val pageUrl: StateFlow<String>
     val pageTitle: StateFlow<String>
     /** One-line action narration, e.g. "Clicked 'Add to cart' on example.com". */
@@ -39,13 +44,38 @@ interface BrowserWatchController {
      * referential equality, so every new frame is delivered.
      */
     val screenshot: StateFlow<ByteArray?>
+    /**
+     * Live WebView to embed directly when the connected backend is System
+     * WebView. The panel shows this INSTEAD of screenshots: the browser is
+     * truly visible and the user can touch it (take-control). Null for the
+     * tunnel backend, which stays on the screenshot stream.
+     */
+    val liveWebView: StateFlow<android.webkit.WebView?>
     /** Take-over mode: the user drives the browser, the agent loop is paused. */
     val takeoverActive: StateFlow<Boolean>
+    /**
+     * The user hid the watch panel WITHOUT stopping the session: screenshots,
+     * the live view, and the agent's browser tools keep running underneath.
+     * A floating restore button brings the panel back.
+     */
+    val panelHidden: StateFlow<Boolean>
+    /** Hide the panel but keep the browser session running. */
+    fun onHidePanel()
+    /** Bring back a hidden panel. */
+    fun onShowPanel()
+    /**
+     * Open the browser for the current chat (chat composer button): connects
+     * the chat's session if needed and unhides the panel. The browser keeps
+     * whatever page the chat's session already had.
+     */
+    fun onOpenBrowser()
     /** Non-null while a gated action awaits a decision. */
     val pendingApproval: StateFlow<BrowserApprovalRequest?>
     fun onStop()
     fun onTakeOver()
     fun onResume()
+    /** History-back in the visible chat's browser; the session keeps running. */
+    fun onGoBack()
     fun onApprove(requestId: String)
     fun onDeny(requestId: String)
 }
@@ -63,3 +93,7 @@ val LocalBrowserPreferenceStore =
 
 /** Wipe hook for the persistent profile, once stream A registers it. */
 val LocalBrowserDataController = compositionLocalOf<BrowserDataController?> { null }
+
+/** Engine registry (install/uninstall/select), once registered. */
+val LocalBrowserEngineManager =
+    compositionLocalOf<com.newoether.agora.browser.BrowserEngineManager?> { null }

@@ -23,6 +23,7 @@ import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.model.ModelId
 import com.newoether.agora.model.ModelThinkingCapabilities
 import com.newoether.agora.model.ContextBudget
+import com.newoether.agora.model.ModelContextWindowResolver
 import com.newoether.agora.model.OpenAiServiceTiers
 import com.newoether.agora.model.apiModelName
 import com.newoether.agora.util.Constants
@@ -72,14 +73,11 @@ class GenerationRequestBuilder(
     private val appContext: Context,
 ) {
     data class ProviderKey(val providerName: String, val apiKey: String)
-
     /** Resolves the active provider+key for [modelId] and verifies configuration.
      *  Reports the problem through [report] and returns null when the provider is not configured. */
     internal fun resolveProviderKey(modelId: String, report: (String) -> Unit): ProviderKey? {
         val providerName = providerRegistry.providerForModel(modelId)
-        // Round-robin across the provider's keys so parallel work spreads over
-        // rate limits; retries fail over via GenerationConfig.alternateApiKeys.
-        // Strict test mocks stub resolveActiveKey() only, so fall back to it.
+        // Round-robin keys so parallel work spreads over rate limits (failover via alternateApiKeys).
         val activeKey = runCatching {
             com.newoether.agora.api.ApiKeyRotation.pickForRequest(
                 settings.apiKeys.value, settings.activeApiKeyIds.value, providerName,
@@ -190,9 +188,7 @@ class GenerationRequestBuilder(
         model?.let { providerRegistry.providerForModel(it) } ?: ""
 
     private fun resolveTranscriptionModelId(model: String?): String =
-        model?.let {
-            ModelId.parse(providerRegistry.canonicalModelId(it)).modelName
-        } ?: ""
+        model?.let { ModelId.parse(providerRegistry.canonicalModelId(it)).modelName } ?: ""
 
     private fun resolveTranscriptionApiKey(model: String?): String {
         model ?: return ""
@@ -211,26 +207,32 @@ class GenerationRequestBuilder(
         val workspaceUri: String = "",
         val models: List<String> = emptyList(),
         val env: Map<String, String> = emptyMap(),
+        val projectFolder: String = "",
+        val autoCompactEnabled: Boolean = true,
+        val autoCompactIntervalTurns: Int = 25,
     )
 
     /**
      * Agent prefs live in a separate store read through one accessor; strict mocks
      * of SettingsRepository in tests don't stub it, so fail closed to chat ("off").
      */
-    private fun agentSnapshot(): AgentSnapshot = runCatching {
+    private fun agentSnapshot(conversationId: String): AgentSnapshot = runCatching {
+        val mode = settings.agentSettings.agentMode.value
         AgentSnapshot(
-            mode = settings.agentSettings.agentMode.value,
+            mode = mode,
             workspaceUri = settings.agentSettings.agentWorkspaceUri.value,
             models = settings.agentSettings.agentModels.value,
             env = settings.agentSettings.agentEnv.value,
+            projectFolder = settings.conversationSettings.value[conversationId]
+                ?.agentProjectFolders?.get(mode).orEmpty(),
+            autoCompactEnabled = settings.agentSettings.autoCompactEnabled.value,
+            autoCompactIntervalTurns = settings.agentSettings.autoCompactIntervalTurns.value,
         )
     }.getOrDefault(AgentSnapshot())
 
     // Image generation reuses the selected model's provider credentials (mirrors transcription).
     private fun resolveImageGenModelId(model: String?): String =
-        model?.let {
-            ModelId.parse(providerRegistry.canonicalModelId(it)).apiModelName
-        } ?: ""
+        model?.let { ModelId.parse(providerRegistry.canonicalModelId(it)).apiModelName } ?: ""
 
     private fun resolveImageGenApiKey(model: String?): String {
         model ?: return ""
@@ -244,17 +246,26 @@ class GenerationRequestBuilder(
         return providerRegistry.getEffectiveBaseUrl(providerRegistry.providerForModel(model)) ?: ""
     }
 
-    fun buildEffectiveConversationSettings(conversationId: String): ConversationSettings {
+    fun buildEffectiveConversationSettings(conversationId: String, modelId: String? = null): ConversationSettings {
         val overrides = settings.conversationSettings.value[conversationId]
             ?: ConversationSettings()
-        return resolveEffectiveConversationSettings(overrides)
+        return resolveEffectiveConversationSettings(overrides, modelId = modelId)
     }
     private fun resolveEffectiveConversationSettings(
         overrides: ConversationSettings,
+        modelId: String? = null,
     ): ConversationSettings {
+        // On-device engine limit: the prompt budget can never exceed the loaded nCtx.
+        val localPrefix = "${Constants.PROVIDER_LOCAL}:"
+        val localModelNCtx = runCatching {
+            modelId?.takeIf { it.startsWith(localPrefix) }?.let { id ->
+                settings.localChatModels.value.find { m -> m.modelId == id.removePrefix(localPrefix) }?.nCtx
+            }
+        }.getOrNull()
         return ConversationSettings(
-            contextWindow = ContextBudget.normalize(
-                overrides.contextWindow ?: settings.maxContextWindow.value
+            contextWindow = ModelContextWindowResolver.resolve(
+                modelId, settings.modelContextWindows.value, overrides.contextWindow,
+                settings.maxContextWindow.value, localModelNCtx = localModelNCtx,
             ),
             temperature = overrides.temperature ?: settings.defaultTemperature.value,
             maxTokens = overrides.maxTokens ?: settings.defaultMaxTokens.value,
@@ -268,15 +279,13 @@ class GenerationRequestBuilder(
             thinkingLevel = overrides.thinkingLevel ?: settings.thinkingLevel.value,
             thinkingBudgetEnabled = overrides.thinkingBudgetEnabled ?: settings.thinkingBudgetEnabled.value,
             thinkingBudgetTokens = overrides.thinkingBudgetTokens ?: settings.thinkingBudgetTokens.value,
-            openAiServiceTierEnabled =
-                overrides.openAiServiceTierEnabled ?: settings.openAiServiceTierEnabled.value,
+            openAiServiceTierEnabled = overrides.openAiServiceTierEnabled ?: settings.openAiServiceTierEnabled.value,
             openAiServiceTier = OpenAiServiceTiers.normalize(
                 overrides.openAiServiceTier ?: settings.openAiServiceTier.value,
             ),
             webSearchEnabled = if (settings.webSearchEnabled.value) (overrides.webSearchEnabled ?: true) else false,
             shellEnabled = if (settings.shellEnabled.value) (overrides.shellEnabled ?: true) else false,
-            lowContextModeEnabled =
-                overrides.lowContextModeEnabled ?: settings.localLowContextModeEnabled.value,
+            lowContextModeEnabled = overrides.lowContextModeEnabled ?: settings.localLowContextModeEnabled.value,
         )
     }
 
@@ -301,9 +310,10 @@ class GenerationRequestBuilder(
         val effectiveSettings = if (conversationOverride != null) {
             resolveEffectiveConversationSettings(
                 conversationSettingsOverride ?: ConversationSettings(),
+                modelId = selectedModelId,
             )
         } else {
-            buildEffectiveConversationSettings(conversationId)
+            buildEffectiveConversationSettings(conversationId, selectedModelId)
         }
         val frozenKey = settings.awaitActiveKey(providerName).orEmpty()
         check(providerRegistry.isConfigured(providerName, frozenKey)) {
@@ -410,8 +420,9 @@ class GenerationRequestBuilder(
                 conversationOverride = conversationOverride,
                 promptSettings = capturePromptSettings(),
             )
+            val resolvedSnapshot = resolvePromptTemplate(promptTemplate, selectedModelId)
             baseConfig.copy(
-                effectiveSystemPrompt = null,
+                effectiveSystemPrompt = resolvedSnapshot.systemPrompt,
                 userPrepend = null,
                 userPostpend = null,
                 assistantPrepend = null,
@@ -449,8 +460,8 @@ class GenerationRequestBuilder(
         val selectedModelId = providerRegistry.canonicalModelId(modelId)
         val providerName = providerRegistry.providerForModel(selectedModelId)
         val effectiveSettings = conversationSettingsOverride
-            ?.let(::resolveEffectiveConversationSettings)
-            ?: buildEffectiveConversationSettings(conversationId)
+            ?.let { resolveEffectiveConversationSettings(it, modelId = selectedModelId) }
+            ?: buildEffectiveConversationSettings(conversationId, selectedModelId)
         val (baseConfig, context) = buildGenerationPair(
             providerName = providerName,
             modelId = selectedModelId,
@@ -543,9 +554,8 @@ class GenerationRequestBuilder(
                 )
             }.getOrDefault(emptyList()),
             effectiveSystemPrompt = resolvedSystemPrompt,
-            maxContextWindow = ContextBudget.normalize(
-                effectiveSettings.contextWindow ?: settings.maxContextWindow.value
-            ),
+            maxContextWindow = effectiveSettings.contextWindow
+                ?: ContextBudget.normalize(settings.maxContextWindow.value),
             codeExecutionEnabled = if (lowContextModeEnabled) false
             else effectiveSettings.codeExecutionEnabled ?: settings.codeExecutionEnabled.value,
             googleSearchEnabled = if (lowContextModeEnabled) false
@@ -560,9 +570,8 @@ class GenerationRequestBuilder(
                 responsesApiEnabled = responsesApiEnabled,
             ),
             responsesApiEnabled = responsesApiEnabled,
-            openAiWebSearchEnabled =
-                !lowContextModeEnabled &&
-                    effectiveSettings.openAiWebSearchEnabled == true && responsesApiEnabled,
+            openAiWebSearchEnabled = !lowContextModeEnabled &&
+                effectiveSettings.openAiWebSearchEnabled == true && responsesApiEnabled,
             baseUrl = providerRegistry.getEffectiveBaseUrl(providerName),
             userPrepend = resolvedUserPrepend,
             userPostpend = resolvedUserPostpend,
@@ -573,6 +582,7 @@ class GenerationRequestBuilder(
             frequencyPenalty = effectiveSettings.frequencyPenalty,
             presencePenalty = effectiveSettings.presencePenalty
         )
+        val agent = agentSnapshot(currentId)
         val genCtx = GenerationContext(
             conversationId = currentId,
             accessSavedMemories = settings.accessSavedMemories.value,
@@ -603,8 +613,7 @@ class GenerationRequestBuilder(
             shellDevices = settings.shellDevices.value,
             sandboxEnabled = settings.sandboxEnabled.value,
             sandboxSharedStorageEnabled = settings.sandboxSharedStorageEnabled.value,
-            // Keyed on THIS generation's model, not the UI's currently-selected one — a queued
-            // or parallel-conversation generation must not inherit another conversation's model.
+            // Keyed on THIS generation's model, not the UI-selected one (parallel/queued safety).
             imageTranscriptionEnabled =
                 settings.imageTranscriptionEnabled.value &&
                     settings.imageTranscriptionEnabledModels.value.contains(modelId),
@@ -621,18 +630,20 @@ class GenerationRequestBuilder(
             transcriptionModelId = resolveTranscriptionModelId(transcriptionModel),
             transcriptionApiKey = resolveTranscriptionApiKey(transcriptionModel),
             transcriptionBaseUrl = resolveTranscriptionBaseUrl(transcriptionModel),
-            agentMode = agentSnapshot().mode,
-            agentWorkspaceUri = agentSnapshot().workspaceUri,
-            agentModels = agentSnapshot().models,
-            agentEnv = agentSnapshot().env,
-            // Jev: runCatching → defaults keeps this strict-mock-safe when the
-            // Jev store isn't stubbed (see AGENTS.md).
+            agentMode = agent.mode,
+            agentWorkspaceUri = agent.workspaceUri,
+            agentModels = agent.models,
+            agentEnv = agent.env,
+            agentProjectFolder = agent.projectFolder,
+            autoCompactEnabled = agent.autoCompactEnabled,
+            autoCompactIntervalTurns = agent.autoCompactIntervalTurns,
             typeSafeApiKey = runCatching { settings.jevSettings.pickKey() }.getOrNull() ?: "",
-            typeSafeBaseUrl = runCatching { settings.jevSettings.effectiveBaseUrl() }.getOrDefault(""),
-            jevModel = runCatching { settings.jevSettings.jevModel.value }.getOrDefault(""),
+            typeSafeBaseUrl = runCatching { settings.jevSettings.effectiveDecisionBaseUrl() }.getOrDefault(""),
+            jevModel = runCatching { settings.jevSettings.effectiveDecisionModel() }.getOrDefault(""),
+            decisionProvider = runCatching { settings.jevSettings.decisionProvider.value }.getOrDefault("jev"),
+            decisionTimeoutMs = runCatching { settings.jevSettings.effectiveDecisionTimeoutMs() }.getOrDefault(10_000L),
+            decisionMaxStateChars = runCatching { settings.jevSettings.effectiveDecisionMaxStateChars() }.getOrDefault(1500),
             jevEnabled = runCatching { settings.jevSettings.jevEnabled.value }.getOrDefault(false),
-            // Social: runCatching → defaults keeps this strict-mock-safe when the
-            // social store isn't stubbed.
             socialEnabled = runCatching { settings.socialSettings.socialEnabled.value }.getOrDefault(false),
             socialWorkerBaseUrl = runCatching { settings.socialSettings.socialWorkerBaseUrl.value }.getOrDefault(""),
             socialUseBareRealm = runCatching { settings.socialSettings.socialBareRealm.value }.getOrDefault(false),
@@ -715,8 +726,7 @@ class GenerationRequestBuilder(
             googleSearchEnabled = providerConfig.googleSearchEnabled,
             openAiWebSearchEnabled = providerConfig.openAiWebSearchEnabled,
         )
-        val providerTokenBudget =
-            (providerConfig.maxContextWindow - fixedTokenCost).coerceAtLeast(1)
+        val providerTokenBudget = (providerConfig.maxContextWindow - fixedTokenCost).coerceAtLeast(1)
         val projectedMessages = projectGenerationInputMessages(
             messages = messages,
             includeImages = providerConfig.includeImages,
@@ -736,8 +746,7 @@ class GenerationRequestBuilder(
         activeModel: String,
     ): ResolvedPrompt = withContext(Dispatchers.Default) {
         coroutineScope {
-            // The active-memory access switch only governs the update tool. The prompt always
-            // carries the stored active memory so turning the tool off cannot erase context.
+            // The access switch only governs the update tool; the prompt always carries stored memory.
             val includeSkillCatalog = settings.accessSkills.value
             val activeMemoryDeferred = async(Dispatchers.IO) { memoryManager.getActiveMemory() }
             val skillCatalogDeferred = async {

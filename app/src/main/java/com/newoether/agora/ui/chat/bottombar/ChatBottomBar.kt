@@ -9,6 +9,7 @@ import androidx.compose.foundation.content.consume
 import androidx.compose.foundation.content.contentReceiver
 import androidx.compose.foundation.content.hasMediaType
 import com.newoether.agora.model.apiModelName
+import com.newoether.agora.ui.browser.BrowserOpenButton
 import com.newoether.agora.model.ContextBudget
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -20,15 +21,18 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.newoether.agora.R
+import com.newoether.agora.agent.AgentProjectScope
 import com.newoether.agora.model.AttachmentImportState
 import com.newoether.agora.ui.common.LocalAgentXHaptics
 import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
@@ -122,6 +126,9 @@ internal fun ChatBottomBar(
     onModelSelect: (String) -> Unit,
     agentMode: String = "off",
     onAgentModeChange: (String) -> Unit = {},
+    /** Active project folder for plan/build mode ("" = none); tap to change. */
+    projectFolder: String = "",
+    onProjectFolderClick: () -> Unit = {},
     onAllMediaClick: ((urls: List<String>, index: Int) -> Unit)? = null,
     onFileContentClick: ((fileName: String, content: String) -> Unit)? = null,
     onPdfPagesClick: ((pages: List<String>, startIndex: Int) -> Unit)? = null,
@@ -368,11 +375,27 @@ internal fun ChatBottomBar(
         scrollState = scrollState,
         statusContent = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                ComposerModeChip(
-                    agentMode = agentMode,
-                    onAgentModeChange = onAgentModeChange,
-                    modifier = Modifier.zIndex(1f),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ComposerModeChip(
+                        agentMode = agentMode,
+                        onAgentModeChange = onAgentModeChange,
+                        modifier = Modifier.zIndex(1f),
+                    )
+                    if ((agentMode == "plan" || agentMode == "build") && projectFolder.isNotBlank()) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        AssistChip(
+                            onClick = onProjectFolderClick,
+                            label = { Text(AgentProjectScope.displayName(projectFolder)) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Folder,
+                                    contentDescription = stringResource(R.string.project_folder_active),
+                                    modifier = Modifier.size(AssistChipDefaults.IconSize),
+                                )
+                            },
+                        )
+                    }
+                }
                 ComposerStatusColumn(
                     queuedSends = queuedSends,
                     onRemoveQueuedSend = onRemoveQueuedSend,
@@ -438,6 +461,9 @@ internal fun ChatBottomBar(
                     },
                     onFiles = { pendingFileOwnerId = composerOwnerId; fileLauncher.launch("*/*") },
                 )
+                // Browser button (muse.ai-style): pops the chat's browser open
+                // in a desktop-view dialog. Each chat gets its own browser.
+                BrowserOpenButton()
                 val activeMenuState = remember { mutableStateOf<String?>(null) }
                 var activeMenu by activeMenuState
                 var lastModelDismissTime by remember { mutableLongStateOf(0L) }

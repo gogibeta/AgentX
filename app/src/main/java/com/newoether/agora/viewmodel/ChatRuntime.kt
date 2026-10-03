@@ -4,9 +4,11 @@ import android.app.Application
 import android.content.Context
 import com.newoether.agora.R
 import com.newoether.agora.api.local.LocalProvider
+import com.newoether.agora.automation.ChildGenerationRunner
 import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.automation.LoopManager
 import com.newoether.agora.automation.TaskExecutionEngine
+import com.newoether.agora.automation.buildMemorySnapshot
 import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.repository.ConversationRepository
@@ -17,6 +19,7 @@ import com.newoether.agora.tool.AskUserToolProvider
 import com.newoether.agora.tool.AutomationToolProvider
 import com.newoether.agora.tool.EnsembleToolProvider
 import com.newoether.agora.tool.McpToolProvider
+import com.newoether.agora.tool.SubagentToolProvider
 import com.newoether.agora.util.SnackbarEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
@@ -82,7 +85,32 @@ class ChatRuntime(
         scope = scope,
     ) { _snackbarEvents.emit(it) }
 
+    /** Bounded child generations for `delegate_task` (v2.4 subagents). */
+    private val childRunner = ChildGenerationRunner(taskExecutionEngine, conversations)
+
     internal val generationManager: GenerationManager by lazy {
+        // The Agent dialog once stored "Display:stored-id" triples;
+        // strip one leading display-name segment back to stored form.
+        val storedModelId: (String) -> String = { raw ->
+            settings.customProviders.value.map { it.name }
+                .firstOrNull { name ->
+                    raw.startsWith("$name:") &&
+                        raw.removePrefix("$name:").contains(":")
+                }?.let { raw.removePrefix("$it:") } ?: raw
+        }
+        val apiModelName: (String) -> String = {
+            com.newoether.agora.model.ModelId.parse(
+                providerRegistry.canonicalModelId(it),
+            ).apiModelName
+        }
+        val alternateKeys: (String) -> List<String> = { providerName ->
+            com.newoether.agora.api.ApiKeyRotation.alternatesFor(
+                settings.apiKeys.value,
+                settings.activeApiKeyIds.value,
+                providerName,
+                settings.resolveActiveKey(providerName),
+            )
+        }
         GenerationManager(
             app = application,
             conversations = conversations,
@@ -101,28 +129,14 @@ class ChatRuntime(
                     getProvider = providerRegistry::getInstanceOrNull,
                     activeKey = { settings.resolveActiveKey(it) ?: "" },
                     baseUrl = providerRegistry::getEffectiveBaseUrl,
-                    apiModelName = {
-                        com.newoether.agora.model.ModelId.parse(
-                            providerRegistry.canonicalModelId(it),
-                        ).apiModelName
-                    },
-                    // The Agent dialog once stored "Display:stored-id" triples;
-                    // strip one leading display-name segment back to stored form.
-                    storedModelId = { raw ->
-                        settings.customProviders.value.map { it.name }
-                            .firstOrNull { name ->
-                                raw.startsWith("$name:") &&
-                                    raw.removePrefix("$name:").contains(":")
-                            }?.let { raw.removePrefix("$it:") } ?: raw
-                    },
-                    alternateKeys = { providerName ->
-                        com.newoether.agora.api.ApiKeyRotation.alternatesFor(
-                            settings.apiKeys.value,
-                            settings.activeApiKeyIds.value,
-                            providerName,
-                            settings.resolveActiveKey(providerName),
-                        )
-                    },
+                    apiModelName = apiModelName,
+                    storedModelId = storedModelId,
+                    alternateKeys = alternateKeys,
+                ),
+                SubagentToolProvider(
+                    runChild = { request -> childRunner.runChild(request) },
+                    memorySnapshot = { buildMemorySnapshot(memoryManager) },
+                    normalizeModelId = storedModelId,
                 ),
             ),
             customProviders = { settings.customProviders.value },
@@ -130,7 +144,12 @@ class ChatRuntime(
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
             gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }
             gm.onConfirmShellCommand = shellConfirmation::confirm
-        }
+            // v2.4 auto-compact: visible notice every time Jev prunes the projection.
+            gm.autoCompactCheckpoint.onCompacted = { dropped ->
+                _snackbarEvents.tryEmit(
+                    SnackbarEvent(appContext.getString(R.string.agent_autocompact_notice, dropped)),
+                )
+            }        }
     }
 
     /** Stateless request assembly shared by every command; context previews read it too. */

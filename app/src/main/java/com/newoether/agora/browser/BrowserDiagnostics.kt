@@ -28,7 +28,7 @@ fun interface BrowserEventReporter {
  * Privacy contract (footer law): never record full URLs (they may carry tokens
  * or session ids — host only), credentials, page text, or tool arguments. The
  * detail map only carries "domain" (host only), "ref" (e.g. "@e3"), "backend"
- * ("local"/"tunnel"), and sizes ("bytes"/"chars"); the write site redacts
+ * ("webview"/"tunnel"), and sizes ("bytes"/"chars"); the write site redacts
  * credential-shaped values as defense-in-depth.
  */
 internal object BrowserDiagnostics {
@@ -38,7 +38,7 @@ internal object BrowserDiagnostics {
      * @param action e.g. "navigate", "click", "reconnect".
      * @param outcome "ok" or "error:<ErrorClass>".
      * @param extra small sanitized attributes: "domain" (host only), "ref"
-     *   (e.g. "@e3"), "backend" ("local"/"tunnel"), "bytes", "chars".
+     *   (e.g. "@e3"), "backend" ("webview"/"tunnel"), "bytes", "chars".
      */
     fun record(
         ctx: GenerationContext?,

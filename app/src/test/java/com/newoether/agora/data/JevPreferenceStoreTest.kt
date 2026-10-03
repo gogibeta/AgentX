@@ -79,9 +79,14 @@ class JevPreferenceStoreTest {
         val s = store()
         s.setJevEnabled(true)
         s.setJevApiKeys(listOf("k1", "k2", "k3"))
-        // Wait for both flows to settle before picking.
+        // Wait for both flows to settle before picking. pickKey() reads
+        // decisionApiKeys (a separate hot flow on the IO scope), so wait on
+        // THAT flow explicitly — jevApiKeys settling first does not imply
+        // decisionApiKeys has observed the same emission (StateFlow race,
+        // same as the pickKey_usesActiveProviderKeys fix).
         s.jevApiKeys.first { it.size == 3 }
         s.jevEnabled.first { it }
+        s.decisionApiKeys.first { it == listOf("k1", "k2", "k3") }
         assertEquals("k1", s.pickKey())
         assertEquals("k2", s.pickKey())
         assertEquals("k3", s.pickKey())
@@ -97,6 +102,9 @@ class JevPreferenceStoreTest {
         assertEquals(null, s.pickKey())
         s.setJevEnabled(true)
         s.jevEnabled.first { it }
+        // pickKey() reads decisionApiKeys (separate hot flow); wait for it to
+        // observe the keys before asserting, avoiding the StateFlow race.
+        s.decisionApiKeys.first { it == listOf("k1") }
         assertEquals("k1", s.pickKey())
     }
 
@@ -126,6 +134,100 @@ class JevPreferenceStoreTest {
         assertEquals(JevPreferenceStore.DEFAULT_JEV_MODEL, s.jevModel.value)
         s.setJevModel("  jev-beta  ")
         assertEquals("jev-beta", s.jevModel.first { it == "jev-beta" })
+    }
+
+    @Test
+    fun decisionProvider_defaultsToJevAndAcceptsDrex() = runTest {
+        val s = store()
+        assertEquals(JevPreferenceStore.PROVIDER_JEV, s.decisionProvider.first())
+        s.setDecisionProvider("drex")
+        assertEquals(JevPreferenceStore.PROVIDER_DREX, s.decisionProvider.first { it == "drex" })
+        // Unknown values fall back to jev.
+        s.setDecisionProvider("  DREX  ")
+        assertEquals(JevPreferenceStore.PROVIDER_DREX, s.decisionProvider.first { it == "drex" })
+        s.setDecisionProvider("bogus")
+        assertEquals(JevPreferenceStore.PROVIDER_JEV, s.decisionProvider.first { it == "jev" })
+    }
+
+    @Test
+    fun drexModel_dropdownValidatedWithDefault() = runTest {
+        val s = store()
+        assertEquals("drex-v1.5", s.drexModel.first())
+        s.setDrexModel("drex-v1.0")
+        assertEquals("drex-v1.0", s.drexModel.first { it == "drex-v1.0" })
+        s.setDrexModel("drex-latest")
+        assertEquals("drex-latest", s.drexModel.first { it == "drex-latest" })
+        // Not in the dropdown → reset to default.
+        s.setDrexModel("jev-latest")
+        assertEquals("drex-v1.5", s.drexModel.first { it == "drex-v1.5" })
+    }
+
+    @Test
+    fun drexKeys_cappedAtThreeAndSeparateFromJevKeys() = runTest {
+        val s = store()
+        s.setDrexApiKeys(listOf("d1", "d2", "d3", "d4"))
+        assertEquals(listOf("d1", "d2", "d3"), s.drexApiKeys.first { it.size == 3 })
+        s.setJevApiKeys(listOf("k1"))
+        // Providers keep independent key lists.
+        assertEquals(listOf("k1"), s.jevApiKeys.first { it.isNotEmpty() })
+        assertEquals(listOf("d1", "d2", "d3"), s.drexApiKeys.first { it.size == 3 })
+        s.addDrexApiKey("d5")
+        assertEquals(3, s.drexApiKeys.first().size)
+        s.removeDrexApiKey("d1")
+        assertEquals(listOf("d2", "d3"), s.drexApiKeys.first { it == listOf("d2", "d3") })
+    }
+
+    @Test
+    fun effectiveDecisionValues_followActiveProvider() = runTest {
+        val s = store()
+        // Jev defaults.
+        assertEquals(JevPreferenceStore.DEFAULT_JEV_BASE_URL, s.effectiveDecisionBaseUrl())
+        assertEquals("jev-latest", s.effectiveDecisionModel())
+        assertEquals(10_000L, s.effectiveDecisionTimeoutMs())
+        assertEquals(1500, s.effectiveDecisionMaxStateChars())
+        // Drex selected → Drex defaults, 60s timeout, 4x state budget.
+        s.setDecisionProvider("drex")
+        s.decisionProvider.first { it == "drex" }
+        assertEquals(JevPreferenceStore.DEFAULT_DREX_BASE_URL, s.effectiveDecisionBaseUrl())
+        assertEquals("drex-v1.5", s.effectiveDecisionModel())
+        assertEquals(60_000L, s.effectiveDecisionTimeoutMs())
+        assertEquals(6000, s.effectiveDecisionMaxStateChars())
+        s.setDrexModel("drex-v1.0")
+        s.drexModel.first { it == "drex-v1.0" }
+        assertEquals("drex-v1.0", s.effectiveDecisionModel())
+        // Custom base URL overrides either provider default.
+        s.setJevBaseUrl("https://proxy.example")
+        s.jevBaseUrl.first { it == "https://proxy.example" }
+        assertEquals("https://proxy.example", s.effectiveDecisionBaseUrl())
+    }
+
+    @Test
+    fun pickKey_usesActiveProviderKeys() = runTest {
+        val s = store()
+        s.setJevEnabled(true)
+        s.setJevApiKeys(listOf("k1"))
+        s.setDrexApiKeys(listOf("d1", "d2"))
+        s.jevApiKeys.first { it.isNotEmpty() }
+        s.drexApiKeys.first { it.size == 2 }
+        s.jevEnabled.first { it }
+        // Jev active → Jev keys.
+        assertEquals("k1", s.pickKey())
+        // Drex active → Drex keys round-robin.
+        s.setDecisionProvider("drex")
+        s.decisionProvider.first { it == "drex" }
+        // decisionApiKeys is a separate hot flow — wait for it to observe the switch,
+        // otherwise pickKey() can still see the stale Jev key list.
+        s.decisionApiKeys.first { it == listOf("d1", "d2") }
+        assertEquals("d1", s.pickKey())
+        assertEquals("d2", s.pickKey())
+        assertEquals("d1", s.pickKey())
+        // Configured gate follows the active provider's keys: on while Drex keys exist...
+        s.jevConfigured.first { it }
+        s.setDrexApiKeys(emptyList())
+        s.drexApiKeys.first { it.isEmpty() }
+        // ...and off once they're cleared (wait for the gate flow to observe it).
+        s.jevConfigured.first { !it }
+        assertFalse(s.jevConfigured.value)
     }
 
 

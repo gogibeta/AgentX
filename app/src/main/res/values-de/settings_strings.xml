@@ -135,6 +135,12 @@
     <string name="models_custom_details">Details zum benutzerdefinierten Modell</string>
     <string name="models_rename">Modell umbenennen</string>
     <string name="models_rename_current">Aktuelle ID: %1$s</string>
+    <string name="models_context_window">Context window</string>
+    <string name="models_context_window_desc">Per-model token budget. The active window switches automatically with the model.</string>
+    <string name="models_context_window_use_global">Use global default (%1$s)</string>
+    <string name="models_context_window_custom_hint">Custom tokens</string>
+    <string name="models_context_window_effective">Effective: %1$s</string>
+    <string name="models_context_window_blank_hint">Blank = global default</string>
     <string name="models_alias_hint">Alias</string>
     <string name="models_select_default">Standardmodell auswählen</string>
 
@@ -245,6 +251,15 @@
     <string name="agent_mode_build">Agent (Build)</string>
     <string name="agent_mode_build_desc">Full agent: all tools, file reports/PDFs, multi-model answers. Mutations still ask for confirmation.</string>
     <string name="agent_workspace_title">Workspace folder</string>
+    <string name="project_folder_title">Project folder</string>
+    <string name="project_folder_prompt">Pick a project folder for %1$s mode. The agent only reads and writes inside it.</string>
+    <string name="project_folder_hint">Folder name or path inside /mnt/shared</string>
+    <string name="project_folder_invalid">Enter a folder inside /mnt/shared (no .. segments).</string>
+    <string name="project_folder_use_all">Use the whole shared folder</string>
+    <string name="project_folder_confirm">Use this folder</string>
+    <string name="project_folder_active">Project folder</string>
+    <string name="project_folder_not_set">Not set</string>
+    <string name="project_folder_change">Change</string>
     <string name="agent_workspace_not_set">Not set - tap to pick a folder. Files go to app storage until then.</string>
     <string name="agent_models_title">Ensemble models</string>
     <string name="agent_models_desc">Up to 5 models (in order). ask_models fans out to all of them; the chat model synthesizes.</string>
@@ -253,6 +268,12 @@
     <string name="agent_jev_title">Jev decisions</string>
     <string name="agent_jev_configured">TypeSafe key set - routing, re-rank and guardrails active.</string>
     <string name="agent_jev_missing">Not set - add your key under Providers, TypeSafe entry, for smarter routing and re-rank.</string>
+    <string name="agent_autocompact_title">Auto-compact context</string>
+    <string name="agent_autocompact_enable">Prune useless tool outputs</string>
+    <string name="agent_autocompact_enable_desc">Every %1$d tool turns, Jev drops low-value tool outputs from the model\'s view. Full history is always kept. Only runs when Jev is enabled.</string>
+    <string name="agent_autocompact_interval">Checkpoint every</string>
+    <string name="agent_autocompact_interval_turns">%1$d tool turns</string>
+    <string name="agent_autocompact_notice">Compacted %1$d low-value tool outputs</string>
     <string name="agent_env_title">Environment variables</string>
     <string name="agent_env_desc">Exported into every shell command as $NAME for API calls. Values stay encrypted.</string>
     <string name="agent_env_add">Add variable</string>
@@ -319,6 +340,7 @@
     <string name="sandbox_alpine_version">Alpine Linux</string>
     <string name="sandbox_disk_usage">Speichernutzung</string>
     <string name="sandbox_install">Installieren</string>
+    <string name="browser_engine_install">Installieren</string>
     <string name="sandbox_install_packages">Pakete installieren</string>
     <string name="sandbox_package_name">Paketname</string>
     <string name="sandbox_quick_install">Schnellinstallation</string>
@@ -539,6 +561,14 @@
     <string name="jev_test_running">Testing…</string>
     <string name="jev_powers_title">What Jev powers</string>
     <string name="jev_powers_desc">Web-search re-ranking, prune_context tool, answer guardrails. All fail open: if Jev is down, the agent just works without it.</string>
+    <string name="jev_provider">Decision provider</string>
+    <string name="jev_provider_desc">Jev (TypeSafe, ~32k context) or Drex by Nace AI (wire-compatible, drex-v1.5 has a 131k context window). The agent uses whichever is selected.</string>
+    <string name="jev_keys_empty">No keys yet — paste at least one above.</string>
+    <string name="drex_model">Drex model</string>
+    <string name="drex_model_desc">drex-v1.5 (default, 131,072-token context) · drex-v1.0 · drex-latest (moving alias, currently v1.5).</string>
+    <string name="drex_keys_title">Drex API keys (%1$d)</string>
+    <string name="drex_keys_desc">Paste one nace_sk_ key per line, then Add. Max 3 active keys per Drex account. Decisions rotate across keys.</string>
+    <string name="drex_keys_hint">Paste nace_sk_ keys here, one per line</string>
     <string name="settings_social">Social</string>
     <string name="settings_social_desc">Read social posts via your own FxEmbed worker</string>
     <string name="social_title">Social</string>
@@ -618,6 +648,10 @@
     <string name="browser_backend_local_desc">On-device Chromium (default)</string>
     <string name="browser_backend_tunnel">Via tunnel</string>
     <string name="browser_backend_tunnel_desc">Your own CDP-over-HTTPS endpoint</string>
+    <string name="browser_backend_webview">System WebView</string>
+    <string name="browser_backend_webview_desc">On-device System WebView, no sandbox download</string>
+    <string name="browser_backend_geckoview">GeckoView</string>
+    <string name="browser_backend_geckoview_desc">Mozilla engine, fast, no screenshots in the agent loop</string>
     <string name="browser_backend_fallback_note">Tunnel selected but no URL is set \u2014 the local backend is used until you add one.</string>
     <string name="browser_tunnel_group">Tunnel backend</string>
     <string name="browser_tunnel_url">Tunnel URL</string>
@@ -651,9 +685,25 @@
     <string name="browser_stop">Stop</string>
     <string name="browser_takeover">Take over</string>
     <string name="browser_takeover_active">You have control \u2014 the agent is paused.</string>
+    <string name="browser_back">Back</string>
+    <string name="browser_close">Close</string>
+    <string name="browser_open">Open browser</string>
     <string name="browser_resume">Resume</string>
     <string name="browser_approve">Approve</string>
     <string name="browser_deny">Deny</string>
     <string name="browser_approval_title">Browser approval needed</string>
     <string name="browser_approval_approve_once">Approve once</string>
+    <string name="browser_hide">Hide</string>
+    <string name="browser_show">Show browser</string>
+    <string name="browser_fullscreen">Full screen</string>
+    <string name="browser_fullscreen_exit">Exit full screen</string>
+    <string name="browser_live_log_title">Live diagnostics log</string>
+    <string name="browser_live_log_desc">The on-device log stream, including the previous session. Browser entries now carry the backend, the CDP method, and the full error message, so the actual cause of a failure is visible here.</string>
+    <string name="browser_live_log_filter_hint">Filter (e.g. CdpClient, ERROR)</string>
+    <string name="browser_live_log_pause">Pause live updates</string>
+    <string name="browser_live_log_resume">Resume live updates</string>
+    <string name="browser_live_log_copy">Copy visible lines</string>
+    <string name="browser_live_log_reset">Reset diagnostics log</string>
+    <string name="browser_live_log_reset_confirm">Tap again to confirm: clear all diagnostics</string>
+    <string name="browser_live_log_empty">No log lines yet. Run the browser once and they will appear here.</string>
 </resources>

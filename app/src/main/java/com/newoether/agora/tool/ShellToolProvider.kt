@@ -226,8 +226,8 @@ class ShellToolProvider(
         val command = arg(args, "command")
         if (command.isBlank()) return jsonError("execute_shell_command", "no_command")
         val serverName = arg(args, "server")
-        val workdir = arg(args, "workdir")
-        shellCommandValidationError(command, workdir)?.let { message ->
+        val rawWorkdir = arg(args, "workdir")
+        shellCommandValidationError(command, rawWorkdir)?.let { message ->
             return jsonError("execute_shell_command", message, server = serverName)
         }
         val background = boolArg(args, "background")
@@ -238,20 +238,13 @@ class ShellToolProvider(
             foregroundMaxMs
         }
         val rawTimeout = arg(args, "timeout_ms")
-        if (rawTimeout.isBlank()) return jsonError(
-            "execute_shell_command", "timeout_ms is required", server = serverName, command = command,
-        )
-        val timeoutMs = (rawTimeout.toIntOrNull()
-            ?: return jsonError(
-                "execute_shell_command",
-                "timeout_ms must be an integer, got \"$rawTimeout\"",
-                server = serverName,
-                command = command,
-            )).coerceIn(1000, timeoutMax)
-        // Agent environment variables are exported ahead of the command so API
-        // keys the user stored in Settings -> Agent -> Env vars work in
-        // curl/headers (sandbox sh, Conch and SSH shells alike). Confirmation
-        // previews keep showing the original command for readability.
+        if (rawTimeout.isBlank()) return jsonError("execute_shell_command", "timeout_ms is required", server = serverName, command = command)
+        val timeoutMs = (rawTimeout.toIntOrNull() ?: return jsonError(
+            "execute_shell_command", "timeout_ms must be an integer, got \"$rawTimeout\"",
+            server = serverName, command = command,
+        )).coerceIn(1000, timeoutMax)
+        // Agent env vars are exported ahead of the command (sandbox sh, Conch, SSH alike);
+        // confirmation previews keep showing the original command for readability.
         val effectiveCommand = withAgentEnv(command, ctx.agentEnv)
         com.newoether.agora.util.DebugLog.event(
             "ShellEnv",
@@ -259,12 +252,10 @@ class ShellToolProvider(
             "shell dispatch",
         )
         if (background) {
-            val backend = getConchBackend(serverName, ctx)                ?: return jsonError(
-                    "execute_shell_command",
-                    conchServerNotFoundMessage(serverName, ctx),
-                    server = serverName,
-                    command = command,
-                )
+            val backend = getConchBackend(serverName, ctx) ?: return jsonError(
+                "execute_shell_command", conchServerNotFoundMessage(serverName, ctx),
+                server = serverName, command = command,
+            )
             return try {
                 if (!confirmTarget(ctx, backend.device, "start background job: $ $command")) {
                     return jsonError(
@@ -274,7 +265,7 @@ class ShellToolProvider(
                         command = command,
                     )
                 }
-                backend.startJob(effectiveCommand, workdir, timeoutMs)
+                backend.startJob(effectiveCommand, rawWorkdir, timeoutMs)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (e: Exception) {
@@ -291,6 +282,11 @@ class ShellToolProvider(
 
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("execute_shell_command", serverNotFoundMessage(serverName, ctx))
+        // Local sandbox: a blank workdir starts in the project folder, never /home/agora.
+        // An explicit workdir outside the project folder is rejected (fail closed).
+        val workdir = ProjectScopeEnforcement.scopedLocalWorkdir(
+            "execute_shell_command", rawWorkdir, backend, ctx,
+        ) { return it }
         return try {
             // Gate on the backend's ACTUAL target: with a blank server name the sandbox wins
             // resolution, while resolveShellDevice() would name an unrelated remote device.
@@ -590,14 +586,15 @@ class ShellToolProvider(
 
     private suspend fun executeFileRead(arguments: String, ctx: GenerationContext): String {
         val args = parseToolArgs(arguments)
-        val path = arg(args, "path")
-        if (path.isBlank()) return jsonError("file_read", "path is required")
+        val rawPath = arg(args, "path")
+        if (rawPath.isBlank()) return jsonError("file_read", "path is required")
         val serverName = arg(args, "server")
         val offset = arg(args, "offset").toLongOrNull() ?: 0L
         val limit = arg(args, "limit").toLongOrNull() ?: 0L
 
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("file_read", serverNotFoundMessage(serverName, ctx))
+        val path = ProjectScopeEnforcement.scopedLocalPath("file_read", rawPath, backend, ctx) { return it }
         try {
             val result = try {
                 backend.fileRead(path, offset, limit)
@@ -629,8 +626,8 @@ class ShellToolProvider(
 
     private suspend fun executeFileWrite(arguments: String, ctx: GenerationContext): String {
         val args = parseToolArgs(arguments)
-        val path = arg(args, "path")
-        if (path.isBlank()) return jsonError("file_write", "path is required")
+        val rawPath = arg(args, "path")
+        if (rawPath.isBlank()) return jsonError("file_write", "path is required")
         val content = arg(args, "content")
         if (content.isBlank()) return jsonError("file_write", "content is required")
         if (content.toByteArray(Charsets.UTF_8).size > SHELL_FILE_WRITE_MAX_BYTES) {
@@ -640,6 +637,7 @@ class ShellToolProvider(
 
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("file_write", serverNotFoundMessage(serverName, ctx))
+        val path = ProjectScopeEnforcement.scopedLocalPath("file_write", rawPath, backend, ctx) { return it }
         try {
             if (!confirmTarget(
                     ctx,
@@ -663,8 +661,8 @@ class ShellToolProvider(
 
     private suspend fun executeFileEdit(arguments: String, ctx: GenerationContext): String {
         val args = parseToolArgs(arguments)
-        val path = arg(args, "path")
-        if (path.isBlank()) return jsonError("file_edit", "path is required")
+        val rawPath = arg(args, "path")
+        if (rawPath.isBlank()) return jsonError("file_edit", "path is required")
         val oldStr = arg(args, "old_string")
         if (oldStr.isBlank()) return jsonError("file_edit", "old_string is required")
         val newStr = arg(args, "new_string")
@@ -673,6 +671,7 @@ class ShellToolProvider(
 
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("file_edit", serverNotFoundMessage(serverName, ctx))
+        val path = ProjectScopeEnforcement.scopedLocalPath("file_edit", rawPath, backend, ctx) { return it }
         try {
             if (!confirmTarget(
                     ctx,
@@ -719,12 +718,13 @@ class ShellToolProvider(
         val pattern = arg(args, "pattern")
         if (pattern.isBlank()) return jsonError("file_glob", "pattern is required")
         val serverName = arg(args, "server")
-        val basePath = arg(args, "path")
+        val rawBasePath = arg(args, "path")
         // Absent/blank → null → backward-compatible default behavior per backend.
         val depth = arg(args, "depth").toIntOrNull()
 
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("file_glob", serverNotFoundMessage(serverName, ctx))
+        val basePath = ProjectScopeEnforcement.scopedLocalPath("file_glob", rawBasePath, backend, ctx) { return it }
         try {
             val result = backend.fileGlob(pattern, basePath, depth)
             return result.fold(
@@ -747,11 +747,12 @@ class ShellToolProvider(
         val pattern = arg(args, "pattern")
         if (pattern.isBlank()) return jsonError("file_grep", "pattern is required")
         val serverName = arg(args, "server")
-        val basePath = arg(args, "path")
+        val rawBasePath = arg(args, "path")
         val fileGlob = arg(args, "glob")
 
         val backend = getBackend(serverName, ctx)
             ?: return jsonError("file_grep", serverNotFoundMessage(serverName, ctx))
+        val basePath = ProjectScopeEnforcement.scopedLocalPath("file_grep", rawBasePath, backend, ctx) { return it }
         try {
             val result = backend.fileGrep(pattern, basePath, fileGlob)
             return result.fold(

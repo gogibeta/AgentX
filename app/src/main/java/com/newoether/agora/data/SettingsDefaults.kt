@@ -22,7 +22,9 @@ internal fun migrateUnmodifiedBuiltInDefault(
     if (prompts.isEmpty()) return prompts
     val currentDefault = DefaultSystemPrompt.create(locale)
     return prompts.map { entry ->
-        if (DefaultSystemPrompt.isUnmodifiedPreviousVersion(entry)) {
+        if (DefaultSystemPrompt.isUnmodifiedPreviousVersion(entry) ||
+            DefaultSystemPrompt.isUnmodifiedAgoraLegacyVersion(entry)
+        ) {
             entry.copy(
                 content = "",
                 systemItems = currentDefault.systemItems,

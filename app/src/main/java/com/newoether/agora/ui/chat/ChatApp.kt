@@ -31,9 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.newoether.agora.R
 import com.newoether.agora.TopLevelPresentation
 import com.newoether.agora.api.DebugProvider
 import com.newoether.agora.data.forDisplay
@@ -155,6 +153,7 @@ fun ChatApp(
         selectedModel = selectedModel,
         customProviders = customProviders,
     )
+    val projectFolderScope = rememberProjectFolderScope(viewModel, conversationControls.settingsOwnerId)
     val contextProjectionKey = rememberContextProjectionInvalidationKey(
         viewModel,
         listOf(
@@ -616,7 +615,7 @@ fun ChatApp(
                                 )
                             )
                             // Live browser watch panel: collapsible card, visible only during an active session.
-                            ChatBrowserWatchCard()
+                            ChatBrowserWatchCard(currentConversationId)
                             }
                         } else if (targetShowLaunch) {
                             ChatWelcomeContent(
@@ -736,13 +735,13 @@ fun ChatApp(
                         // The model row owns its selection tick. Repeating it here produced the
                         // previous double buzz for one physical tap.
                         onModelSelect = { viewModel.setActiveModel(it) },
-                        agentMode = viewModel.settings.agentSettings.agentMode.collectAsState().value,
-                        onAgentModeChange = { viewModel.settings.agentSettings.setAgentMode(it) },
+                        agentMode = projectFolderScope.agentMode,
+                        onAgentModeChange = projectFolderScope.requestModeChange,
+                        projectFolder = projectFolderScope.activeFolder,
+                        onProjectFolderClick = projectFolderScope.openFolderPicker,
                         onAllMediaClick = { urls, idx -> onMediaClick(urls, idx) },
                         onFileContentClick = { name, content -> viewModel.mediaPreview.showFile(name, content) },
-                        modifier = Modifier,
-                        textFieldState = textFieldState,
-                        composerState = composer,
+                        modifier = Modifier, textFieldState = textFieldState, composerState = composer,
                         focusRequester = inputFocusRequester,
                         onInputFocusChanged = { focused ->
                             scrollCoordinator.setComposerInputFocused(focused)

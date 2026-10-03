@@ -93,6 +93,47 @@ internal class SettingsModelPreferenceStore(
         try { json.decodeFromString<Map<String, String>>(jsonStr) } catch (e: Exception) { emptyMap() }
     }
 
+    /** Per-model context-window overrides in tokens, keyed by canonical "Provider:model" id. */
+    val modelContextWindows: Flow<Map<String, Int>> = dataStore.data.map { pref ->
+        val jsonStr = pref[MODEL_CONTEXT_WINDOWS_JSON] ?: "{}"
+        try {
+            json.decodeFromString<Map<String, Int>>(jsonStr)
+                .filterValues { it > 0 }
+        } catch (e: Exception) {
+            DebugLog.e("SettingsManager", "Failed to decode modelContextWindows", e)
+            emptyMap()
+        }
+    }
+
+    /**
+     * Sets or clears a per-model context-window override. A null [tokens] removes the
+     * override so the model falls back to the global window. Non-positive values are rejected.
+     */
+    suspend fun saveModelContextWindow(modelId: String, tokens: Int?) {
+        require(modelId.isNotBlank()) { "modelId must not be blank" }
+        if (tokens != null) require(tokens > 0) { "tokens must be positive" }
+        dataStore.edit { prefs ->
+            val windows = json.decodeFromString<MutableMap<String, Int>>(
+                prefs[MODEL_CONTEXT_WINDOWS_JSON] ?: "{}",
+            )
+            if (tokens == null) windows.remove(modelId) else windows[modelId] = tokens
+            prefs[MODEL_CONTEXT_WINDOWS_JSON] = json.encodeToString(windows)
+        }
+    }
+
+    /** Removes per-model context-window overrides owned by [providerId], preserving others. */
+    suspend fun removeModelContextWindowsForProvider(providerId: String) {
+        val prefix = "$providerId:"
+        dataStore.edit { prefs ->
+            val windows = json.decodeFromString<MutableMap<String, Int>>(
+                prefs[MODEL_CONTEXT_WINDOWS_JSON] ?: "{}",
+            )
+            if (windows.keys.removeAll { it.startsWith(prefix) }) {
+                prefs[MODEL_CONTEXT_WINDOWS_JSON] = json.encodeToString(windows)
+            }
+        }
+    }
+
     val apiKeys: Flow<List<ApiKeyEntry>> = dataStore.data.map { pref ->
         val jsonStr = com.newoether.agora.util.SecretCrypto.decrypt(pref[API_KEYS_JSON] ?: "[]")
         try { json.decodeFromString<List<ApiKeyEntry>>(jsonStr) } catch (e: Exception) { emptyList() }
@@ -292,6 +333,19 @@ internal class SettingsModelPreferenceStore(
             val previousVisibility = visibility.remove(oldModelId) ?: true
             if (newModelId != null) visibility[newModelId] = showProviderName ?: previousVisibility
             prefs[MODEL_PROVIDER_NAMES_JSON] = json.encodeToString(visibility)
+
+            // Keep per-model context windows following the model id across renames;
+            // a deleted model (newModelId == null) drops its override. Never overwrite an
+            // entry already written under the new id: the edit dialog saves the fresh value
+            // there, and DataStore write order between the two edits is not guaranteed.
+            val windows = json.decodeFromString<MutableMap<String, Int>>(
+                prefs[MODEL_CONTEXT_WINDOWS_JSON] ?: "{}",
+            )
+            val windowTokens = windows.remove(oldModelId)
+            if (windowTokens != null && newModelId != null && newModelId !in windows) {
+                windows[newModelId] = windowTokens
+            }
+            prefs[MODEL_CONTEXT_WINDOWS_JSON] = json.encodeToString(windows)
 
             if (prefs[SELECTED_MODEL] == oldModelId) {
                 prefs[SELECTED_MODEL] =

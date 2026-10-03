@@ -14,6 +14,11 @@ import com.newoether.agora.model.toMessageSegment
 import com.newoether.agora.tool.ToolExecutionEvent
 import com.newoether.agora.tool.ToolExecutionResult
 import com.newoether.agora.util.Constants
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val TOOL_PROGRESS_UI_UPDATE_INTERVAL_MS = 50L
 
@@ -364,10 +369,15 @@ internal class GenerationToolBatchEffectExecutor(
         request: AuthorizedToolBatchRequest,
         overlay: GenerationToolOverlay,
         callbacks: ToolBatchProgressCallbacks,
-    ): AuthorizedToolBatchOutcome {
-        val results = mutableListOf<ToolCallData>()
-        val completedSegments = mutableListOf<MessageSegment>()
+    ): AuthorizedToolBatchOutcome = coroutineScope {
+        // Parallel tool execution: independent calls in one batch run concurrently
+        // (e.g. 3 web searches), cutting wall-clock time. Result ORDER is preserved
+        // via awaitAll. The overlay is not thread-safe, so all overlay/callback
+        // mutations are serialized through overlayMutex; only the actual tool
+        // work overlaps.
+        val overlayMutex = Mutex()
 
+        // Start overlays sequentially to keep UI ordering deterministic.
         request.calls.forEach { call ->
             overlay.start(call)
             try {
@@ -377,76 +387,97 @@ internal class GenerationToolBatchEffectExecutor(
                 overlay.failUnpersistedStart(call)
                 throw e
             }
-
-            var lastToolUiEmitMs = 0L
-            val executed = tools.execute(
-                AuthorizedToolCall(
-                    batchIdentity = request.effect.identity,
-                    callId = call.id,
-                    name = call.name,
-                    arguments = call.arguments,
-                    context = request.context,
-                    authorizedToolNames = request.authorizedToolNames,
-                    toolImageTranscriber = request.toolImageTranscriber,
-                ),
-            ) { event ->
-                if (event !is ToolExecutionEvent.Completed) {
-                    overlay.applyProgress(call.id, event)
-                    val now = nowMs()
-                    if (now - lastToolUiEmitMs >= TOOL_PROGRESS_UI_UPDATE_INTERVAL_MS) {
-                        callbacks.publish(false)
-                        callbacks.onPublishedAt(now)
-                        lastToolUiEmitMs = now
-                    }
-                }
-            }
-            check(executed.batchIdentity == request.effect.identity)
-            check(executed.callId == call.id)
-            val result = executed.result
-            val transcriber = request.toolImageTranscriber
-            val toolImage = result.images.firstOrNull()
-            var transcription: String? = null
-            if (result.transcribeImages && toolImage != null && transcriber != null) {
-                // Generic rule (no tool-name routing): results that declare their images as
-                // model input are described with the main transcription flow and streamed as a
-                // thinking segment. The description reaches the model through the API-only
-                // image-context row, mirroring regular image transcriptions — the tool result
-                // text itself stays clean.
-                val segmentIndex = overlay.appendTranscriptionSegment("")
-                callbacks.publish(true)
-                callbacks.onPublishedAt(nowMs())
-                var lastTranscriptionUiEmitMs = 0L
-                var lastPartial = ""
-                val description = transcriber(toolImage) { partial ->
-                    lastPartial = partial
-                    overlay.updateTranscriptionSegment(segmentIndex, partial)
-                    val now = nowMs()
-                    if (now - lastTranscriptionUiEmitMs >= TOOL_PROGRESS_UI_UPDATE_INTERVAL_MS) {
-                        callbacks.publish(false)
-                        callbacks.onPublishedAt(now)
-                        lastTranscriptionUiEmitMs = now
-                    }
-                }
-                // The transcriber always emits a terminal progress line (description or failure
-                // notice), so the thinking block never ends up empty. The description travels
-                // with the result row (segment.toolTranscription) so the API projection can
-                // inject it — the round-boundary path rebuild excludes the model message.
-                overlay.updateTranscriptionSegment(
-                    segmentIndex,
-                    description ?: lastPartial,
-                )
-                transcription = description
-                callbacks.publish(false)
-                callbacks.onPublishedAt(nowMs())
-            }
-            val completed = overlay.complete(call, result, transcription = transcription)
-            completedSegments += completed.segment
-            results += completed.data
-            callbacks.publish(false)
-            callbacks.onPublishedAt(nowMs())
         }
 
-        return AuthorizedToolBatchOutcome(
+        val deferreds = request.calls.map { call ->
+            async {
+                var lastToolUiEmitMs = 0L
+                val executed = tools.execute(
+                    AuthorizedToolCall(
+                        batchIdentity = request.effect.identity,
+                        callId = call.id,
+                        name = call.name,
+                        arguments = call.arguments,
+                        context = request.context,
+                        authorizedToolNames = request.authorizedToolNames,
+                        toolImageTranscriber = request.toolImageTranscriber,
+                    ),
+                ) { event ->
+                    if (event !is ToolExecutionEvent.Completed) {
+                        // Progress events are best-effort; serialize them.
+                        overlayMutex.withLock {
+                            overlay.applyProgress(call.id, event)
+                            val now = nowMs()
+                            if (now - lastToolUiEmitMs >= TOOL_PROGRESS_UI_UPDATE_INTERVAL_MS) {
+                                callbacks.publish(false)
+                                callbacks.onPublishedAt(now)
+                                lastToolUiEmitMs = now
+                            }
+                        }
+                    }
+                }
+                check(executed.batchIdentity == request.effect.identity)
+                check(executed.callId == call.id)
+                val result = executed.result
+                val transcriber = request.toolImageTranscriber
+                val toolImage = result.images.firstOrNull()
+                var transcription: String? = null
+                if (result.transcribeImages && toolImage != null && transcriber != null) {
+                    // Generic rule (no tool-name routing): results that declare their images as
+                    // model input are described with the main transcription flow and streamed as a
+                    // thinking segment. The description reaches the model through the API-only
+                    // image-context row, mirroring regular image transcriptions — the tool result
+                    // text itself stays clean.
+                    val segmentIndex = overlayMutex.withLock {
+                        overlay.appendTranscriptionSegment("")
+                    }
+                    callbacks.publish(true)
+                    callbacks.onPublishedAt(nowMs())
+                    var lastTranscriptionUiEmitMs = 0L
+                    var lastPartial = ""
+                    val description = transcriber(toolImage) { partial ->
+                        lastPartial = partial
+                        overlayMutex.withLock {
+                            overlay.updateTranscriptionSegment(segmentIndex, partial)
+                        }
+                        val now = nowMs()
+                        if (now - lastTranscriptionUiEmitMs >= TOOL_PROGRESS_UI_UPDATE_INTERVAL_MS) {
+                            callbacks.publish(false)
+                            callbacks.onPublishedAt(now)
+                            lastTranscriptionUiEmitMs = now
+                        }
+                    }
+                    // The transcriber always emits a terminal progress line (description or failure
+                    // notice), so the thinking block never ends up empty. The description travels
+                    // with the result row (segment.toolTranscription) so the API projection can
+                    // inject it — the round-boundary path rebuild excludes the model message.
+                    overlayMutex.withLock {
+                        overlay.updateTranscriptionSegment(
+                            segmentIndex,
+                            description ?: lastPartial,
+                        )
+                    }
+                    transcription = description
+                    callbacks.publish(false)
+                    callbacks.onPublishedAt(nowMs())
+                }
+                // Complete the overlay under lock; the returned data is order-independent
+                // and will be reassembled sequentially below via awaitAll.
+                val completed = overlayMutex.withLock {
+                    overlay.complete(call, result, transcription = transcription)
+                }
+                callbacks.publish(false)
+                callbacks.onPublishedAt(nowMs())
+                completed
+            }
+        }
+
+        // awaitAll preserves the original call order for results/segments.
+        val completeds = deferreds.awaitAll()
+        val results = completeds.map { it.data }.toMutableList()
+        val completedSegments = completeds.map { it.segment }.toMutableList()
+
+        AuthorizedToolBatchOutcome(
             identity = request.effect.identity,
             calls = results,
             segments = completedSegments,
