@@ -134,3 +134,17 @@
   `/ai/2/profile/{handle}/statuses` route but no tool called it, so the agent
   fell back to login-walled direct fetches. Fix: added `social_timeline`.
   When a hint references a capability, the tool that performs it must exist.
+- Stale "removed" claims (2026-10-03): the social client refused X search
+  locally as `search_not_supported` ("shut off upstream"), but the worker's
+  refreshed llms.txt documents X search as RELAY-SERVED again
+  (`/ai/2/search?q=&feed=`). The refusal was never re-verified after the
+  worker update. Rule: when the worker's llms.txt changes, re-check every
+  local refusal against the live route — call it and let the worker answer
+  (200 vs 404 envelope) instead of refusing on stale knowledge. Verified
+  live: timeline params (count/with_replies/cursor) work; search 404s are
+  honest upstream-empty answers.
+- New tool for a hinted capability (2026-10-03): `social_timeline` existed
+  but took no params while llms.txt documents count/cursor/with_replies/
+  since/lang. A tool that hides documented params forces the agent into
+  worse fallbacks. When adding a tool around a documented API, expose ALL
+  documented params from day one.

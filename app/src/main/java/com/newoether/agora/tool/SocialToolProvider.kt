@@ -62,12 +62,14 @@ class SocialToolProvider : ToolProvider {
             ToolDefinition(function = ToolFunction(
                 name = "social_search",
                 description = "Search a social network via the user's FxEmbed worker. Supported " +
-                    "networks: x (X/Twitter), bluesky, threads, mastodon. mastodon REQUIRES the " +
-                    "instance domain (e.g. mastodon.social). HARD LIMITS: TikTok has NO search and " +
+                    "networks: x (X/Twitter — relay-served: all X operators like from:, " +
+                    "filter:, lang:, since:, min_faves: pass through; feed=latest|top|media), " +
+                    "bluesky, threads, mastodon. mastodon REQUIRES the instance domain " +
+                    "(e.g. mastodon.social). HARD LIMITS: TikTok has NO search and " +
                     "Instagram has no documented search route — both refuse honestly; do not " +
-                    "work around them. Some X routes need a credential pool on the user's own " +
-                    "worker (reported as 501) — surface honestly, never fake results. Never " +
-                    "retry-loop: one attempt per call.",
+                    "work around them. X people search stays removed (no relay). Some X routes " +
+                    "need a credential pool on the user's own worker (reported as 501) — " +
+                    "surface honestly, never fake results. Never retry-loop: one attempt per call.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "network" to ToolProperty(
@@ -79,6 +81,10 @@ class SocialToolProvider : ToolProvider {
                             "string",
                             "Mastodon instance domain (required when network=mastodon).",
                         ),
+                        "feed" to ToolProperty(
+                            "string",
+                            "X only: latest|top|media (default latest).",
+                        ),
                     ),
                     required = listOf("network", "query"),
                 ),
@@ -89,10 +95,13 @@ class SocialToolProvider : ToolProvider {
                     "FxEmbed worker — no login needed. Use this when the user asks what an " +
                     "account posts about: pass network=x and the handle, then summarize the " +
                     "timeline. Supported networks: x (X/Twitter), bluesky, threads, mastodon " +
-                    "(REQUIRES the instance domain, e.g. mastodon.social). HARD LIMITS: some " +
-                    "X routes need a credential pool on the user's own worker and surface as " +
-                    "401/403/501 — report that honestly, never fake results. Never retry-loop: " +
-                    "one attempt per call.",
+                    "(REQUIRES the instance domain, e.g. mastodon.social). Params: count " +
+                    "(1-100, default 20), cursor (opaque page token from the previous call's " +
+                    "Next: line — pass it back for the next page), with_replies (include " +
+                    "replies), since (poll for posts newer than this), lang (translate inline, " +
+                    "e.g. es). HARD LIMITS: some X routes need a credential pool on the user's " +
+                    "own worker and surface as 401/403/501 — report that honestly, never fake " +
+                    "results. Never retry-loop: one attempt per call.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "network" to ToolProperty(
@@ -107,8 +116,160 @@ class SocialToolProvider : ToolProvider {
                             "string",
                             "Mastodon instance domain (required when network=mastodon).",
                         ),
+                        "count" to ToolProperty(
+                            "string",
+                            "Posts per page, 1-100 (default 20).",
+                        ),
+                        "cursor" to ToolProperty(
+                            "string",
+                            "Opaque page token from the previous call's Next: line.",
+                        ),
+                        "with_replies" to ToolProperty(
+                            "string",
+                            "\"true\" to include the account's replies.",
+                        ),
+                        "since" to ToolProperty(
+                            "string",
+                            "Only posts newer than this (polling).",
+                        ),
+                        "lang" to ToolProperty(
+                            "string",
+                            "Translate post text inline, e.g. es.",
+                        ),
                     ),
                     required = listOf("network", "handle"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_thread",
+                description = "Unroll an X thread: returns the author's connected posts in order " +
+                    "as Markdown — for reading long threads or archiving them. Pass the numeric " +
+                    "tweet id (the digits in x.com/.../status/123).",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "tweet_id" to ToolProperty(
+                            "string",
+                            "Numeric tweet id, e.g. 20.",
+                        ),
+                        "lang" to ToolProperty(
+                            "string",
+                            "Translate post text inline, e.g. es.",
+                        ),
+                    ),
+                    required = listOf("tweet_id"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_quotes",
+                description = "Quote posts of an X tweet — who quoted it and what they said. " +
+                    "Pass the numeric tweet id. Paginate with cursor from the previous call's " +
+                    "Next: line. Returns 404/upstream_empty when nothing quotes it (valid).",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "tweet_id" to ToolProperty(
+                            "string",
+                            "Numeric tweet id, e.g. 20.",
+                        ),
+                        "count" to ToolProperty(
+                            "string",
+                            "Posts per page, 1-100 (default 20).",
+                        ),
+                        "cursor" to ToolProperty(
+                            "string",
+                            "Opaque page token from the previous call's Next: line.",
+                        ),
+                    ),
+                    required = listOf("tweet_id"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_conversation",
+                description = "X conversation: the post plus its ancestors and paginated direct " +
+                    "replies — for reading both sides of a debate. ranking_mode=likes|recency. " +
+                    "HARD LIMIT: needs a credential pool on the user's own worker (404 without " +
+                    "it) — surface honestly, never fake.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "tweet_id" to ToolProperty(
+                            "string",
+                            "Numeric tweet id, e.g. 20.",
+                        ),
+                        "ranking_mode" to ToolProperty(
+                            "string",
+                            "likes or recency (default recency).",
+                        ),
+                        "cursor" to ToolProperty(
+                            "string",
+                            "Opaque page token from the previous call's Next: line.",
+                        ),
+                    ),
+                    required = listOf("tweet_id"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_profile_search",
+                description = "Search WITHIN one X account's posts (relay-served). Use when the " +
+                    "user asks e.g. 'what has this account said about AI'. feed=latest|top|media. " +
+                    "Paginate with cursor.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "handle" to ToolProperty(
+                            "string",
+                            "The account handle without @, e.g. ice7887.",
+                        ),
+                        "query" to ToolProperty("string", "The search query."),
+                        "feed" to ToolProperty(
+                            "string",
+                            "latest|top|media (default latest).",
+                        ),
+                        "count" to ToolProperty(
+                            "string",
+                            "Posts per page, 1-100 (default 20).",
+                        ),
+                        "cursor" to ToolProperty(
+                            "string",
+                            "Opaque page token from the previous call's Next: line.",
+                        ),
+                    ),
+                    required = listOf("handle", "query"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_profile_media",
+                description = "An X account's media tab: posts with photos/video. HARD LIMIT: " +
+                    "needs a credential pool on the user's own worker (500 without it) — " +
+                    "surface honestly, never fake.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "handle" to ToolProperty(
+                            "string",
+                            "The account handle without @, e.g. ice7887.",
+                        ),
+                        "count" to ToolProperty(
+                            "string",
+                            "Posts per page, 1-100 (default 20).",
+                        ),
+                        "cursor" to ToolProperty(
+                            "string",
+                            "Opaque page token from the previous call's Next: line.",
+                        ),
+                    ),
+                    required = listOf("handle"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_rss",
+                description = "An X account's RSS feed (/twitter/{handle}/feed.xml) — the cheapest " +
+                    "way to monitor an account for new posts or poll for changes. Returns raw " +
+                    "RSS XML.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "handle" to ToolProperty(
+                            "string",
+                            "The account handle without @, e.g. ice7887.",
+                        ),
+                    ),
+                    required = listOf("handle"),
                 ),
             )),
         )
@@ -124,6 +285,12 @@ class SocialToolProvider : ToolProvider {
             "social_resolve" -> executeResolve(arguments, ctx)
             "social_search" -> executeSearch(arguments, ctx)
             "social_timeline" -> executeTimeline(arguments, ctx)
+            "social_thread" -> executeThread(arguments, ctx)
+            "social_quotes" -> executeQuotes(arguments, ctx)
+            "social_conversation" -> executeConversation(arguments, ctx)
+            "social_profile_search" -> executeProfileSearch(arguments, ctx)
+            "social_profile_media" -> executeProfileMedia(arguments, ctx)
+            "social_rss" -> executeRss(arguments, ctx)
             else -> errorJson(name, "unknown_tool", "Unknown tool: $name")
         }
         val elapsedMs = (System.nanoTime() - started) / 1_000_000L
@@ -133,13 +300,23 @@ class SocialToolProvider : ToolProvider {
         result
     }
 
-    override fun handles(name: String): Boolean = name in setOf("social_resolve", "social_search", "social_timeline")
+    override fun handles(name: String): Boolean = name in setOf(
+        "social_resolve", "social_search", "social_timeline", "social_thread",
+        "social_quotes", "social_conversation", "social_profile_search",
+        "social_profile_media", "social_rss",
+    )
 
     override fun presentationMetadata(name: String): ToolPresentationMetadata? =
         when (name) {
             "social_resolve" -> ToolPresentationMetadata(displayName = "Social post")
             "social_search" -> ToolPresentationMetadata(displayName = "Social search")
             "social_timeline" -> ToolPresentationMetadata(displayName = "Social timeline")
+            "social_thread" -> ToolPresentationMetadata(displayName = "Social thread")
+            "social_quotes" -> ToolPresentationMetadata(displayName = "Social quotes")
+            "social_conversation" -> ToolPresentationMetadata(displayName = "Social conversation")
+            "social_profile_search" -> ToolPresentationMetadata(displayName = "Social profile search")
+            "social_profile_media" -> ToolPresentationMetadata(displayName = "Social media")
+            "social_rss" -> ToolPresentationMetadata(displayName = "Social RSS feed")
             else -> null
         }
 
@@ -180,9 +357,10 @@ class SocialToolProvider : ToolProvider {
         val network = (args["network"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val query = (args["query"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val domain = (args["domain"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val feed = (args["feed"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val client = clientFor(ctx)
             ?: return errorJson("social_search", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.search(network, query, domain)) {
+        return when (val r = client.search(network, query, domain, feed)) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_search")
                 put("network", network)
@@ -224,9 +402,15 @@ class SocialToolProvider : ToolProvider {
         val network = (args["network"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val handle = (args["handle"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val domain = (args["domain"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val count = (args["count"] as? JsonPrimitive)?.content?.trim()?.toIntOrNull() ?: 20
+        val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val withReplies = (args["with_replies"] as? JsonPrimitive)?.content?.trim()
+            .equals("true", ignoreCase = true)
+        val since = (args["since"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val lang = (args["lang"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val client = clientFor(ctx)
             ?: return errorJson("social_timeline", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.timeline(network, handle, domain)) {
+        return when (val r = client.timeline(network, handle, domain, count, cursor, withReplies, since, lang)) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_timeline")
                 put("network", network)
@@ -244,6 +428,194 @@ class SocialToolProvider : ToolProvider {
             is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
                 put("type", "social_timeline")
                 put("network", network)
+                put("handle", handle)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
+
+    private suspend fun executeThread(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_thread", "bad_arguments", "Arguments must be a JSON object.")
+        val tweetId = (args["tweet_id"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val lang = (args["lang"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_thread", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.thread(tweetId, lang)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_thread")
+                put("tweet_id", tweetId)
+                put("thread", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_thread")
+                put("tweet_id", tweetId)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_thread")
+                put("tweet_id", tweetId)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
+
+    private suspend fun executeQuotes(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_quotes", "bad_arguments", "Arguments must be a JSON object.")
+        val tweetId = (args["tweet_id"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val count = (args["count"] as? JsonPrimitive)?.content?.trim()?.toIntOrNull() ?: 20
+        val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_quotes", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.quotes(tweetId, count, cursor)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_quotes")
+                put("tweet_id", tweetId)
+                put("quotes", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_quotes")
+                put("tweet_id", tweetId)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_quotes")
+                put("tweet_id", tweetId)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
+
+    private suspend fun executeConversation(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_conversation", "bad_arguments", "Arguments must be a JSON object.")
+        val tweetId = (args["tweet_id"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val rankingMode = (args["ranking_mode"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_conversation", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.conversation(tweetId, rankingMode, cursor)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_conversation")
+                put("tweet_id", tweetId)
+                put("conversation", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_conversation")
+                put("tweet_id", tweetId)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_conversation")
+                put("tweet_id", tweetId)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
+
+    private suspend fun executeProfileSearch(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_profile_search", "bad_arguments", "Arguments must be a JSON object.")
+        val handle = (args["handle"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val query = (args["query"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val feed = (args["feed"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val count = (args["count"] as? JsonPrimitive)?.content?.trim()?.toIntOrNull() ?: 20
+        val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_profile_search", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.profileSearch(handle, query, feed, count, cursor)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_profile_search")
+                put("handle", handle)
+                put("query", query)
+                put("results", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_profile_search")
+                put("handle", handle)
+                put("query", query)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_profile_search")
+                put("handle", handle)
+                put("query", query)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
+
+    private suspend fun executeProfileMedia(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_profile_media", "bad_arguments", "Arguments must be a JSON object.")
+        val handle = (args["handle"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val count = (args["count"] as? JsonPrimitive)?.content?.trim()?.toIntOrNull() ?: 20
+        val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_profile_media", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.profileMedia(handle, count, cursor)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_profile_media")
+                put("handle", handle)
+                put("media", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_profile_media")
+                put("handle", handle)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_profile_media")
+                put("handle", handle)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
+
+    private suspend fun executeRss(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_rss", "bad_arguments", "Arguments must be a JSON object.")
+        val handle = (args["handle"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_rss", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.rssFeed(handle)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_rss")
+                put("handle", handle)
+                put("feed", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_rss")
+                put("handle", handle)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_rss")
                 put("handle", handle)
                 put("error", r.error)
                 r.httpStatus?.let { put("http_status", it) }

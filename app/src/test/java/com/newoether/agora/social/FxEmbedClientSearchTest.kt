@@ -7,8 +7,9 @@ import org.junit.Test
 
 /**
  * Pre-network behavior of [FxEmbedClient.search] per the worker's llms.txt
- * (2026-10-02): X search removed, TikTok/Instagram have no search,
- * Mastodon needs a domain. These paths return before any HTTP call.
+ * (2026-10-03 refresh): X search is relay-served again (no local refusal),
+ * TikTok/Instagram have no search, Mastodon needs a domain. Refusal paths
+ * return before any HTTP call.
  */
 class FxEmbedClientSearchTest {
 
@@ -18,19 +19,20 @@ class FxEmbedClientSearchTest {
     )
 
     @Test
-    fun `x search is refused honestly (route removed from worker)`() = runTest {
+    fun `x search is relay-served, not refused locally`() = runTest {
+        // With a dummy host the call fails at the network — the point is it
+        // is ATTEMPTED (relay route) instead of refused as search_not_supported.
         val r = client.search("x", "hello")
         assertTrue(r is FxEmbedClient.ResolveResult.Failure)
         val f = r as FxEmbedClient.ResolveResult.Failure
-        assertEquals("search_not_supported", f.error)
-        assertTrue(f.hint!!.contains("removed", ignoreCase = true))
+        assertTrue(f.error != "search_not_supported")
     }
 
     @Test
-    fun `twitter alias also refused`() = runTest {
+    fun `twitter alias also relay-served`() = runTest {
         val r = client.search("twitter", "hello")
         assertTrue(r is FxEmbedClient.ResolveResult.Failure)
-        assertEquals("search_not_supported", (r as FxEmbedClient.ResolveResult.Failure).error)
+        assertTrue((r as FxEmbedClient.ResolveResult.Failure).error != "search_not_supported")
     }
 
     @Test
@@ -68,5 +70,47 @@ class FxEmbedClientSearchTest {
         val f = r as FxEmbedClient.ResolveResult.Failure
         assertEquals("unknown_network", f.error)
         assertTrue(f.hint!!.contains("bluesky"))
+    }
+
+    @Test
+    fun `thread rejects non-numeric tweet id before network`() = runTest {
+        val r = client.thread("abc")
+        assertTrue(r is FxEmbedClient.ResolveResult.Failure)
+        assertEquals("bad_tweet_id", (r as FxEmbedClient.ResolveResult.Failure).error)
+    }
+
+    @Test
+    fun `quotes rejects blank tweet id before network`() = runTest {
+        val r = client.quotes("  ")
+        assertTrue(r is FxEmbedClient.ResolveResult.Failure)
+        assertEquals("bad_tweet_id", (r as FxEmbedClient.ResolveResult.Failure).error)
+    }
+
+    @Test
+    fun `conversation rejects non-numeric tweet id before network`() = runTest {
+        val r = client.conversation("xyz")
+        assertTrue(r is FxEmbedClient.ResolveResult.Failure)
+        assertEquals("bad_tweet_id", (r as FxEmbedClient.ResolveResult.Failure).error)
+    }
+
+    @Test
+    fun `timeline rejects blank handle before network`() = runTest {
+        val r = client.timeline("x", "  ")
+        assertTrue(r is FxEmbedClient.ResolveResult.Failure)
+        assertEquals("no_handle", (r as FxEmbedClient.ResolveResult.Failure).error)
+    }
+
+    @Test
+    fun `profileSearch needs handle and query`() = runTest {
+        val r = client.profileSearch("", "ai")
+        assertTrue(r is FxEmbedClient.ResolveResult.Failure)
+        assertEquals("bad_arguments", (r as FxEmbedClient.ResolveResult.Failure).error)
+    }
+
+    @Test
+    fun `rssFeed rejects blank handle before network`() = runTest {
+        val r = client.rssFeed("")
+        assertTrue(r is FxEmbedClient.ResolveResult.Failure)
+        assertEquals("no_handle", (r as FxEmbedClient.ResolveResult.Failure).error)
     }
 }

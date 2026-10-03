@@ -83,34 +83,34 @@ class FxEmbedClient(
     // ── Per-network search (documented paths only) ───────────────────
 
     /**
-     * Network search, per the worker's llms.txt (2026-10-02 refresh).
+     * Network search, per the worker's llms.txt (2026-10-03 refresh).
+     * - `x`: RELAY-SERVED (§C8): RSS discovery + per-post hydration, all X
+     *   operators pass through (from:, filter:, lang:, since:, min_faves:).
+     *   404 envelope = relay found nothing (valid answer, not a bug).
+     *   `feed` = latest|top|media. People search stays removed (no relay).
      * - `bluesky`: works (`/ai/2/bsky/search?q=`; the worker retries the
      *   public AppView when datacenter IPs are edge-403d).
      * - `threads`: proxy-only — 501 without an account pool on the worker.
      * - `mastodon`: people search only (`search/users?q=` returns hits;
      *   status search is always empty upstream for anonymous callers).
      *   Requires [mastodonDomain].
-     * - `x`: REMOVED — X keyword/people search is shut off upstream and the
-     *   route was deleted from the worker. Refused honestly; start from a
-     *   known handle and read their profile timeline instead.
      * TikTok and Instagram have no search — refused honestly.
      */
     suspend fun search(
         network: String,
         query: String,
         mastodonDomain: String = "",
+        feed: String = "",
     ): ResolveResult = withContext(Dispatchers.IO) {
         val q = query.trim()
         if (q.isEmpty()) {
             return@withContext ResolveResult.Failure("no_query", hint = "Pass a non-empty search query.")
         }
         val path = when (network.lowercase()) {
-            "x", "twitter" -> return@withContext ResolveResult.Failure(
-                "search_not_supported",
-                hint = "X keyword/people search was removed from the worker (shut off upstream). " +
-                    "Start from a known handle: social_resolve the profile URL, then read " +
-                    "their timeline via the worker's /ai/2/profile/{handle}/statuses route.",
-            )
+            "x", "twitter" -> {
+                val f = feed.lowercase().takeIf { it in setOf("latest", "top", "media") } ?: "latest"
+                aiPath("/2/search?q=") + encode(q) + "&feed=" + f
+            }
             "bluesky", "bsky" -> aiPath("/2/bsky/search?q=") + encode(q)
             // Documented under /atmosphere/2 in §2.4 (no /ai twin): JSON result.
             "threads" -> realmPath("atmosphere", "/2/threads/search?q=") + encode(q)
@@ -137,8 +137,7 @@ class FxEmbedClient(
             )
             else -> return@withContext ResolveResult.Failure(
                 "unknown_network",
-                hint = "Searchable: bluesky, threads (needs account pool), mastodon (people only). " +
-                    "X search was removed upstream.",
+                hint = "Searchable: x (relay), bluesky, threads (needs account pool), mastodon (people only).",
             )
         }
         get(path, "search:$network")
@@ -146,17 +145,24 @@ class FxEmbedClient(
 
     /**
      * Profile timeline: recent posts by a known handle, no login needed.
-     * This is the route the X-search removal hint points at — X keyword
-     * search is gone upstream, but profile timelines still work through the
-     * user's own worker.
      *
-     * HARD LIMITS: some X routes need a credential pool on the user's own
-     * worker (surfaces as 401/403/501) — reported honestly, never faked.
+     * Params (llms.txt §C6/A4-A6): `count` 1-100, `cursor` = opaque
+     * `cursor.bottom` from the previous page's "Next:" line, `withReplies`
+     * includes replies, `since` polls for new posts (204 = nothing new),
+     * `lang` translates inline (ISO 639-1).
+     *
+     * HARD LIMITS: media/articles/followers/following tabs need a credential
+     * pool on the user's own worker (500 here) — reported honestly.
      */
     suspend fun timeline(
         network: String,
         handle: String,
         mastodonDomain: String = "",
+        count: Int = 20,
+        cursor: String = "",
+        withReplies: Boolean = false,
+        since: String = "",
+        lang: String = "",
     ): ResolveResult = withContext(Dispatchers.IO) {
         val h = handle.trim().trimStart('@')
         if (h.isEmpty()) {
@@ -165,10 +171,17 @@ class FxEmbedClient(
                 hint = "Pass the account handle, e.g. ice7887.",
             )
         }
+        val params = buildString {
+            append("?count=").append(count.coerceIn(1, 100))
+            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+            if (withReplies) append("&with_replies=1")
+            if (since.isNotBlank()) append("&since=").append(encode(since))
+            if (lang.isNotBlank()) append("&lang=").append(encode(lang))
+        }
         val path = when (network.lowercase()) {
-            "x", "twitter" -> aiPath("/2/profile/") + encode(h) + "/statuses"
-            "bluesky", "bsky" -> aiPath("/2/bsky/profile/") + encode(h) + "/statuses"
-            "threads" -> realmPath("atmosphere", "/2/threads/profile/") + encode(h) + "/statuses"
+            "x", "twitter" -> aiPath("/2/profile/") + encode(h) + "/statuses" + params
+            "bluesky", "bsky" -> aiPath("/2/bsky/profile/") + encode(h) + "/statuses" + params
+            "threads" -> realmPath("atmosphere", "/2/threads/profile/") + encode(h) + "/statuses" + params
             "mastodon" -> {
                 val domain = mastodonDomain.trim().lowercase()
                 if (domain.isEmpty() || domain.contains('/')) {
@@ -178,7 +191,7 @@ class FxEmbedClient(
                     )
                 }
                 realmPath("atmosphere", "/2/mastodon/") + domain +
-                    "/profile/" + encode(h) + "/statuses"
+                    "/profile/" + encode(h) + "/statuses" + params
             }
             else -> return@withContext ResolveResult.Failure(
                 "unknown_network",
@@ -186,6 +199,144 @@ class FxEmbedClient(
             )
         }
         get(path, "timeline:$network")
+    }
+
+    /**
+     * Unroll an X author's whole thread (§C2): the connected posts in order.
+     * Numeric tweet id only (the digits in x.com/.../status/123).
+     */
+    suspend fun thread(tweetId: String, lang: String = ""): ResolveResult =
+        withContext(Dispatchers.IO) {
+            val id = tweetId.trim()
+            if (id.isEmpty() || !id.all { it.isDigit() }) {
+                return@withContext ResolveResult.Failure(
+                    "bad_tweet_id",
+                    hint = "Pass the numeric tweet id (digits from x.com/.../status/123).",
+                )
+            }
+            val params = if (lang.isNotBlank()) "?lang=" + encode(lang) else ""
+            get(aiPath("/2/thread/") + id + params, "thread")
+        }
+
+    /**
+     * Quote posts of an X tweet (§C7). Works when upstream has data, else a
+     * 404 envelope (valid). Paginate with the opaque `cursor`.
+     */
+    suspend fun quotes(
+        tweetId: String,
+        count: Int = 20,
+        cursor: String = "",
+        lang: String = "",
+    ): ResolveResult = withContext(Dispatchers.IO) {
+        val id = tweetId.trim()
+        if (id.isEmpty() || !id.all { it.isDigit() }) {
+            return@withContext ResolveResult.Failure(
+                "bad_tweet_id",
+                hint = "Pass the numeric tweet id (digits from x.com/.../status/123).",
+            )
+        }
+        val params = buildString {
+            append("?count=").append(count.coerceIn(1, 100))
+            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+            if (lang.isNotBlank()) append("&lang=").append(encode(lang))
+        }
+        get(aiPath("/2/status/") + id + "/quotes" + params, "quotes")
+    }
+
+    /**
+     * X conversation: post + ancestors + paginated direct replies (§C3).
+     * NEEDS a credential pool on the worker (404 here, 200 on production) —
+     * surfaced honestly via the normal error path.
+     */
+    suspend fun conversation(
+        tweetId: String,
+        rankingMode: String = "",
+        cursor: String = "",
+        lang: String = "",
+    ): ResolveResult = withContext(Dispatchers.IO) {
+        val id = tweetId.trim()
+        if (id.isEmpty() || !id.all { it.isDigit() }) {
+            return@withContext ResolveResult.Failure(
+                "bad_tweet_id",
+                hint = "Pass the numeric tweet id (digits from x.com/.../status/123).",
+            )
+        }
+        val params = buildString {
+            val mode = rankingMode.lowercase().takeIf { it in setOf("likes", "recency") }
+            if (mode != null) append("?ranking_mode=").append(mode) else append("?")
+            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+            if (lang.isNotBlank()) append("&lang=").append(encode(lang))
+        }.toString().replace("?&", "?").trimEnd('?')
+        get(aiPath("/2/conversation/") + id + params, "conversation")
+    }
+
+    /**
+     * Per-user X search (§C8): search WITHIN one account's posts via the
+     * relay. Same feed/count/cursor params as global search.
+     */
+    suspend fun profileSearch(
+        handle: String,
+        query: String,
+        feed: String = "",
+        count: Int = 20,
+        cursor: String = "",
+    ): ResolveResult = withContext(Dispatchers.IO) {
+        val h = handle.trim().trimStart('@')
+        val q = query.trim()
+        if (h.isEmpty() || q.isEmpty()) {
+            return@withContext ResolveResult.Failure(
+                "bad_arguments",
+                hint = "Pass both the handle (e.g. ice7887) and a non-empty query.",
+            )
+        }
+        val f = feed.lowercase().takeIf { it in setOf("latest", "top", "media") } ?: "latest"
+        val params = buildString {
+            append("?q=").append(encode(q))
+            append("&feed=").append(f)
+            append("&count=").append(count.coerceIn(1, 100))
+            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+        }
+        get(aiPath("/2/profile/") + encode(h) + "/search" + params, "profile_search")
+    }
+
+    /**
+     * X profile media tab (§C6): posts with photos/video. NEEDS a credential
+     * pool on the worker (500 here) — surfaced honestly.
+     */
+    suspend fun profileMedia(
+        handle: String,
+        count: Int = 20,
+        cursor: String = "",
+    ): ResolveResult = withContext(Dispatchers.IO) {
+        val h = handle.trim().trimStart('@')
+        if (h.isEmpty()) {
+            return@withContext ResolveResult.Failure(
+                "no_handle",
+                hint = "Pass the account handle, e.g. ice7887.",
+            )
+        }
+        val params = buildString {
+            append("?count=").append(count.coerceIn(1, 100))
+            if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+        }
+        get(aiPath("/2/profile/") + encode(h) + "/media" + params, "profile_media")
+    }
+
+    /**
+     * X profile RSS feed (§D2): the best polling primitive — any UA, poll
+     * with If-None-Match / If-Modified-Since. Returns raw RSS XML.
+     */
+    suspend fun rssFeed(handle: String): ResolveResult = withContext(Dispatchers.IO) {
+        val h = handle.trim().trimStart('@')
+        if (h.isEmpty()) {
+            return@withContext ResolveResult.Failure(
+                "no_handle",
+                hint = "Pass the account handle, e.g. ice7887.",
+            )
+        }
+        // /twitter realm has no /ai twin; custom domains keep the path as-is.
+        val path = (if (useBareRealm) "" else "/twitter") + "/" + encode(h) + "/feed.xml"
+        get(path, "rss")
     }
 
     /**
