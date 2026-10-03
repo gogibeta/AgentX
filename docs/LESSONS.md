@@ -148,3 +148,23 @@
   since/lang. A tool that hides documented params forces the agent into
   worse fallbacks. When adding a tool around a documented API, expose ALL
   documented params from day one.
+- Forced rotation kills the browser (2026-10-03): the fullscreen browser
+  dialog forced `SCREEN_ORIENTATION_LANDSCAPE`; on devices without
+  `configChanges` handling this destroys and recreates the activity
+  mid-task, killing the WebView/CDP session (seen in logs as
+  activity destroyed→created at 17:33:42 mid-Wordle). Fix: never force
+  orientation for the browser popup — use a desktop user agent + wide
+  viewport so sites serve desktop layout in any orientation.
+- Success JSON must carry ok:true (2026-10-03): `browser_snapshot`,
+  `browser_takeover`, and `browser_download_status` omitted `"ok": true`,
+  so `diagnosticOutcome()` logged EVERY success as `error:unknown` — the
+  audit trail looked like the browser was constantly failing. Rule: every
+  tool's success JSON carries `"ok": true`; the diagnostic derive trusts it.
+- One browser per chat (2026-10-03): a single global BrowserSession meant
+  two chats fought over one page. Fix: BrowserSessionRegistry keyed by
+  conversationId; the WebView backend owns one WebView per session
+  (target resolved by before/after /json/list diff under a mutex); the
+  watch panel filters diagnostic events by conversation id.
+- Fast browser loop (2026-10-03): click/fill/key/scroll now embed a fresh
+  page snapshot in their own result — the agent never needs a separate
+  browser_snapshot after acting, halving tool roundtrips.

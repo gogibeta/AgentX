@@ -246,8 +246,16 @@ class DefaultBrowserWatchController(
             // Connect the chat's session (no-op when already connected).
             // The connect reports a diagnostic event, which flips
             // sessionActive and makes the panel appear.
-            runCatching { session().ensureConnected() }
+            val ok = runCatching { session().ensureConnected() }
                 .onFailure { DebugLog.w(TAG, "openBrowser connect failed: ${it.message}") }
+                .getOrDefault(false)
+            if (ok) {
+                // Manual open (no agent running): no diagnostic events will
+                // arrive to refresh the live view, so push it directly.
+                _liveWebView.value = runCatching { session().liveWebView() }.getOrNull()
+                _sessionActive.value = true
+                startFrames()
+            }
         }
         DebugLog.d(TAG, "Browser opened for chat")
     }
