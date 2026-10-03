@@ -11,11 +11,12 @@ routes added.)
 
 1. Deploy your own worker from the FxEmbed / twapiworker project.
 2. Paste the worker URL in Settings → Social and tap **Validate**.
-3. For **credential-gated X routes** (conversation, profile media/articles/
+3. For **credential-gated X routes** (conversation, profile articles/
    followers/following/about, reposts, typeahead, trends) configure a
    credential pool on YOUR worker (`wrangler secret put`). Without it those
    routes 404/500 — that is a worker-config gap, not an app bug. Tell the
-   user exactly which secret to set.
+   user exactly which secret to set. (Profile media usually works anyway via
+   the worker's relay fallback.)
 
 ## The 9 tools (all read-only, no login needed)
 
@@ -77,8 +78,9 @@ routes added.)
 - **Mandatory User-Agent.** The app sends `AgentX/<version>` on every call;
   without it the worker 401s. If you call the worker yourself (shell/curl),
   set a descriptive UA — bare `Python-urllib` gets edge-403d.
-- **Credential-gated X routes** (conversation, profile media/articles/
+- **Credential-gated X routes** (conversation, profile articles/
   followers/following/about, reposts, typeahead, trends) 404/500 on a worker
-  with no credential pool. Report the gap; don't fake results.
+  with no credential pool. Report the gap; don't fake results. (Profile
+  media usually works anyway via the relay fallback.)
 - If the worker URL is not configured, the tools refuse with `not_configured`
   and point at Settings → Social. Don't work around it.

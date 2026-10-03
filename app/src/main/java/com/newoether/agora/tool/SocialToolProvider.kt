@@ -236,9 +236,9 @@ class SocialToolProvider : ToolProvider {
             )),
             ToolDefinition(function = ToolFunction(
                 name = "social_profile_media",
-                description = "An X account's media tab: posts with photos/video. HARD LIMIT: " +
-                    "needs a credential pool on the user's own worker (500 without it) — " +
-                    "surface honestly, never fake.",
+                description = "An X account's media tab: posts with photos/video. Served via the " +
+                    "worker's relay fallback when the guest flow misses — works on most " +
+                    "deployments; if it 500s the worker needs a credential pool.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "handle" to ToolProperty(
