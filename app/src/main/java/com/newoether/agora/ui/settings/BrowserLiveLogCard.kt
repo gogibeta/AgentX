@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -30,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,10 +44,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.newoether.agora.R
+import com.newoether.agora.diagnostics.StructuredDiagnostics
 import com.newoether.agora.util.FileLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -65,8 +69,10 @@ fun BrowserLiveLogCard() {
     var lines by remember { mutableStateOf(listOf<String>()) }
     var paused by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf("") }
+    var confirmReset by remember { mutableStateOf(false) }
     val clipboard = LocalClipboardManager.current
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(paused) {
         while (isActive) {
@@ -130,6 +136,37 @@ fun BrowserLiveLogCard() {
                 Icon(
                     Icons.Default.ContentCopy,
                     contentDescription = stringResource(R.string.browser_live_log_copy),
+                )
+            }
+            // Manual diagnostics reset: two-tap confirm. Clears the session
+            // log files and the structured event ring so logging starts
+            // fresh (user request — e.g. right after an app update).
+            IconButton(
+                onClick = {
+                    if (confirmReset) {
+                        confirmReset = false
+                        scope.launch(Dispatchers.IO) {
+                            FileLog.clear()
+                            StructuredDiagnostics.clearAll()
+                            lines = FileLog.tailLines(MAX_LIVE_LINES)
+                        }
+                    } else {
+                        confirmReset = true
+                        scope.launch {
+                            delay(3000)
+                            confirmReset = false
+                        }
+                    }
+                },
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(
+                        if (confirmReset) R.string.browser_live_log_reset_confirm
+                        else R.string.browser_live_log_reset,
+                    ),
+                    tint = if (confirmReset) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

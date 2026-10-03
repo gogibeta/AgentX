@@ -700,5 +700,7 @@
     <string name="browser_live_log_pause">Pause live updates</string>
     <string name="browser_live_log_resume">Resume live updates</string>
     <string name="browser_live_log_copy">Copy visible lines</string>
+    <string name="browser_live_log_reset">Reset diagnostics log</string>
+    <string name="browser_live_log_reset_confirm">Tap again to confirm: clear all diagnostics</string>
     <string name="browser_live_log_empty">No log lines yet. Run the browser once and they will appear here.</string>
 </resources>

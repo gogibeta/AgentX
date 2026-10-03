@@ -119,3 +119,18 @@
   next browser tool event; a degraded tunnel runner (long-lived GitHub runner,
   >30s screenshot latency) therefore looks like "no live view". The timeout
   is the symptom — check runner health before blaming the app.
+- Compose AndroidView double-parent crash (2026-10-03): the browser watch
+  panel and the fullscreen dialog both hosted the SAME live WebView/GeckoView
+  instance via `AndroidView(factory = { liveView })`. When fullscreen toggled,
+  the dialog's holder was created before the panel's holder was disposed (or
+  vice versa) and `addView()` threw "The specified child already has a parent",
+  crashing the app. Fix: EVERY factory that returns a shared view must
+  defensively `(liveView.parent as? ViewGroup)?.removeView(liveView)` before
+  returning it — on both sides, since disposal/creation ordering is not
+  guaranteed. Never assume the other holder released the view first.
+- Missing tool, not a broken tool (2026-10-03): the in-app agent could not
+  fetch an X account's tweets because only `social_resolve`/`social_search`
+  existed — the code hint told it to use the worker's
+  `/ai/2/profile/{handle}/statuses` route but no tool called it, so the agent
+  fell back to login-walled direct fetches. Fix: added `social_timeline`.
+  When a hint references a capability, the tool that performs it must exist.

@@ -1,5 +1,7 @@
 package com.newoether.agora.ui.browser
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.compose.ui.viewinterop.AndroidView
 import android.graphics.BitmapFactory
 import androidx.compose.animation.AnimatedVisibility
@@ -46,6 +48,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -337,6 +341,18 @@ private fun FullscreenBrowserDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         DialogWindowEdgeToEdge()
+        // Fullscreen means rotated: force landscape while the dialog is up,
+        // restore the previous orientation on dismiss.
+        val context = LocalContext.current
+        DisposableEffect(Unit) {
+            val activity = context as? Activity
+            val previous = activity?.requestedOrientation
+                ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            onDispose {
+                activity?.requestedOrientation = previous
+            }
+        }
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -409,7 +425,15 @@ private fun BrowserFrame(
     val liveView: android.view.View? = webView ?: geckoView
     if (liveView != null) {
         AndroidView(
-            factory = { liveView },
+            // The same live engine view is reparented between the panel and
+            // the fullscreen dialog. Detach defensively: compose may create
+            // this AndroidView before the dialog's holder is disposed (or vice
+            // versa), and addView() on an already-parented view crashes the
+            // app with "The specified child already has a parent".
+            factory = {
+                (liveView.parent as? android.view.ViewGroup)?.removeView(liveView)
+                liveView
+            },
             modifier = modifier.then(frameModifier)
                 .clip(RoundedCornerShape(12.dp)),
         )

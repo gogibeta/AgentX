@@ -147,6 +147,22 @@ object FileLog {
         started.set(false)
     }
 
+    /**
+     * Manual reset from Settings: drop queued lines and truncate the session
+     * + rotated log files so diagnostics start fresh (e.g. right after an app
+     * update). Logging keeps working — a marker line is written and new
+     * entries append after the reset.
+     */
+    fun clear() {
+        queue.clear()
+        synchronized(lock) {
+            val dir = logDir ?: return
+            runCatching { File(dir, FILE).writeText("", Charsets.UTF_8) }
+            runCatching { File(dir, ROTATED).delete() }
+        }
+        event("INFO", "FileLog", emptyMap(), "diagnostics reset by user")
+    }
+
     /** Structured event: level + tag + key/value fields + free message. */
     fun event(level: String, tag: String, fields: Map<String, String>, message: String) {
         if (!started.get()) return

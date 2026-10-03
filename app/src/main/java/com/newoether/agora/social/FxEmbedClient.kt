@@ -145,6 +145,50 @@ class FxEmbedClient(
     }
 
     /**
+     * Profile timeline: recent posts by a known handle, no login needed.
+     * This is the route the X-search removal hint points at — X keyword
+     * search is gone upstream, but profile timelines still work through the
+     * user's own worker.
+     *
+     * HARD LIMITS: some X routes need a credential pool on the user's own
+     * worker (surfaces as 401/403/501) — reported honestly, never faked.
+     */
+    suspend fun timeline(
+        network: String,
+        handle: String,
+        mastodonDomain: String = "",
+    ): ResolveResult = withContext(Dispatchers.IO) {
+        val h = handle.trim().trimStart('@')
+        if (h.isEmpty()) {
+            return@withContext ResolveResult.Failure(
+                "no_handle",
+                hint = "Pass the account handle, e.g. ice7887.",
+            )
+        }
+        val path = when (network.lowercase()) {
+            "x", "twitter" -> aiPath("/2/profile/") + encode(h) + "/statuses"
+            "bluesky", "bsky" -> aiPath("/2/bsky/profile/") + encode(h) + "/statuses"
+            "threads" -> realmPath("atmosphere", "/2/threads/profile/") + encode(h) + "/statuses"
+            "mastodon" -> {
+                val domain = mastodonDomain.trim().lowercase()
+                if (domain.isEmpty() || domain.contains('/')) {
+                    return@withContext ResolveResult.Failure(
+                        "no_domain",
+                        hint = "Mastodon timelines need the instance domain, e.g. mastodon.social.",
+                    )
+                }
+                realmPath("atmosphere", "/2/mastodon/") + domain +
+                    "/profile/" + encode(h) + "/statuses"
+            }
+            else -> return@withContext ResolveResult.Failure(
+                "unknown_network",
+                hint = "Timelines supported for: x, bluesky, threads, mastodon.",
+            )
+        }
+        get(path, "timeline:$network")
+    }
+
+    /**
      * Version / health-check hit used by the Validate button.
      * Tries `{base}/ai/version`, then `{base}/version` (custom domains).
      */

@@ -83,6 +83,34 @@ class SocialToolProvider : ToolProvider {
                     required = listOf("network", "query"),
                 ),
             )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_timeline",
+                description = "Read a social account's recent posts (tweets/statuses) via the user's " +
+                    "FxEmbed worker — no login needed. Use this when the user asks what an " +
+                    "account posts about: pass network=x and the handle, then summarize the " +
+                    "timeline. Supported networks: x (X/Twitter), bluesky, threads, mastodon " +
+                    "(REQUIRES the instance domain, e.g. mastodon.social). HARD LIMITS: some " +
+                    "X routes need a credential pool on the user's own worker and surface as " +
+                    "401/403/501 — report that honestly, never fake results. Never retry-loop: " +
+                    "one attempt per call.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "network" to ToolProperty(
+                            "string",
+                            "One of: x, bluesky, threads, mastodon.",
+                        ),
+                        "handle" to ToolProperty(
+                            "string",
+                            "The account handle without @, e.g. ice7887.",
+                        ),
+                        "domain" to ToolProperty(
+                            "string",
+                            "Mastodon instance domain (required when network=mastodon).",
+                        ),
+                    ),
+                    required = listOf("network", "handle"),
+                ),
+            )),
         )
     }
 
@@ -95,6 +123,7 @@ class SocialToolProvider : ToolProvider {
         val result = when (name) {
             "social_resolve" -> executeResolve(arguments, ctx)
             "social_search" -> executeSearch(arguments, ctx)
+            "social_timeline" -> executeTimeline(arguments, ctx)
             else -> errorJson(name, "unknown_tool", "Unknown tool: $name")
         }
         val elapsedMs = (System.nanoTime() - started) / 1_000_000L
@@ -104,12 +133,13 @@ class SocialToolProvider : ToolProvider {
         result
     }
 
-    override fun handles(name: String): Boolean = name in setOf("social_resolve", "social_search")
+    override fun handles(name: String): Boolean = name in setOf("social_resolve", "social_search", "social_timeline")
 
     override fun presentationMetadata(name: String): ToolPresentationMetadata? =
         when (name) {
             "social_resolve" -> ToolPresentationMetadata(displayName = "Social post")
             "social_search" -> ToolPresentationMetadata(displayName = "Social search")
+            "social_timeline" -> ToolPresentationMetadata(displayName = "Social timeline")
             else -> null
         }
 
@@ -188,6 +218,40 @@ class SocialToolProvider : ToolProvider {
             r.workerCode?.let { put("worker_code", it) }
             r.hint?.let { put("hint", it) }
         }.toString()
+
+    private suspend fun executeTimeline(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_timeline", "bad_arguments", "Arguments must be a JSON object.")
+        val network = (args["network"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val handle = (args["handle"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val domain = (args["domain"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_timeline", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.timeline(network, handle, domain)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_timeline")
+                put("network", network)
+                put("handle", handle)
+                put("timeline", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_timeline")
+                put("network", network)
+                put("handle", handle)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> buildJsonObject {
+                put("type", "social_timeline")
+                put("network", network)
+                put("handle", handle)
+                put("error", r.error)
+                r.httpStatus?.let { put("http_status", it) }
+                r.workerCode?.let { put("worker_code", it) }
+                r.hint?.let { put("hint", it) }
+            }.toString()
+        }
+    }
 
     private fun parseArgs(arguments: String): Map<String, JsonElement>? {
         return try {
