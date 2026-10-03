@@ -55,14 +55,29 @@ class BrowserSessionRegistry(
         }
     }
 
+    /**
+     * The session for a conversation, or null when none exists yet (B6).
+     * Unlike [get], this does NOT create a session — use it on read paths
+     * (watch controller) so merely viewing a chat never instantiates one.
+     */
+    fun peek(conversationId: String?): BrowserSession? {
+        val key = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
+        return sessions[key]
+    }
+
     /** All live session keys (for diagnostics). */
     fun keys(): Set<String> = sessions.keys.toSet()
 
-    /** Stop and drop a chat's browser session. The page is closed with it. */
+    /**
+     * Stop and drop a chat's browser session. The page is REALLY closed:
+     * the WebView is destroyed (B1), not just detached from the map.
+     */
     suspend fun close(conversationId: String?) {
         val key = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
         val session = sessions.remove(key) ?: return
         runCatching { session.close() }
+        // Destroy the WebView so Stop actually frees the page (was leaking).
+        runCatching { webViewBackend.destroySession(key) }
         DebugLog.d(TAG, "closed browser session for key=$key")
     }
 

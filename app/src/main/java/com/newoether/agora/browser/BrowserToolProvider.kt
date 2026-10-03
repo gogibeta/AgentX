@@ -698,8 +698,10 @@ class BrowserToolProvider(
             tool,
             "not_connected",
             reason ?: "The browser backend is not connected.",
-            "Fix the cause above (e.g. enter the tunnel URL and token, or reinstall " +
-                "Chromium in browser settings), then retry the tool.",
+            // B3: Chromium was removed from Settings → Browser (only System
+            // WebView + cloud tunnel remain) — never suggest reinstalling it.
+            "Fix the cause above (e.g. check the selected engine in Settings → " +
+                "Browser, or enter the tunnel URL and token), then retry the tool.",
         )
     }
 

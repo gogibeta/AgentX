@@ -43,7 +43,7 @@ class BrowserEngineManager(
         NOT_INSTALLED,
     }
 
-    private val _engines = MutableStateFlow<List<EngineState>>(emptyList())
+    private val _engines = MutableStateFlow<List<EngineState>>(buildEngineList())
     val engines: StateFlow<List<EngineState>> = _engines.asStateFlow()
 
     init {
@@ -52,25 +52,28 @@ class BrowserEngineManager(
 
     /** Recompute every engine's status. */
     fun refresh() {
-        scope.launch(Dispatchers.IO) {
-            _engines.value = listOf(
-                EngineState(
-                    mode = BrowserBackendMode.WEBVIEW,
-                    displayName = "System WebView",
-                    description = "Built into Android. Lightest, visible, touchable. Recommended.",
-                    kind = EngineKind.BUILT_IN,
-                    status = EngineStatus.READY,
-                ),
-                EngineState(
-                    mode = BrowserBackendMode.TUNNEL,
-                    displayName = "Cloud tunnel",
-                    description = "Your own browser relay. Configure URL + token below.",
-                    kind = EngineKind.CONFIGURED,
-                    status = if (prefs.tunnelUrl.value.isNotBlank()) EngineStatus.READY else EngineStatus.NOT_INSTALLED,
-                ),
-            )
-        }
+        // B9: seed synchronously — both engine states are computable without
+        // IO (tunnel URL is a StateFlow value read), so the settings page
+        // never flashes an empty group.
+        _engines.value = buildEngineList()
     }
+
+    private fun buildEngineList(): List<EngineState> = listOf(
+        EngineState(
+            mode = BrowserBackendMode.WEBVIEW,
+            displayName = "System WebView",
+            description = "Built into Android. Lightest, visible, touchable. Recommended.",
+            kind = EngineKind.BUILT_IN,
+            status = EngineStatus.READY,
+        ),
+        EngineState(
+            mode = BrowserBackendMode.TUNNEL,
+            displayName = "Cloud tunnel",
+            description = "Your own browser relay. Configure URL + token below.",
+            kind = EngineKind.CONFIGURED,
+            status = if (prefs.tunnelUrl.value.isNotBlank()) EngineStatus.READY else EngineStatus.NOT_INSTALLED,
+        ),
+    )
 
     /** Select the active engine. Takes effect on the next connect. */
     fun setActive(mode: BrowserBackendMode) {

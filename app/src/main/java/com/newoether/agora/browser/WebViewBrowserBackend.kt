@@ -40,7 +40,8 @@ import kotlinx.coroutines.sync.withLock
  *
  * Debugging is enabled lazily on first [ensureStarted], never unconditionally
  * at app start. The sandbox Chromium ([ChromiumLauncher]) is untouched and
- * remains the default until this backend passes device testing.
+ * remains available to the shell sandbox; System WebView is the browser
+ * default.
  */
 class WebViewBrowserBackend(
     private val appContext: Context,
@@ -71,6 +72,28 @@ class WebViewBrowserBackend(
 
     /** DevTools page-target id for a session's WebView. Null until created. */
     fun targetIdFor(sessionKey: String): String? = targetIds[sessionKey]
+
+    /**
+     * Destroy a session's WebView and drop its DevTools target (B1).
+     * Called on Stop so the page is REALLY closed — without this, stopped
+     * sessions leaked one WebView (+ renderer) each for the process lifetime.
+     * WebView.destroy() must run on the main thread.
+     */
+    suspend fun destroySession(sessionKey: String) {
+        val view = webViews.remove(sessionKey)
+        targetIds.remove(sessionKey)
+        if (view != null) {
+            withContext(Dispatchers.Main) {
+                try {
+                    (view.parent as? android.view.ViewGroup)?.removeView(view)
+                    view.destroy()
+                } catch (e: Exception) {
+                    DebugLog.w(TAG, "destroySession: ${e.javaClass.simpleName}")
+                }
+            }
+            DebugLog.d(TAG, "destroySession: destroyed WebView for $sessionKey")
+        }
+    }
 
     @Volatile
     private var serverSocket: ServerSocket? = null

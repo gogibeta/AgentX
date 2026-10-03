@@ -18,7 +18,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 
 /**
- * LOCAL browser backend: one long-lived sandbox Chromium with a persistent profile.
+ * Sandbox Chromium runtime for the SHELL tool (no longer a browser backend —
+ * the browser page offers only System WebView + cloud tunnel since beta11).
+ * One long-lived Chromium with a persistent profile.
  *
  * Scry-model rules (§1.3.1, adopted 2026-10-01):
  * - ONE persistent `--user-data-dir` under app-private storage

@@ -38,8 +38,12 @@ class DefaultBrowserWatchController(
      */
     override val activeConversationId = MutableStateFlow<String?>(null)
 
-    /** The browser session for the currently visible chat. */
-    private fun session() = registry.get(activeConversationId.value)
+    /** The browser session for the currently visible chat. Null-safe read:
+     * uses peek() so merely viewing a chat never creates a session (B6). */
+    private fun session() = registry.peek(activeConversationId.value)
+
+    /** The session, creating it if needed (for actions like open/stop). */
+    private fun sessionOrCreate() = registry.get(activeConversationId.value)
 
     private val _sessionActive = MutableStateFlow(false)
     override val sessionActive: StateFlow<Boolean> = _sessionActive.asStateFlow()
@@ -93,27 +97,35 @@ class DefaultBrowserWatchController(
                         it.category == StructuredDiagnosticCategory.BROWSER.wireName &&
                             (conversationId == null || it.sessionId == conversationId)
                     }
-                    if (last == null) {
+                    // B2: gate visibility on ACTUAL session state, not just
+                    // event age. An idle-but-connected browser (no events in
+                    // 60s) must not look dead after a chat switch.
+                    val liveSession = session()
+                    val connected = liveSession?.currentBackendMode() != null
+                    if (last == null && !connected) {
                         _sessionActive.value = false
                         _liveWebView.value = null
                         stopFrames()
                         return@collect
                     }
-                    val ageMs = System.currentTimeMillis() - last.ts
-                    val active = ageMs < SESSION_ACTIVE_WINDOW_MS
+                    val ageMs = if (last != null) System.currentTimeMillis() - last.ts else Long.MAX_VALUE
+                    // Active if recent event OR actually connected.
+                    val active = ageMs < SESSION_ACTIVE_WINDOW_MS || connected
                     _sessionActive.value = active
-                    _narration.value = narrate(last.name, last.outcome, last.detail)
-                    (last.detail["host"] ?: last.detail["url"])?.let { _pageUrl.value = it }
+                    if (last != null) {
+                        _narration.value = narrate(last.name, last.outcome, last.detail)
+                        (last.detail["host"] ?: last.detail["url"])?.let { _pageUrl.value = it }
+                    }
                     // Live view (System WebView backend): the panel embeds it
                     // directly instead of the screenshot stream.
-                    _liveWebView.value = runCatching { session().liveWebView() }.getOrNull()
+                    _liveWebView.value = runCatching { liveSession?.liveWebView() }.getOrNull()
                     if (active) startFrames() else stopFrames()
                 }
         }
         // Takeover flag + pending approvals.
         scope.launch(Dispatchers.Default) {
             while (isActive) {
-                _takeoverActive.value = runCatching { session().isTakeoverActive() }
+                _takeoverActive.value = runCatching { session()?.isTakeoverActive() }
                     .getOrDefault(false)
                 delay(1_000L)
             }
@@ -163,7 +175,7 @@ class DefaultBrowserWatchController(
                 // event (making the session look "active") while no session
                 // exists; capturing then only adds -32001 noise (III.2).
                 val liveSession = session()
-                if (liveSession.currentBackendMode() == null) {
+                if (liveSession?.currentBackendMode() == null) {
                     delay(FRAME_INTERVAL_MS)
                     continue
                 }
@@ -214,6 +226,14 @@ class DefaultBrowserWatchController(
             _sessionActive.value = false
             _panelHidden.value = false
             _liveWebView.value = null
+            // B7: clear stale content so the panel never shows the previous
+            // session's URL/title/frame after Stop.
+            _screenshot.value = null
+            _pageUrl.value = ""
+            _pageTitle.value = ""
+            _narration.value = ""
+            _takeoverActive.value = false
+            _pendingApproval.value = null
             stopFrames()
         }
     }
@@ -222,7 +242,7 @@ class DefaultBrowserWatchController(
     override fun onGoBack() {
         scope.launch(Dispatchers.IO) {
             val wentBack = runCatching {
-                session().goBack(FRAME_TIMEOUT_MS)
+                session()?.goBack(FRAME_TIMEOUT_MS) ?: false
             }.getOrDefault(false)
             DebugLog.d(TAG, "browser back: $wentBack")
         }
@@ -246,26 +266,34 @@ class DefaultBrowserWatchController(
             // Connect the chat's session (no-op when already connected).
             // The connect reports a diagnostic event, which flips
             // sessionActive and makes the panel appear.
-            val ok = runCatching { session().ensureConnected() }
+            // Use sessionOrCreate: opening the browser IS a creation action.
+            val s = sessionOrCreate()
+            val ok = runCatching { s.ensureConnected() }
                 .onFailure { DebugLog.w(TAG, "openBrowser connect failed: ${it.message}") }
                 .getOrDefault(false)
             if (ok) {
                 // Manual open (no agent running): no diagnostic events will
                 // arrive to refresh the live view, so push it directly.
-                _liveWebView.value = runCatching { session().liveWebView() }.getOrNull()
+                _liveWebView.value = runCatching { s.liveWebView() }.getOrNull()
                 _sessionActive.value = true
                 startFrames()
+            } else {
+                // B8: surface the failure instead of an eternal placeholder.
+                // The dialog observes sessionActive=false + narration to show
+                // the hint; record the connect failure for display.
+                _narration.value = s.lastConnectFailure()
+                    ?: "Could not start the browser. Check Settings → Browser."
             }
         }
         DebugLog.d(TAG, "Browser opened for chat")
     }
 
     override fun onTakeOver() {
-        session().setTakeover(true)
+        session()?.setTakeover(true)
     }
 
     override fun onResume() {
-        session().setTakeover(false)
+        session()?.setTakeover(false)
     }
 
     override fun onApprove(requestId: String) {

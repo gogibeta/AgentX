@@ -46,7 +46,7 @@ data class TunnelValidation(
  * pattern, so the 800-line-capped SettingsManager/SettingsRepository stay untouched.
  *
  * - [browserEnabled]: master toggle — the browser tools are only offered when on.
- * - [backendMode]: LOCAL (default) or TUNNEL (§1.3.0).
+ * - [backendMode]: WEBVIEW (default) or TUNNEL (§1.3.0).
  * - [tunnelUrl]: user-pasted CDP-over-HTTPS endpoint. The app ships no default.
  * - Client token: encrypted at rest via [SecretCrypto] (Android Keystore-backed),
  *   never logged, never placed in diagnostic output.

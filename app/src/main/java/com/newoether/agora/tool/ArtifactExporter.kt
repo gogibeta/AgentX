@@ -171,7 +171,7 @@ object ArtifactExporter {
                 trim == "---" || trim == "***" || trim == "___" -> {
                     blocks.add(PdfBlock.Divider); i++
                 }
-                trim.startsWith("|") && i + 1 < lines.size && TABLE_SEP.matches(lines[i + 1]) -> {
+                ('|' in trim) && i + 1 < lines.size && TABLE_SEP.matches(lines[i + 1].trim()) -> {
                     val header = splitTableRow(trim)
                     val rows = ArrayList<List<String>>()
                     i += 2
@@ -179,17 +179,16 @@ object ArtifactExporter {
                         rows.add(splitTableRow(lines[i].trim()))
                         i++
                     }
-                    if (rows.isNotEmpty()) blocks.add(PdfBlock.Table(header, rows))
+                    // Render header-only tables too (B7) — a header with no
+                    // rows is still content, not nothing.
+                    blocks.add(PdfBlock.Table(header, rows))
                 }
                 trim.startsWith("- ") || trim.startsWith("* ") -> {
                     blocks.add(PdfBlock.Bullet(parseSpans(trim.substring(2).trim()))); i++
                 }
                 Regex("""^\d+[.)]\s""").containsMatchIn(trim) -> {
                     val number = trim.takeWhile { it.isDigit() }.toIntOrNull()
-                    val content = trim.substringAfter(' ').let {
-                        // "1. text" -> drop "1." already consumed via takeWhile+dot?
-                        trim.replaceFirst(Regex("""^\d+[.)]\s*"""), "")
-                    }
+                    val content = trim.replaceFirst(Regex("""^\d+[.)]\s*"""), "")
                     blocks.add(PdfBlock.Bullet(parseSpans(content), number)); i++
                 }
                 IMAGE_REF.containsMatchIn(trim) && trim.startsWith("![") -> {
@@ -256,6 +255,12 @@ object ArtifactExporter {
         val caption = Paint().apply {
             typeface = Typeface.DEFAULT; textSize = 9.5f; color = MUTED; isAntiAlias = true
         }
+        // Dedicated centered caption paint (B10): never mutate the shared
+        // caption's textAlign — exception-unsafe.
+        val captionCentered = Paint().apply {
+            typeface = Typeface.DEFAULT; textSize = 9.5f; color = MUTED; isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+        }
         val footer = Paint().apply {
             typeface = Typeface.DEFAULT; textSize = 9f; color = MUTED; isAntiAlias = true
             textAlign = Paint.Align.CENTER
@@ -271,7 +276,9 @@ object ArtifactExporter {
         else -> paints.body
     }
 
-    /** Greedy word wrap preserving per-span paints. */
+    /** Greedy word wrap preserving per-span paints. Overlong single words
+     * (URLs, tokens) are broken at character level so they never overflow
+     * the right margin. */
     internal fun layoutSpans(
         spans: List<TextSpan>,
         paints: Paints,
@@ -281,7 +288,24 @@ object ArtifactExporter {
         for (span in spans) {
             val paint = paintFor(span, paints)
             for (word in span.text.split(' ')) {
-                if (word.isNotEmpty()) words.add(word to paint)
+                if (word.isEmpty()) continue
+                // Break words wider than the column into fitting chunks.
+                if (paint.measureText(word) > maxWidthPx) {
+                    var start = 0
+                    while (start < word.length) {
+                        var end = start + 1
+                        while (end <= word.length &&
+                            paint.measureText(word.substring(start, end)) <= maxWidthPx
+                        ) end++
+                        // end overshot by one (or hit word end)
+                        if (end <= word.length) end--
+                        if (end <= start) end = start + 1 // single char wider than column
+                        words.add(word.substring(start, end) to paint)
+                        start = end
+                    }
+                } else {
+                    words.add(word to paint)
+                }
             }
         }
         val lines = ArrayList<List<Pair<String, Paint>>>()
@@ -302,18 +326,21 @@ object ArtifactExporter {
         return lines
     }
 
+    /** Result of [savePdf]: page count + whether the 100-page cap truncated output. */
+    data class PdfResult(val pages: Int, val truncated: Boolean)
+
     /**
      * Render [markdown] as a paginated PDF report into [file].
      * [images] maps `![alt](src)` filenames to decoded bitmaps (resolved by the
      * caller from cache/SAF); missing keys render as a caption line instead of
-     * breaking the document. Returns the page count.
+     * breaking the document. Returns the page count and cap flag.
      */
     fun savePdf(
         file: File,
         title: String,
         markdown: String,
         images: Map<String, Bitmap> = emptyMap(),
-    ): Int {
+    ): PdfResult {
         val totalStartNanos = System.nanoTime()
         val parseStartNanos = System.nanoTime()
         val paints = Paints()
@@ -327,11 +354,16 @@ object ArtifactExporter {
         pageNum = 1
         var y = MARGIN_TOP.toFloat()
         var capped = false
+        // Tracks whether the current `page` was already finished (cap path).
+        // When capped, newPage() finishes the page but creates no new one —
+        // the trailing drawFooter/finishPage must be skipped for that page.
+        var pageFinished = false
         fun newPage() {
             drawFooter(page, paints, pageNum)
             document.finishPage(page)
             if (pageNum >= MAX_PDF_PAGES) {
                 capped = true
+                pageFinished = true
                 return
             }
             pageNum++
@@ -347,9 +379,13 @@ object ArtifactExporter {
                 if (capped) break
                 when (block) {
                     is PdfBlock.Title -> {
-                        need(paints.title.textSize * 1.6f + 14f)
-                        page.canvas.drawText(block.text, MARGIN_SIDE.toFloat(), y + paints.title.textSize, paints.title)
-                        y += paints.title.textSize * 1.6f
+                        val titleLines = layoutSpans(listOf(TextSpan(block.text)), paints, contentW)
+                        for (line in titleLines) {
+                            if (capped) break
+                            need(paints.title.textSize * 1.6f)
+                            drawLine(page, line, MARGIN_SIDE.toFloat(), y + paints.title.textSize, paints.title, paints)
+                            y += paints.title.textSize * 1.6f
+                        }
                         page.canvas.drawLine(
                             MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.rule,
                         )
@@ -385,7 +421,9 @@ object ArtifactExporter {
                         isCapped = { capped })
                     is PdfBlock.Image -> {
                         val bitmap = images[block.key]
-                        if (bitmap == null || bitmap.isRecycled) {
+                        // B11: guard against 0-size bitmaps (division by zero
+                        // → Infinity scale → degenerate drawBitmap).
+                        if (bitmap == null || bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) {
                             need(paints.caption.textSize * 1.5f)
                             val note = "[image missing: ${block.alt.ifBlank { block.key }}]"
                             page.canvas.drawText(note, MARGIN_SIDE.toFloat(), y + paints.caption.textSize, paints.caption)
@@ -402,8 +440,7 @@ object ArtifactExporter {
                             page.canvas.drawBitmap(bitmap, null, dst, Paint().apply { isAntiAlias = true; isFilterBitmap = true })
                             y += h + 4f
                             val caption = block.alt.ifBlank { block.key }
-                            page.canvas.drawText(caption, PAGE_W / 2f, y + paints.caption.textSize, paints.caption.apply { textAlign = Paint.Align.CENTER })
-                            paints.caption.textAlign = Paint.Align.LEFT
+                            page.canvas.drawText(caption, PAGE_W / 2f, y + paints.caption.textSize, paints.captionCentered)
                             y += paints.caption.textSize * 2.2f
                         }
                     }
@@ -418,10 +455,16 @@ object ArtifactExporter {
                     PdfBlock.Gap -> y += 6f
                 }
             }
-            drawFooter(page, paints, pageNum)
-            document.finishPage(page)
+            // Skip the trailing footer/finish when the cap path already
+            // finished the current page (B1: double finishPage on a stale page).
+            if (!pageFinished) {
+                drawFooter(page, paints, pageNum)
+                document.finishPage(page)
+            }
             val renderMs = (System.nanoTime() - renderStartNanos) / 1_000_000L
             val writeStartNanos = System.nanoTime()
+            // B12: ensure parent dirs exist (saveMarkdown does this; savePdf didn't).
+            file.parentFile?.mkdirs()
             FileOutputStream(file).use { document.writeTo(it) }
             val writeMs = (System.nanoTime() - writeStartNanos) / 1_000_000L
             // Structured PDF timing diagnostics: phase durations and sizes only —
@@ -442,7 +485,7 @@ object ArtifactExporter {
                     "capped" to capped.toString(),
                 ),
             )
-            return pageNum
+            return PdfResult(pageNum, capped)
         } catch (e: Exception) {
             StructuredDiagnostics.emit(
                 category = StructuredDiagnosticCategory.TOOL,

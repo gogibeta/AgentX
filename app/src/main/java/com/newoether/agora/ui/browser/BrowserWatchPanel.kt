@@ -425,10 +425,13 @@ fun BrowserPopupDialog(
                     .padding(bottom = 8.dp),
             ) {
                 if (webView != null) {
-                    AndroidView(
-                        factory = { ctx ->
+                    // B4: stable factory keyed on the WebView instance — a
+                    // fresh lambda every recomposition made reparent timing
+                    // nondeterministic.
+                    val panelFactory = remember(webView) {
+                        { ctx: android.content.Context ->
                             android.widget.FrameLayout(ctx).also { container ->
-                                val liveView = webView!!
+                                val liveView = webView
                                 (liveView.parent as? android.view.ViewGroup)
                                     ?.removeView(liveView)
                                 container.addView(
@@ -439,7 +442,10 @@ fun BrowserPopupDialog(
                                     ),
                                 )
                             }
-                        },
+                        }
+                    }
+                    AndroidView(
+                        factory = panelFactory,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
@@ -471,16 +477,20 @@ private fun BrowserFrame(
 ) {
     val liveView: android.view.View? = webView
     if (liveView != null) {
+        // B4: stable factory keyed on the view — see the panel holder above.
+        val frameFactory = remember(liveView) {
+            {
+                (liveView.parent as? android.view.ViewGroup)?.removeView(liveView)
+                liveView
+            }
+        }
         AndroidView(
             // The same live engine view is reparented between the panel and
             // the fullscreen dialog. Detach defensively: compose may create
             // this AndroidView before the dialog's holder is disposed (or vice
             // versa), and addView() on an already-parented view crashes the
             // app with "The specified child already has a parent".
-            factory = {
-                (liveView.parent as? android.view.ViewGroup)?.removeView(liveView)
-                liveView
-            },
+            factory = frameFactory,
             modifier = modifier.then(frameModifier)
                 .clip(RoundedCornerShape(12.dp)),
         )

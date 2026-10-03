@@ -85,6 +85,10 @@ class SocialToolProvider : ToolProvider {
                             "string",
                             "X only: latest|top|media (default latest).",
                         ),
+                        "lang" to ToolProperty(
+                            "string",
+                            "Translate results inline, e.g. es.",
+                        ),
                     ),
                     required = listOf("network", "query"),
                 ),
@@ -136,6 +140,10 @@ class SocialToolProvider : ToolProvider {
                             "string",
                             "Translate post text inline, e.g. es.",
                         ),
+                        "group_threads" to ToolProperty(
+                            "string",
+                            "\"true\" to cluster X timeline items into threads.",
+                        ),
                     ),
                     required = listOf("network", "handle"),
                 ),
@@ -178,6 +186,10 @@ class SocialToolProvider : ToolProvider {
                             "string",
                             "Opaque page token from the previous call's Next: line.",
                         ),
+                        "lang" to ToolProperty(
+                            "string",
+                            "Translate post text inline, e.g. es.",
+                        ),
                     ),
                     required = listOf("tweet_id"),
                 ),
@@ -186,8 +198,9 @@ class SocialToolProvider : ToolProvider {
                 name = "social_conversation",
                 description = "X conversation: the post plus its ancestors and paginated direct " +
                     "replies — for reading both sides of a debate. ranking_mode=likes|recency. " +
-                    "HARD LIMIT: needs a credential pool on the user's own worker (404 without " +
-                    "it) — surface honestly, never fake.",
+                    "HARD LIMIT: X shut the guest conversation path — this endpoint is DEAD " +
+                    "upstream (404 on every worker, no credential pool can fix it). Prefer " +
+                    "social_thread (author chain) + social_quotes instead.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "tweet_id" to ToolProperty(
@@ -230,6 +243,10 @@ class SocialToolProvider : ToolProvider {
                             "string",
                             "Opaque page token from the previous call's Next: line.",
                         ),
+                        "lang" to ToolProperty(
+                            "string",
+                            "Translate post text inline, e.g. es.",
+                        ),
                     ),
                     required = listOf("handle", "query"),
                 ),
@@ -259,17 +276,42 @@ class SocialToolProvider : ToolProvider {
             )),
             ToolDefinition(function = ToolFunction(
                 name = "social_rss",
-                description = "An X account's RSS feed (/twitter/{handle}/feed.xml) — the cheapest " +
-                    "way to monitor an account for new posts or poll for changes. Returns raw " +
-                    "RSS XML.",
+                description = "A social account's RSS/Atom feed — the cheapest way to monitor an " +
+                    "account for new posts or poll for changes. feed: feed.xml (X RSS, " +
+                    "default), feed.atom.xml (X Atom), media.xml (X media-only RSS), " +
+                    "media.atom.xml (X media-only Atom). network=bluesky gives the Bluesky " +
+                    "profile RSS. Returns raw feed XML.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "handle" to ToolProperty(
                             "string",
                             "The account handle without @, e.g. ice7887.",
                         ),
+                        "feed" to ToolProperty(
+                            "string",
+                            "feed.xml, feed.atom.xml, media.xml, or media.atom.xml (default feed.xml).",
+                        ),
+                        "network" to ToolProperty(
+                            "string",
+                            "x (default) or bluesky.",
+                        ),
                     ),
                     required = listOf("handle"),
+                ),
+            )),
+            ToolDefinition(function = ToolFunction(
+                name = "social_oembed",
+                description = "oEmbed for any X post URL — returns title/author/html for rich link " +
+                    "previews in chat. Works without a credential pool. Pass the full " +
+                    "https://x.com/.../status/... URL.",
+                parameters = ToolParameters(
+                    properties = mapOf(
+                        "url" to ToolProperty(
+                            "string",
+                            "Full https:// URL of the X post.",
+                        ),
+                    ),
+                    required = listOf("url"),
                 ),
             )),
         )
@@ -291,6 +333,7 @@ class SocialToolProvider : ToolProvider {
             "social_profile_search" -> executeProfileSearch(arguments, ctx)
             "social_profile_media" -> executeProfileMedia(arguments, ctx)
             "social_rss" -> executeRss(arguments, ctx)
+            "social_oembed" -> executeOembed(arguments, ctx)
             else -> errorJson(name, "unknown_tool", "Unknown tool: $name")
         }
         val elapsedMs = (System.nanoTime() - started) / 1_000_000L
@@ -303,7 +346,7 @@ class SocialToolProvider : ToolProvider {
     override fun handles(name: String): Boolean = name in setOf(
         "social_resolve", "social_search", "social_timeline", "social_thread",
         "social_quotes", "social_conversation", "social_profile_search",
-        "social_profile_media", "social_rss",
+        "social_profile_media", "social_rss", "social_oembed",
     )
 
     override fun presentationMetadata(name: String): ToolPresentationMetadata? =
@@ -317,6 +360,7 @@ class SocialToolProvider : ToolProvider {
             "social_profile_search" -> ToolPresentationMetadata(displayName = "Social profile search")
             "social_profile_media" -> ToolPresentationMetadata(displayName = "Social media")
             "social_rss" -> ToolPresentationMetadata(displayName = "Social RSS feed")
+            "social_oembed" -> ToolPresentationMetadata(displayName = "Social link preview")
             else -> null
         }
 
@@ -358,9 +402,10 @@ class SocialToolProvider : ToolProvider {
         val query = (args["query"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val domain = (args["domain"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val feed = (args["feed"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val lang = (args["lang"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val client = clientFor(ctx)
             ?: return errorJson("social_search", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.search(network, query, domain, feed)) {
+        return when (val r = client.search(network, query, domain, feed, lang)) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_search")
                 put("network", network)
@@ -408,9 +453,11 @@ class SocialToolProvider : ToolProvider {
             .equals("true", ignoreCase = true)
         val since = (args["since"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val lang = (args["lang"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val groupThreads = (args["group_threads"] as? JsonPrimitive)?.content?.trim()
+            .equals("true", ignoreCase = true)
         val client = clientFor(ctx)
             ?: return errorJson("social_timeline", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.timeline(network, handle, domain, count, cursor, withReplies, since, lang)) {
+        return when (val r = client.timeline(network, handle, domain, count, cursor, withReplies, since, lang, groupThreads)) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_timeline")
                 put("network", network)
@@ -472,9 +519,10 @@ class SocialToolProvider : ToolProvider {
         val tweetId = (args["tweet_id"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val count = (args["count"] as? JsonPrimitive)?.content?.trim()?.toIntOrNull() ?: 20
         val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val lang = (args["lang"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val client = clientFor(ctx)
             ?: return errorJson("social_quotes", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.quotes(tweetId, count, cursor)) {
+        return when (val r = client.quotes(tweetId, count, cursor, lang)) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_quotes")
                 put("tweet_id", tweetId)
@@ -536,9 +584,10 @@ class SocialToolProvider : ToolProvider {
         val feed = (args["feed"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val count = (args["count"] as? JsonPrimitive)?.content?.trim()?.toIntOrNull() ?: 20
         val cursor = (args["cursor"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val lang = (args["lang"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val client = clientFor(ctx)
             ?: return errorJson("social_profile_search", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.profileSearch(handle, query, feed, count, cursor)) {
+        return when (val r = client.profileSearch(handle, query, feed, count, cursor, lang)) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_profile_search")
                 put("handle", handle)
@@ -599,9 +648,11 @@ class SocialToolProvider : ToolProvider {
     private suspend fun executeRss(arguments: String, ctx: GenerationContext): String {
         val args = parseArgs(arguments) ?: return errorJson("social_rss", "bad_arguments", "Arguments must be a JSON object.")
         val handle = (args["handle"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val feed = (args["feed"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val network = (args["network"] as? JsonPrimitive)?.content?.trim().orEmpty()
         val client = clientFor(ctx)
             ?: return errorJson("social_rss", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
-        return when (val r = client.rssFeed(handle)) {
+        return when (val r = client.rssFeed(handle, feed.ifBlank { "feed.xml" }, network.ifBlank { "x" })) {
             is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
                 put("type", "social_rss")
                 put("handle", handle)
@@ -622,6 +673,28 @@ class SocialToolProvider : ToolProvider {
                 r.workerCode?.let { put("worker_code", it) }
                 r.hint?.let { put("hint", it) }
             }.toString()
+        }
+    }
+
+    private suspend fun executeOembed(arguments: String, ctx: GenerationContext): String {
+        val args = parseArgs(arguments) ?: return errorJson("social_oembed", "bad_arguments", "Arguments must be a JSON object.")
+        val url = (args["url"] as? JsonPrimitive)?.content?.trim().orEmpty()
+        val client = clientFor(ctx)
+            ?: return errorJson("social_oembed", "not_configured", "Social is not configured: set your worker URL in Settings → Social and validate it.")
+        return when (val r = client.oembed(url)) {
+            is FxEmbedClient.ResolveResult.Success -> buildJsonObject {
+                put("type", "social_oembed")
+                put("url", url)
+                put("oembed", r.content)
+                put("truncated", r.truncated)
+            }.toString()
+            is FxEmbedClient.ResolveResult.UpstreamEmpty -> buildJsonObject {
+                put("type", "social_oembed")
+                put("url", url)
+                put("error", "upstream_empty")
+                put("message", r.message + " Do not retry — this is a valid outcome, not a bug.")
+            }.toString()
+            is FxEmbedClient.ResolveResult.Failure -> failureJson("social_oembed", url, r)
         }
     }
 

@@ -101,19 +101,21 @@ class FxEmbedClient(
         query: String,
         mastodonDomain: String = "",
         feed: String = "",
+        lang: String = "",
     ): ResolveResult = withContext(Dispatchers.IO) {
         val q = query.trim()
         if (q.isEmpty()) {
             return@withContext ResolveResult.Failure("no_query", hint = "Pass a non-empty search query.")
         }
+        val langParam = if (lang.isNotBlank()) "&lang=" + encode(lang.trim()) else ""
         val path = when (network.lowercase()) {
             "x", "twitter" -> {
                 val f = feed.lowercase().takeIf { it in setOf("latest", "top", "media") } ?: "latest"
-                aiPath("/2/search?q=") + encode(q) + "&feed=" + f
+                aiPath("/2/search?q=") + encode(q) + "&feed=" + f + langParam
             }
-            "bluesky", "bsky" -> aiPath("/2/bsky/search?q=") + encode(q)
+            "bluesky", "bsky" -> aiPath("/2/bsky/search?q=") + encode(q) + langParam
             // Documented under /atmosphere/2 in §2.4 (no /ai twin): JSON result.
-            "threads" -> realmPath("atmosphere", "/2/threads/search?q=") + encode(q)
+            "threads" -> realmPath("atmosphere", "/2/threads/search?q=") + encode(q) + langParam
             "mastodon" -> {
                 val domain = mastodonDomain.trim().lowercase()
                 if (domain.isEmpty() || domain.contains('/')) {
@@ -125,7 +127,7 @@ class FxEmbedClient(
                 // NOTE: /search?q= (statuses) always returns results:[] for anonymous
                 // callers — Mastodon only serves status search to authenticated users.
                 // search/users?q= DOES return hits, so people search is the useful one.
-                realmPath("atmosphere", "/2/mastodon/") + domain + "/search/users?q=" + encode(q)
+                realmPath("atmosphere", "/2/mastodon/") + domain + "/search/users?q=" + encode(q) + langParam
             }
             "tiktok" -> return@withContext ResolveResult.Failure(
                 "search_not_supported",
@@ -163,6 +165,7 @@ class FxEmbedClient(
         withReplies: Boolean = false,
         since: String = "",
         lang: String = "",
+        groupThreads: Boolean = false,
     ): ResolveResult = withContext(Dispatchers.IO) {
         val h = handle.trim().trimStart('@')
         if (h.isEmpty()) {
@@ -177,6 +180,7 @@ class FxEmbedClient(
             if (withReplies) append("&with_replies=1")
             if (since.isNotBlank()) append("&since=").append(encode(since))
             if (lang.isNotBlank()) append("&lang=").append(encode(lang))
+            if (groupThreads) append("&groupthreads=1")
         }
         val path = when (network.lowercase()) {
             "x", "twitter" -> aiPath("/2/profile/") + encode(h) + "/statuses" + params
@@ -245,8 +249,11 @@ class FxEmbedClient(
 
     /**
      * X conversation: post + ancestors + paginated direct replies (§C3).
-     * NEEDS a credential pool on the worker (404 here, 200 on production) —
-     * surfaced honestly via the normal error path.
+     *
+     * DEAD UPSTREAM — X shut the guest conversation path (404 on the worker
+     * AND on production; verified Oct 2026). No credential pool can fix it.
+     * Prefer [thread] (author chain, works) + [quotes] (works via relay).
+     * Kept for forward-compatibility in case X reopens the path.
      */
     suspend fun conversation(
         tweetId: String,
@@ -280,6 +287,7 @@ class FxEmbedClient(
         feed: String = "",
         count: Int = 20,
         cursor: String = "",
+        lang: String = "",
     ): ResolveResult = withContext(Dispatchers.IO) {
         val h = handle.trim().trimStart('@')
         val q = query.trim()
@@ -295,6 +303,7 @@ class FxEmbedClient(
             append("&feed=").append(f)
             append("&count=").append(count.coerceIn(1, 100))
             if (cursor.isNotBlank()) append("&cursor=").append(encode(cursor))
+            if (lang.isNotBlank()) append("&lang=").append(encode(lang.trim()))
         }
         get(aiPath("/2/profile/") + encode(h) + "/search" + params, "profile_search")
     }
@@ -323,10 +332,28 @@ class FxEmbedClient(
     }
 
     /**
-     * X profile RSS feed (§D2): the best polling primitive — any UA, poll
-     * with If-None-Match / If-Modified-Since. Returns raw RSS XML.
+     * oEmbed for any X post URL (§C10): returns oEmbed JSON
+     * (title/author/html) — the documented "link previews for chat" recipe.
+     * Works WITHOUT a credential pool.
      */
-    suspend fun rssFeed(handle: String): ResolveResult = withContext(Dispatchers.IO) {
+    suspend fun oembed(url: String): ResolveResult = withContext(Dispatchers.IO) {
+        val gateError = gateTargetUrl(url)
+        if (gateError != null) return@withContext gateError
+        get(aiPath("/2/owoembed?url=") + encode(url.trim()), "oembed")
+    }
+
+    /**
+     * Profile RSS/Atom feeds (§D2/E3): the best polling primitive — any UA.
+     *
+     * @param feed one of: feed.xml (X RSS), feed.atom.xml (X Atom),
+     *   media.xml (X media-only RSS), media.atom.xml (X media-only Atom),
+     *   bsky.xml (Bluesky profile RSS via /bluesky realm).
+     */
+    suspend fun rssFeed(
+        handle: String,
+        feed: String = "feed.xml",
+        network: String = "x",
+    ): ResolveResult = withContext(Dispatchers.IO) {
         val h = handle.trim().trimStart('@')
         if (h.isEmpty()) {
             return@withContext ResolveResult.Failure(
@@ -334,8 +361,16 @@ class FxEmbedClient(
                 hint = "Pass the account handle, e.g. ice7887.",
             )
         }
-        // /twitter realm has no /ai twin; custom domains keep the path as-is.
-        val path = (if (useBareRealm) "" else "/twitter") + "/" + encode(h) + "/feed.xml"
+        val f = feed.trim().lowercase().takeIf {
+            it in setOf("feed.xml", "feed.atom.xml", "media.xml", "media.atom.xml", "bsky.xml")
+        } ?: "feed.xml"
+        val path = if (network.lowercase() in setOf("bluesky", "bsky") || f == "bsky.xml") {
+            // Bluesky profile RSS (§E3); /bluesky realm has no /ai twin.
+            (if (useBareRealm) "" else "/bluesky") + "/profile/" + encode(h) + "/feed.xml"
+        } else {
+            // /twitter realm has no /ai twin; custom domains keep the path as-is.
+            (if (useBareRealm) "" else "/twitter") + "/" + encode(h) + "/" + f
+        }
         get(path, "rss")
     }
 
@@ -389,6 +424,15 @@ class FxEmbedClient(
         val envelope = parseEnvelope(body)
         val workerCode = envelope?.first
         val workerMessage = envelope?.second.orEmpty()
+        // 204 = ?since= polling found nothing new. This is the CHEAPEST
+        // successful poll (empty body by design) — NOT an error. Tell the
+        // model to poll again later instead of reporting a failure.
+        if (status == 204) {
+            return ResolveResult.UpstreamEmpty(
+                "Nothing new since the requested timestamp — poll again later. " +
+                    "This is a normal, successful poll outcome, not an error.",
+            )
+        }
         if (status == 404 || workerCode == 404) {
             return ResolveResult.UpstreamEmpty(
                 workerMessage.ifBlank { "Upstream has nothing for this URL (deleted or private post). This is not a bug — do not retry." },

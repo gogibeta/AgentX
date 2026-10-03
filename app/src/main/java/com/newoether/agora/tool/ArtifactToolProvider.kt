@@ -67,7 +67,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                                 "rendering from content. Use this for PPTX files you generated " +
                                 "yourself in the sandbox (python-pptx) and for PDFs that need " +
                                 "layouts the built-in renderer cannot do. HARD LIMIT: the file " +
-                                "must be under 1,000,000 bytes (1 MB) or registration fails " +
+                                "must be under 50,000,000 bytes (50 MB) or registration fails " +
                                 "with source_too_large — compress images (JPEG q70-75) and " +
                                 "downscale before building; check size with ls -l first.",
                         ),
@@ -127,18 +127,25 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
             )
             val ext = format
             val fileName = (str("filename")?.takeIf {
-                it.lowercase().endsWith(".$ext") && !it.contains("..") && !it.contains("/")
+                it.lowercase().endsWith(".$ext") && !it.contains("..") && !it.contains("/") &&
+                    it.length <= ArtifactExporter.MAX_FILENAME_LENGTH
             } ?: ArtifactExporter.sanitizeFileName(title, ext))
 
             val bytes: ByteArray
             val mime: String
+            var pdfPages = 0
+            var pdfTruncated = false
             if (format == "pdf") {
                 val tmp = File.createTempFile("agentx_artifact", ".pdf", app.cacheDir)
                 try {
                     val images = resolvePdfImages(content, ctx)
-                    ArtifactExporter.savePdf(tmp, title, content, images)
+                    val pdfResult = ArtifactExporter.savePdf(tmp, title, content, images)
                     images.values.forEach { if (!it.isRecycled) it.recycle() }
                     bytes = tmp.readBytes()
+                    // B13: surface page count + cap flag so the agent knows
+                    // when a report was truncated at 100 pages.
+                    pdfPages = pdfResult.pages
+                    pdfTruncated = pdfResult.truncated
                 } finally {
                     tmp.delete()
                 }
@@ -165,7 +172,11 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("sizeBytes", bytes.size)
                     put("saved_to", "workspace")
                     put("uri", docUri)
-                    if (format == "pdf") put("render", "builtin")
+                    if (format == "pdf") {
+                        put("render", "builtin")
+                        put("pages", pdfPages)
+                        if (pdfTruncated) put("truncated", true)
+                    }
                 }.toString()
             }
             val dir = File(app.filesDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
@@ -178,7 +189,11 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                 put("sizeBytes", bytes.size)
                 put("saved_to", "app storage (pick an Agent workspace folder in Settings to choose where files go)")
                 put("path", File(dir, fileName).absolutePath)
-                if (format == "pdf") put("render", "builtin")
+                if (format == "pdf") {
+                    put("render", "builtin")
+                    put("pages", pdfPages)
+                    if (pdfTruncated) put("truncated", true)
+                }
             }.toString()
         } catch (e: Exception) {
             errorJson("write_error", e.message.orEmpty())
