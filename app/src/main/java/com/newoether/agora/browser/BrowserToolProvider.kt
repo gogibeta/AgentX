@@ -280,7 +280,7 @@ class BrowserToolProvider(
             return ActionOutcome("navigate", errorJson("browser_navigate", "bad_url", "Only http(s) URLs are allowed."))
         }
         if (!session.ensureConnected()) {
-            return ActionOutcome("navigate", notConnected("browser_navigate"))
+            return ActionOutcome("navigate", notConnected(session, "browser_navigate"))
         }
         val loaded = session.navigate(url, ctx.toolTimeoutMs)
         return ActionOutcome(
@@ -300,7 +300,7 @@ class BrowserToolProvider(
 
     private suspend fun snapshot(session: BrowserSession, ctx: GenerationContext): ActionOutcome {
         if (!session.ensureConnected()) {
-            return ActionOutcome("snapshot", notConnected("browser_snapshot"))
+            return ActionOutcome("snapshot", notConnected(session, "browser_snapshot"))
         }
         val snap = captureFreshSnapshot(session, ctx) ?: return ActionOutcome(
             "snapshot",
@@ -355,11 +355,11 @@ class BrowserToolProvider(
         val ref = argStr(args(arguments), "ref")
             ?: return ActionOutcome("click", errorJson("browser_click", "no_ref", ""))
         if (!session.ensureConnected()) {
-            return ActionOutcome("click", notConnected("browser_click"))
+            return ActionOutcome("click", notConnected(session, "browser_click"))
         }
         val binding = session.resolveRef(ref)
             ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
-        val center = elementCenter(binding, ctx.toolTimeoutMs)
+        val center = elementCenter(session, binding, ctx.toolTimeoutMs)
             ?: return ActionOutcome("click", errorJson("browser_click", "not_visible", "Element $ref has no visible bounds."))
         session.mouseClick(center.first, center.second, ctx.toolTimeoutMs)
         val snap = captureFreshSnapshot(session, ctx)
@@ -392,7 +392,7 @@ class BrowserToolProvider(
             return ActionOutcome("fill", errorJson("browser_fill", "credential_not_found", "No credential for id."))
         }
         if (!session.ensureConnected()) {
-            return ActionOutcome("fill", notConnected("browser_fill"))
+            return ActionOutcome("fill", notConnected(session, "browser_fill"))
         }
         val binding = session.resolveRef(ref)
             ?: return ActionOutcome("fill", errorJson("browser_fill", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
@@ -419,7 +419,7 @@ class BrowserToolProvider(
         val key = argStr(args(arguments), "key")
             ?: return ActionOutcome("key", errorJson("browser_key", "no_key", ""))
         if (!session.ensureConnected()) {
-            return ActionOutcome("key", notConnected("browser_key"))
+            return ActionOutcome("key", notConnected(session, "browser_key"))
         }
         val mapped = NAMED_KEYS.entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
         if (mapped != null) {
@@ -449,7 +449,7 @@ class BrowserToolProvider(
         val direction = (argStr(a, "direction") ?: "down").lowercase()
         val pixels = argInt(a, "pixels", 400).coerceIn(1, 5000)
         if (!session.ensureConnected()) {
-            return ActionOutcome("scroll", notConnected("browser_scroll"))
+            return ActionOutcome("scroll", notConnected(session, "browser_scroll"))
         }
         val (dx, dy) = when (direction) {
             "up" -> 0.0 to -pixels.toDouble()
@@ -474,7 +474,7 @@ class BrowserToolProvider(
 
     private suspend fun screenshot(session: BrowserSession, ctx: GenerationContext): ActionOutcome {
         if (!session.ensureConnected()) {
-            return ActionOutcome("screenshot", notConnected("browser_screenshot"))
+            return ActionOutcome("screenshot", notConnected(session, "browser_screenshot"))
         }
         val attachment = captureScreenshotAttachment(session, ctx)
         return ActionOutcome(
@@ -561,6 +561,7 @@ class BrowserToolProvider(
 
     /** Center of the element's content quad; null when it has no visible bounds. */
     private suspend fun elementCenter(
+        session: BrowserSession,
         binding: BrowserSnapshotRef,
         timeoutMs: Long,
     ): Pair<Double, Double>? {
@@ -691,7 +692,7 @@ class BrowserToolProvider(
     }
 
     /** `not_connected` now carries WHY the backend failed to connect. */
-    private fun notConnected(tool: String): String {
+    private fun notConnected(session: BrowserSession, tool: String): String {
         val reason = session.lastConnectFailure()
         return errorJson(
             tool,
