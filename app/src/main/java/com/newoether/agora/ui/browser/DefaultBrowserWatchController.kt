@@ -125,7 +125,7 @@ class DefaultBrowserWatchController(
         // Takeover flag + pending approvals.
         scope.launch(Dispatchers.Default) {
             while (isActive) {
-                _takeoverActive.value = runCatching { session()?.isTakeoverActive() }
+                _takeoverActive.value = runCatching { session()?.isTakeoverActive() ?: false }
                     .getOrDefault(false)
                 delay(1_000L)
             }

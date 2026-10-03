@@ -427,15 +427,16 @@ fun BrowserPopupDialog(
                 if (webView != null) {
                     // B4: stable factory keyed on the WebView instance — a
                     // fresh lambda every recomposition made reparent timing
-                    // nondeterministic.
-                    val panelFactory = remember(webView) {
+                    // nondeterministic. Capture the non-null view: remember()
+                    // does not smart-cast the outer nullable.
+                    val nonNullView: android.webkit.WebView = webView
+                    val panelFactory = remember(nonNullView) {
                         { ctx: android.content.Context ->
                             android.widget.FrameLayout(ctx).also { container ->
-                                val liveView = webView
-                                (liveView.parent as? android.view.ViewGroup)
-                                    ?.removeView(liveView)
+                                (nonNullView.parent as? android.view.ViewGroup)
+                                    ?.removeView(nonNullView)
                                 container.addView(
-                                    liveView,
+                                    nonNullView,
                                     android.widget.FrameLayout.LayoutParams(
                                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -478,10 +479,13 @@ private fun BrowserFrame(
     val liveView: android.view.View? = webView
     if (liveView != null) {
         // B4: stable factory keyed on the view — see the panel holder above.
-        val frameFactory = remember(liveView) {
-            {
-                (liveView.parent as? android.view.ViewGroup)?.removeView(liveView)
-                liveView
+        // Capture non-null; the factory must take Context for AndroidView's
+        // type inference.
+        val nonNullLiveView: android.view.View = liveView
+        val frameFactory = remember(nonNullLiveView) {
+            { _: android.content.Context ->
+                (nonNullLiveView.parent as? android.view.ViewGroup)?.removeView(nonNullLiveView)
+                nonNullLiveView
             }
         }
         AndroidView(
