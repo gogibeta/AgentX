@@ -110,45 +110,45 @@ class DefaultBrowserWatchController(
     private var frameJob: Job? = null
 
     init {
-        // Activity + narration from the browser event stream, filtered to the
-        // visible chat: browser events carry the conversation id as sessionId
-        // (BrowserDiagnostics.record), so the panel only lights up for the
-        // chat on screen. Re-evaluates both on new events AND on chat switch,
-        // so switching chats immediately swaps the panel to that chat's
-        // browser session.
+        // Visibility follows the session registry (ground truth), filtered to
+        // the visible chat; narration/URL come from the browser event stream.
+        // Re-evaluates on new events AND on chat switch, so switching chats
+        // immediately swaps the panel to that chat's browser session.
         scope.launch(Dispatchers.Default) {
             kotlinx.coroutines.flow.combine(
                 StructuredDiagnostics.events,
                 activeConversationId,
             ) { events, conversationId -> events to conversationId }
                 .collect { (events, conversationId) ->
-                    val last = events.lastOrNull {
-                        it.category == StructuredDiagnosticCategory.BROWSER.wireName &&
-                            (conversationId == null || it.sessionId == conversationId)
-                    }
-                    // B2: gate visibility on ACTUAL session state, not just
-                    // event age. An idle-but-connected browser (no events in
-                    // 60s) must not look dead after a chat switch.
+                    // Visibility ground truth: a live (not stopped) session
+                    // for the visible chat means the browser is in use. The
+                    // old event-age heuristic (60s window over a 300-event
+                    // ring, re-evaluated only when an unrelated event arrived)
+                    // made the card flicker: the Jev engine drives the session
+                    // directly without emitting diagnostic events, so "recent
+                    // event" was never reliable. A stopped session peeks as
+                    // null, so the card can no longer resurrect from a stale
+                    // event after Stop either.
                     val liveSession = session()
-                    val connected = liveSession?.currentBackendMode() != null
-                    if (last == null && !connected) {
+                    if (liveSession == null) {
                         _sessionActive.value = false
                         _liveWebView.value = null
                         stopFrames()
                         return@collect
                     }
-                    val ageMs = if (last != null) System.currentTimeMillis() - last.ts else Long.MAX_VALUE
-                    // Active if recent event OR actually connected.
-                    val active = ageMs < SESSION_ACTIVE_WINDOW_MS || connected
-                    _sessionActive.value = active
+                    _sessionActive.value = true
+                    val last = events.lastOrNull {
+                        it.category == StructuredDiagnosticCategory.BROWSER.wireName &&
+                            (conversationId == null || it.sessionId == conversationId)
+                    }
                     if (last != null) {
                         _narration.value = narrate(last.name, last.outcome, last.detail)
                         (last.detail["host"] ?: last.detail["url"])?.let { _pageUrl.value = it }
                     }
                     // Live view (System WebView backend): the panel embeds it
                     // directly instead of the screenshot stream.
-                    _liveWebView.value = runCatching { liveSession?.liveWebView() }.getOrNull()
-                    if (active) startFrames() else stopFrames()
+                    _liveWebView.value = runCatching { liveSession.liveWebView() }.getOrNull()
+                    startFrames()
                 }
         }
         // Takeover flag + pending approvals.
@@ -347,7 +347,6 @@ class DefaultBrowserWatchController(
 
     private companion object {
         const val TAG = "BrowserWatch"
-        const val SESSION_ACTIVE_WINDOW_MS = 60_000L
         const val FRAME_INTERVAL_MS = 500L // ~2 fps live stream
         const val FRAME_TIMEOUT_MS = 8_000L
         /** Stop frame polling after this many consecutive failures (dead CDP session). */
