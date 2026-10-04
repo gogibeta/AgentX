@@ -489,7 +489,7 @@ fun BrowserPopupDialog(
  * latest screenshot frame; placeholder box while the first frame is on its way.
  */
 @Composable
-private fun BrowserFrame(
+internal fun BrowserFrame(
     frame: ByteArray?,
     webView: android.webkit.WebView?,
     modifier: Modifier = Modifier,
