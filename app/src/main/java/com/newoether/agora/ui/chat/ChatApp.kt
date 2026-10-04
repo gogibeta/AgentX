@@ -40,8 +40,8 @@ import com.newoether.agora.util.gradientBlur
 import com.newoether.agora.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
 import com.newoether.agora.ui.chat.bottombar.ChatBottomBar
 import com.newoether.agora.ui.chat.bottombar.LoopStatusBackdrop
+import com.newoether.agora.ui.browser.ChatBrowserWatchRestoreFab
 import com.newoether.agora.ui.chat.interaction.ChatUserInteractionBar
-import com.newoether.agora.ui.browser.ChatBrowserWatchCard
 import com.newoether.agora.ui.components.AnimatedBlobBackground
 import com.newoether.agora.ui.components.clearFocusOnTap
 import com.newoether.agora.ui.common.LocalAgentXHaptics
@@ -610,12 +610,13 @@ fun ChatApp(
                                 contentPadding = PaddingValues(
                                     start = 8.dp,
                                     end = 8.dp,
-                                    top = 140.dp,
+                                    top = 8.dp,
                                     bottom = bottomBarHeight + shareSelectionBarSpace + 8.dp
                                 )
                             )
-                            // Live browser watch panel: collapsible card, visible only during an active session.
-                            ChatBrowserWatchCard(currentConversationId)
+                            // Browser card is now INLINE in the message list
+                            // (Muse-style) — no more top overlay eating the chat.
+                            ChatBrowserWatchRestoreFab() // restore a hidden-while-running browser
                             }
                         } else if (targetShowLaunch) {
                             ChatWelcomeContent(
