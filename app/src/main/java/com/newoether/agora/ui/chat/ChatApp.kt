@@ -610,11 +610,7 @@ fun ChatApp(
                                 contentPadding = PaddingValues(
                                     start = 8.dp,
                                     end = 8.dp,
-                                    // Top bar overlays the list (Scaffold innerPadding is
-                                    // unused), so pad by its full height — otherwise the
-                                    // first messages hide permanently behind it and the
-                                    // user can never scroll back to the first prompt.
-                                    top = topBarH + 8.dp,
+                                    top = topBarH + 8.dp, // top bar overlays the list (Scaffold innerPadding unused), so pad by its full height — otherwise first messages hide behind it
                                     bottom = bottomBarHeight + shareSelectionBarSpace + 8.dp
                                 )
                             )
