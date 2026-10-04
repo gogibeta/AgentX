@@ -66,6 +66,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -107,9 +108,16 @@ fun BrowserWatchPanelHost(
  * browser session is still running. Tapping it brings the panel back without
  * touching the session. Place in the same chat-surface Box as
  * [ChatBrowserWatchCard].
+ *
+ * @param topPadding distance from the top of the host Box. Callers whose top
+ * edge sits under an overlay top bar must pass the bar's full height plus a
+ * margin — otherwise the FAB renders underneath the bar, invisible and
+ * untappable, and a hidden panel can never be restored.
  */
 @Composable
-fun BoxScope.ChatBrowserWatchRestoreFab() {
+fun BoxScope.ChatBrowserWatchRestoreFab(
+    topPadding: Dp = 8.dp,
+) {
     val controller = LocalBrowserWatchController.current ?: return
     val sessionActive by controller.sessionActive.collectAsState()
     val takeoverActive by controller.takeoverActive.collectAsState()
@@ -118,7 +126,7 @@ fun BoxScope.ChatBrowserWatchRestoreFab() {
         visible = panelHidden && (sessionActive || takeoverActive),
         enter = fadeIn(),
         exit = fadeOut(),
-        modifier = Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 12.dp),
+        modifier = Modifier.align(Alignment.TopEnd).padding(top = topPadding, end = 12.dp),
     ) {
         FloatingActionButton(
             onClick = controller::onShowPanel,

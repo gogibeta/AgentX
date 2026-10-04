@@ -616,7 +616,7 @@ fun ChatApp(
                             )
                             // Browser card is now INLINE in the message list
                             // (Muse-style) — no more top overlay eating the chat.
-                            ChatBrowserWatchRestoreFab() // restore a hidden-while-running browser
+                            ChatBrowserWatchRestoreFab(topPadding = topBarH + 12.dp) // below the overlay top bar, or a hidden panel can never be restored
                             }
                         } else if (targetShowLaunch) {
                             ChatWelcomeContent(
