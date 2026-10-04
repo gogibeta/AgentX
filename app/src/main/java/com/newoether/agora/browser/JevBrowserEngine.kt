@@ -92,17 +92,39 @@ object JevBrowserEngine {
         val max = maxSteps.coerceIn(1, 40)
         var lastStatus = "max_steps"
         var lastDetail = "step budget exhausted"
+        // ── loop prevention (industry iron law: same action ×3 = replan) ──
+        val actionHistory = ArrayList<Pair<String, String?>>() // (action, ref)
+        val deadRefs = LinkedHashSet<String>() // refs proven to have no effect
+        var consecutiveNoEffect = 0
         repeat(max) { index ->
-            val snap = readElements(session, ctx) ?: run {
+            val snap = readElements(session, ctx, deadRefs) ?: run {
                 lastStatus = "engine_error"; lastDetail = "could not read page"
                 return@repeat
             }
-            val decision = decideNextAction(goal, typeText, snap, session, ctx)
+            // Stuck escalation: 3 actions with no page change → blocked.
+            if (consecutiveNoEffect >= 3) {
+                steps.add("stuck: $consecutiveNoEffect actions had no effect — stopping")
+                lastStatus = "blocked"
+                lastDetail = "page did not respond to $consecutiveNoEffect consecutive actions"
+                return@repeat
+            }
+            val decision = decideNextAction(goal, typeText, snap, session, ctx, deadRefs)
                 ?: run {
                     lastStatus = "engine_error"
                     lastDetail = "decision endpoint failed"
                     return@repeat
                 }
+            // Iron law: same (action, ref) 3× in a row → force replan via blocked.
+            actionHistory.add(decision.action to decision.ref)
+            if (actionHistory.size >= 3) {
+                val tail = actionHistory.takeLast(3)
+                if (tail.all { it == tail[0] }) {
+                    steps.add("loop: ${tail[0].first} ${tail[0].second} repeated 3× — stopping")
+                    lastStatus = "blocked"
+                    lastDetail = "action loop detected: ${tail[0].first} ${tail[0].second}"
+                    return@repeat
+                }
+            }
             when (decision.action) {
                 "done" -> {
                     steps.add("done (${decision.label})")
@@ -126,11 +148,22 @@ object JevBrowserEngine {
                     return@repeat
                 }
                 else -> {
+                    val tableBefore = snap.tableText.hashCode()
                     val outcome = executeAction(decision, typeText, snap, session, ctx)
                     steps.add(outcome)
                     // Small settle: jev-ultrafast waits ≤200ms after typing for
                     // suggestions, ≤50ms otherwise. CDP round-trips dominate.
-                    kotlinx.coroutines.delay(150)
+                    kotlinx.coroutines.delay(300)
+                    // State verification: did the page actually change?
+                    // A human never clicks the same dead button twice.
+                    val after = readElements(session, ctx, deadRefs)
+                    if (after != null && after.tableText.hashCode() == tableBefore) {
+                        consecutiveNoEffect++
+                        decision.ref?.let { deadRefs.add(it) }
+                        steps.add("no_effect: ${decision.action} ${decision.ref} changed nothing")
+                    } else {
+                        consecutiveNoEffect = 0
+                    }
                 }
             }
             if (index == max - 1) { /* falls through with max_steps */ }
@@ -170,6 +203,7 @@ object JevBrowserEngine {
     private suspend fun readElements(
         session: BrowserSession,
         ctx: GenerationContext,
+        deadRefs: Set<String> = emptySet(),
     ): PageElements? = runCatching {
         val tree = session.axSnapshot(ctx.toolTimeoutMs)
         val nodes = (tree["nodes"] as? JsonArray).orEmpty()
@@ -225,9 +259,11 @@ object JevBrowserEngine {
         snap: PageElements,
         session: BrowserSession,
         ctx: GenerationContext,
+        deadRefs: Set<String> = emptySet(),
     ): NextAction? {
         val criteria = LinkedHashMap<String, String?>()
         for ((ref, info) in snap.refs) {
+            if (ref in deadRefs) continue // proven no-effect — never offer again
             val n = ref.removePrefix("@e")
             when (info.role.lowercase()) {
                 in CLICKABLE_ROLES ->
@@ -250,6 +286,10 @@ object JevBrowserEngine {
             put("url", runCatching { session.currentUrl() }.getOrNull().orEmpty())
             put("has_type_text", typeText.isNotBlank())
             put("elements", snap.tableText)
+            if (deadRefs.isNotEmpty()) {
+                put("avoid_refs", deadRefs.joinToString(","))
+                put("avoid_note", "These elements were already tried and had no effect — do not pick them again.")
+            }
         }
         val answer = try {
             val decision = TypeSafeClient.decide(
