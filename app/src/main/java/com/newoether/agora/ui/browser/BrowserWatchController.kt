@@ -78,6 +78,20 @@ interface BrowserWatchController {
     fun onGoBack()
     fun onApprove(requestId: String)
     fun onDeny(requestId: String)
+    /**
+     * Takeover tap on the screenshot stream: [fx]/[fy] are fractions (0..1)
+     * of the viewport. Forwards to the session as a CDP click so the user
+     * can drive tunnel-backend browsers that have no live embeddable view.
+     */
+    fun onUserTap(fx: Double, fy: Double)
+
+    /**
+     * Last agent action point in CSS pixels, for the cursor overlay.
+     * The panel maps it proportionally onto the screenshot frame
+     * (frame == viewport). Null when unknown. Lets the user see what the
+     * AI is doing.
+     */
+    val actionCursor: StateFlow<Pair<Double, Double>?>
 }
 
 /**

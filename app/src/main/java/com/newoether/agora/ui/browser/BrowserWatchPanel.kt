@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -142,6 +145,7 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
     val liveWebView by controller.liveWebView.collectAsState()
     val takeoverActive by controller.takeoverActive.collectAsState()
     val pendingApproval by controller.pendingApproval.collectAsState()
+    val actionCursor by controller.actionCursor.collectAsState()
     var approvalDialogFor by remember { mutableStateOf<BrowserApprovalRequest?>(null) }
 
     Card(
@@ -227,7 +231,20 @@ private fun BrowserWatchPanel(controller: BrowserWatchController) {
                             }
                         }
                     } else {
-                        BrowserFrame(frame = frame, webView = liveWebView)
+                        // Muse-style compact preview: a small thumbnail, not a
+                        // half-screen takeover. The narration carries the
+                        // story; tap fullscreen for the full view.
+                        BrowserFrame(
+                            frame = frame,
+                            webView = liveWebView,
+                            takeoverActive = takeoverActive,
+                            controller = controller,
+                            actionCursor = actionCursor,
+                            frameModifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 160.dp)
+                                .aspectRatio(16f / 9f),
+                        )
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -345,6 +362,7 @@ fun BrowserPopupDialog(
     val frame by controller.screenshot.collectAsState()
     val webView by controller.liveWebView.collectAsState()
     val takeoverActive by controller.takeoverActive.collectAsState()
+    val actionCursor by controller.actionCursor.collectAsState()
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -454,6 +472,9 @@ fun BrowserPopupDialog(
                         frame = frame,
                         webView = null,
                         frameModifier = Modifier.fillMaxSize(),
+                        takeoverActive = takeoverActive,
+                        controller = controller,
+                        actionCursor = actionCursor,
                     )
                 }
             }
@@ -475,6 +496,10 @@ private fun BrowserFrame(
     frameModifier: Modifier = Modifier
         .fillMaxWidth()
         .aspectRatio(16f / 9f),
+    takeoverActive: Boolean = false,
+    controller: BrowserWatchController? = null,
+    /** Viewport fractions (0..1) of the last agent action — drawn as a cursor ring. */
+    actionCursor: Pair<Double, Double>? = null,
 ) {
     val liveView: android.view.View? = webView
     if (liveView != null) {
@@ -510,7 +535,24 @@ private fun BrowserFrame(
     Box(
         modifier = modifier.then(frameModifier)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .then(
+                // Takeover on screenshot backends (tunnel): the user taps the
+                // frame and the tap is forwarded as a CDP click. Without this
+                // the frame is view-only and takeover "does nothing".
+                if (takeoverActive && controller != null) {
+                    Modifier.pointerInput(controller) {
+                        detectTapGestures { offset ->
+                            val w = size.width.toFloat().coerceAtLeast(1f)
+                            val h = size.height.toFloat().coerceAtLeast(1f)
+                            controller.onUserTap(
+                                (offset.x / w).toDouble(),
+                                (offset.y / h).toDouble(),
+                            )
+                        }
+                    }
+                } else Modifier
+            ),
         contentAlignment = Alignment.Center,
     ) {
         if (bitmap != null) {
@@ -526,6 +568,35 @@ private fun BrowserFrame(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        // AI action cursor: a ring + dot at the last action point so the
+        // user can see what the agent is doing.
+        if (actionCursor != null) {
+            val cursorColor = MaterialTheme.colorScheme.primary
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.TopStart,
+            ) {
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    val cx = (actionCursor.first.toFloat() * size.width)
+                        .coerceIn(0f, size.width)
+                    val cy = (actionCursor.second.toFloat() * size.height)
+                        .coerceIn(0f, size.height)
+                    drawCircle(
+                        color = cursorColor,
+                        radius = 22f,
+                        center = androidx.compose.ui.geometry.Offset(cx, cy),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f),
+                    )
+                    drawCircle(
+                        color = cursorColor,
+                        radius = 6f,
+                        center = androidx.compose.ui.geometry.Offset(cx, cy),
+                    )
+                }
+            }
         }
     }
 }

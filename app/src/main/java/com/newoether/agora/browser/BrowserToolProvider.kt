@@ -138,6 +138,32 @@ class BrowserToolProvider(
                 emptyMap(),
                 emptyList(),
             ),
+            tool(
+                "browser_run_task",
+                "FAST browser automation (Jev/Drex engine). Give a goal like \"search bing " +
+                    "for X and open the first result\" and the engine drives the browser " +
+                    "itself — one fast decision per action, no model round-trip per click. " +
+                    "PREFER this over browser_click/browser_fill loops for multi-step tasks. " +
+                    "If it returns engine_unavailable or engine_error, fall back to the " +
+                    "manual browser_* tools.",
+                mapOf(
+                    "goal" to ToolProperty("string", "What to achieve in the browser, e.g. \"find the GitHub status page\"."),
+                    "type_text" to ToolProperty("string", "Text to type if a field needs filling (e.g. the search query). Optional."),
+                    "max_steps" to ToolProperty("integer", "Max engine actions (default 20, max 40)."),
+                ),
+                listOf("goal"),
+            ),
+            tool(
+                "browser_tab",
+                "Manage browser tabs within this chat. Actions: list (show tabs + active), " +
+                    "new (open a new tab and switch to it), switch (go to tab id), close " +
+                    "(close a tab). One chat can keep several pages open at once.",
+                mapOf(
+                    "action" to ToolProperty("string", "list, new, switch, or close."),
+                    "tab" to ToolProperty("string", "Tab id for switch/close (see list)."),
+                ),
+                listOf("action"),
+            ),
         )
     }
 
@@ -170,6 +196,14 @@ class BrowserToolProvider(
                 "browser_screenshot" -> screenshot(session, ctx)
                 "browser_takeover" -> takeover(session, arguments)
                 "browser_download_status" -> downloadStatus(session)
+                "browser_run_task" -> {
+                    val o = BrowserTaskTools.runTask(registry, arguments, ctx)
+                    ActionOutcome(o.action, o.json, o.extra)
+                }
+                "browser_tab" -> {
+                    val o = BrowserTaskTools.manageTab(registry, arguments, ctx)
+                    ActionOutcome(o.action, o.json, o.extra)
+                }
                 else -> return@withContext errorJson(name, "unknown_tool", "Unknown tool: $name")
             }
             BrowserDiagnostics.record(
@@ -361,6 +395,7 @@ class BrowserToolProvider(
             ?: return ActionOutcome("click", errorJson("browser_click", "stale_ref", "Reference $ref is not from the latest snapshot. Take a new snapshot."))
         val center = elementCenter(session, binding, ctx.toolTimeoutMs)
             ?: return ActionOutcome("click", errorJson("browser_click", "not_visible", "Element $ref has no visible bounds."))
+        session.setActionCursor(center.first, center.second, ctx.toolTimeoutMs)
         session.mouseClick(center.first, center.second, ctx.toolTimeoutMs)
         val snap = captureFreshSnapshot(session, ctx)
         return ActionOutcome(
@@ -717,7 +752,7 @@ class BrowserToolProvider(
         private val TOOL_NAMES = setOf(
             "browser_navigate", "browser_snapshot", "browser_click", "browser_fill",
             "browser_key", "browser_scroll", "browser_screenshot", "browser_takeover",
-            "browser_download_status",
+            "browser_download_status", "browser_run_task", "browser_tab",
         )
 
         /** Structural roles that add noise without actionability. */

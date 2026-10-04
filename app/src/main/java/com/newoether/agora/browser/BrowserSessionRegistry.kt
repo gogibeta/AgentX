@@ -33,13 +33,38 @@ class BrowserSessionRegistry(
     var onSessionCreated: ((BrowserSession) -> Unit)? = null,
 ) {
     private val sessions = ConcurrentHashMap<String, BrowserSession>()
+    /**
+     * Active tab per conversation. Tab ids are short strings ("1", "2", ...);
+     * the default tab is "1". Tools resolve the session for the active tab.
+     */
+    private val activeTabs = ConcurrentHashMap<String, String>()
+
+    companion object {
+        const val DEFAULT_TAB_ID = "1"
+        private const val TAG = "BrowserSessionRegistry"
+    }
+}
+
+    private fun tabKey(conversationId: String?, tabId: String): String {
+        val conv = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
+        return "$conv#tab$tabId"
+    }
+
+    private fun convKey(conversationId: String?): String =
+        conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
 
     /**
-     * The session for a conversation. `null` (agent work outside a chat)
-     * maps to the shared "default" session.
+     * The session for a conversation's ACTIVE tab. `null` (agent work outside
+     * a chat) maps to the shared "default" session.
      */
     fun get(conversationId: String?): BrowserSession {
-        val key = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
+        val tabId = activeTabs[convKey(conversationId)] ?: DEFAULT_TAB_ID
+        return getTab(conversationId, tabId)
+    }
+
+    /** The session for a specific tab, creating it if needed. */
+    fun getTab(conversationId: String?, tabId: String): BrowserSession {
+        val key = tabKey(conversationId, tabId)
         return sessions.getOrPut(key) {
             BrowserSession(
                 prefs = prefs,
@@ -55,30 +80,80 @@ class BrowserSessionRegistry(
         }
     }
 
+    /** Active tab id for a conversation ("1" when never switched). */
+    fun activeTab(conversationId: String?): String =
+        activeTabs[convKey(conversationId)] ?: DEFAULT_TAB_ID
+
+    /** All tab ids with a live session for a conversation, sorted. */
+    fun listTabs(conversationId: String?): List<String> {
+        val prefix = "${convKey(conversationId)}#tab"
+        return sessions.keys.mapNotNull { k ->
+            k.removePrefix(prefix).takeIf { k.startsWith(prefix) && it.isNotBlank() }
+        }.sortedBy { it.toIntOrNull() ?: Int.MAX_VALUE }
+    }
+
     /**
-     * The session for a conversation, or null when none exists yet (B6).
-     * Unlike [get], this does NOT create a session — use it on read paths
-     * (watch controller) so merely viewing a chat never instantiates one.
+     * Switch the active tab (creating it lazily). Returns the tab id.
+     * Tab ids are assigned sequentially: new tabs get max+1.
+     */
+    fun newTab(conversationId: String?): String {
+        val existing = listTabs(conversationId)
+        val next = ((existing.mapNotNull { it.toIntOrNull() }.maxOrNull() ?: 0) + 1).toString()
+        getTab(conversationId, next)
+        activeTabs[convKey(conversationId)] = next
+        return next
+    }
+
+    /** Switch to an existing tab. False when the tab does not exist. */
+    fun switchTab(conversationId: String?, tabId: String): Boolean {
+        if (tabId !in listTabs(conversationId)) return false
+        activeTabs[convKey(conversationId)] = tabId
+        return true
+    }
+
+    /** Close one tab. The default tab cannot be closed while others exist. */
+    suspend fun closeTab(conversationId: String?, tabId: String): Boolean {
+        val key = tabKey(conversationId, tabId)
+        val session = sessions.remove(key) ?: return false
+        runCatching { session.close() }
+        runCatching { webViewBackend.destroySession(key) }
+        if (activeTab(conversationId) == tabId) {
+            val remaining = listTabs(conversationId)
+            activeTabs[convKey(conversationId)] = remaining.firstOrNull() ?: DEFAULT_TAB_ID
+            if (remaining.isEmpty()) activeTabs.remove(convKey(conversationId))
+        }
+        DebugLog.d(TAG, "closed browser tab $tabId for ${convKey(conversationId)}")
+        return true
+    }
+
+    /**
+     * The session for a conversation's active tab, or null when none exists
+     * yet (B6). Unlike [get], this does NOT create a session — use it on read
+     * paths (watch controller) so merely viewing a chat never instantiates one.
      */
     fun peek(conversationId: String?): BrowserSession? {
-        val key = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
-        return sessions[key]
+        val tabId = activeTabs[convKey(conversationId)] ?: DEFAULT_TAB_ID
+        return sessions[tabKey(conversationId, tabId)]
     }
 
     /** All live session keys (for diagnostics). */
     fun keys(): Set<String> = sessions.keys.toSet()
 
     /**
-     * Stop and drop a chat's browser session. The page is REALLY closed:
-     * the WebView is destroyed (B1), not just detached from the map.
+     * Stop and drop a chat's browser sessions (ALL tabs). Pages are REALLY
+     * closed: WebViews are destroyed (B1), not just detached from the map.
      */
     suspend fun close(conversationId: String?) {
-        val key = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
-        val session = sessions.remove(key) ?: return
-        runCatching { session.close() }
-        // Destroy the WebView so Stop actually frees the page (was leaking).
-        runCatching { webViewBackend.destroySession(key) }
-        DebugLog.d(TAG, "closed browser session for key=$key")
+        val conv = convKey(conversationId)
+        val prefix = "$conv#tab"
+        val keys = sessions.keys.filter { it.startsWith(prefix) }
+        for (key in keys) {
+            val session = sessions.remove(key) ?: continue
+            runCatching { session.close() }
+            runCatching { webViewBackend.destroySession(key) }
+        }
+        activeTabs.remove(conv)
+        DebugLog.d(TAG, "closed ${keys.size} browser tab(s) for key=$conv")
     }
 
     private fun newCdpClient(): CdpClient = CdpClient(
@@ -89,8 +164,4 @@ class BrowserSessionRegistry(
             .build(),
         scope,
     )
-
-    companion object {
-        private const val TAG = "BrowserSessionRegistry"
-    }
 }

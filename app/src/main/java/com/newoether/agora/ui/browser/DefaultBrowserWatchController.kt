@@ -66,6 +66,32 @@ class DefaultBrowserWatchController(
     private val _takeoverActive = MutableStateFlow(false)
     override val takeoverActive: StateFlow<Boolean> = _takeoverActive.asStateFlow()
 
+    /**
+     * Cursor overlay: follows the active session's last action point as
+     * viewport fractions (0..1). Retargets on chat switch.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    override val actionCursor: StateFlow<Pair<Double, Double>?> =
+        activeConversationId
+            .flatMapLatest { convId ->
+                val s = registry.peek(convId)
+                if (s == null) {
+                    MutableStateFlow<Pair<Double, Double>?>(null)
+                } else {
+                    kotlinx.coroutines.flow.combine(
+                        s.lastActionPointFlow,
+                        MutableStateFlow(0), // trigger re-eval; viewport read below
+                    ) { point, _ ->
+                        val vp = s.lastActionViewport
+                        if (point != null && vp != null && vp.first > 0 && vp.second > 0) {
+                            (point.first / vp.first).coerceIn(0.0, 1.0) to
+                                (point.second / vp.second).coerceIn(0.0, 1.0)
+                        } else null
+                    }
+                }
+            }
+            .stateIn(scope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+
     private val _pendingApproval = MutableStateFlow<BrowserApprovalRequest?>(null)
     override val pendingApproval: StateFlow<BrowserApprovalRequest?> =
         _pendingApproval.asStateFlow()
@@ -183,7 +209,11 @@ class DefaultBrowserWatchController(
                 // it renders itself and the user can touch it directly.
                 if (_liveWebView.value == null) {
                     runCatching {
-                        val frame = liveSession.captureScreenshot(FRAME_TIMEOUT_MS)
+                        // Lightweight frame (q35): the full-quality screenshot
+                        // times out when the page is busy mid-action (75x
+                        // cdp_timeout in the wild). Best-effort — a skipped
+                        // frame is not a session failure.
+                        val frame = liveSession.captureFrame(FRAME_TIMEOUT_MS)
                         _screenshot.value = frame
                     }.onSuccess {
                         consecutiveFailures = 0
@@ -294,6 +324,14 @@ class DefaultBrowserWatchController(
 
     override fun onResume() {
         session()?.setTakeover(false)
+    }
+
+    override fun onUserTap(fx: Double, fy: Double) {
+        val s = session() ?: return
+        scope.launch(Dispatchers.IO) {
+            runCatching { s.userTap(fx, fy, 15_000L) }
+                .onFailure { DebugLog.d(TAG, "userTap failed: ${it.message?.take(100)}") }
+        }
     }
 
     override fun onApprove(requestId: String) {

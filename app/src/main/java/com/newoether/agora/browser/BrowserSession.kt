@@ -375,6 +375,26 @@ class BrowserSession(
         return android.util.Base64.decode(data, android.util.Base64.DEFAULT)
     }
 
+    /**
+     * Lightweight watch-stream frame: lower quality (faster encode + smaller
+     * payload over the tunnel). Best-effort — throws on timeout so the caller
+     * can skip the frame without treating it as a session failure.
+     */
+    suspend fun captureFrame(timeoutMs: Long): ByteArray {
+        val result = cdp.invoke(
+            method = "Page.captureScreenshot",
+            params = buildJsonObject {
+                put("format", "jpeg")
+                put("quality", 35)
+                put("captureBeyondViewport", false)
+            },
+            timeoutMs = timeoutMs,
+        )
+        val data = (result["data"] as? JsonPrimitive)?.contentOrNull
+            ?: throw com.newoether.agora.browser.cdp.CdpException("screenshot_missing_data")
+        return android.util.Base64.decode(data, android.util.Base64.DEFAULT)
+    }
+
     suspend fun setFileInputFiles(objectId: String, files: List<String>, timeoutMs: Long) {
         cdp.invoke(
             method = "DOM.setFileInputFiles",
@@ -408,6 +428,86 @@ class BrowserSession(
     }
 
     fun isTakeoverActive(): Boolean = takeoverActive
+
+    // ── action cursor (Jev engine + manual tools report where they acted) ──
+
+    /**
+     * Last agent action point in CSS pixels, for the UI cursor overlay so the
+     * user can see what the agent is doing. Null when unknown/cleared.
+     * The watch panel maps it proportionally onto the screenshot frame
+     * (the frame IS the viewport: captureBeyondViewport=false).
+     */
+    val lastActionPointFlow = kotlinx.coroutines.flow.MutableStateFlow<Pair<Double, Double>?>(null)
+
+    /** Convenience accessor for [lastActionPointFlow]. */
+    var lastActionPoint: Pair<Double, Double>?
+        get() = lastActionPointFlow.value
+        set(value) { lastActionPointFlow.value = value }
+
+    /**
+     * Record an action cursor with viewport fractions. Captures the viewport
+     * size so the UI can position the cursor accurately. Best-effort: falls
+     * back to storing raw pixels when metrics are unavailable.
+     */
+    suspend fun setActionCursor(x: Double, y: Double, timeoutMs: Long) {
+        val viewport = runCatching {
+            val metrics = cdp.invoke(
+                method = "Page.getLayoutMetrics",
+                params = buildJsonObject {},
+                timeoutMs = timeoutMs,
+            )
+            val vp = ((metrics["layoutViewport"] as? JsonObject)
+                ?: (metrics["cssLayoutViewport"] as? JsonObject))
+            val w = (vp?.get("clientWidth") as? JsonPrimitive)?.doubleOrNull
+                ?: (vp?.get("width") as? JsonPrimitive)?.doubleOrNull
+            val h = (vp?.get("clientHeight") as? JsonPrimitive)?.doubleOrNull
+                ?: (vp?.get("height") as? JsonPrimitive)?.doubleOrNull
+            if (w != null && h != null && w > 0 && h > 0) w to h else null
+        }.getOrNull()
+        lastActionViewport = viewport
+        lastActionPoint = x to y
+    }
+
+    /** Viewport (CSS px) captured with the last action cursor. */
+    @Volatile
+    var lastActionViewport: Pair<Double, Double>? = null
+
+    /** Current page URL via Target.getTargetInfo; empty when unavailable. */
+    suspend fun currentUrl(): String = runCatching {
+        val info = cdp.invoke(
+            method = "Target.getTargetInfo",
+            params = buildJsonObject {},
+            timeoutMs = 5_000L,
+        )
+        ((info["targetInfo"] as? JsonObject)?.get("url")
+            as? JsonPrimitive)?.contentOrNull.orEmpty()
+    }.getOrDefault("")
+
+    /**
+     * User takeover tap: [fx]/[fy] are fractions (0..1) of the viewport.
+     * Maps to CSS pixels via Page.getLayoutMetrics and dispatches a click.
+     * Used by the watch panel when the user drives the browser in takeover
+     * mode on backends without a live embeddable view (tunnel screenshots).
+     */
+    suspend fun userTap(fx: Double, fy: Double, timeoutMs: Long) {
+        val metrics = cdp.invoke(
+            method = "Page.getLayoutMetrics",
+            params = buildJsonObject {},
+            timeoutMs = timeoutMs,
+        )
+        val viewport = ((metrics["layoutViewport"] as? JsonObject)
+            ?: (metrics["cssLayoutViewport"] as? JsonObject))
+        val w = (viewport?.get("clientWidth") as? JsonPrimitive)?.doubleOrNull
+            ?: (viewport?.get("width") as? JsonPrimitive)?.doubleOrNull
+            ?: 1280.0
+        val h = (viewport?.get("clientHeight") as? JsonPrimitive)?.doubleOrNull
+            ?: (viewport?.get("height") as? JsonPrimitive)?.doubleOrNull
+            ?: 800.0
+        val x = (fx * w).coerceIn(0.0, w)
+        val y = (fy * h).coerceIn(0.0, h)
+        lastActionPoint = x to y
+        mouseClick(x, y, timeoutMs)
+    }
 
     // ── downloads ──
 
