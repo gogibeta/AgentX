@@ -43,7 +43,6 @@ class BrowserSessionRegistry(
         const val DEFAULT_TAB_ID = "1"
         private const val TAG = "BrowserSessionRegistry"
     }
-}
 
     private fun tabKey(conversationId: String?, tabId: String): String {
         val conv = conversationId ?: WebViewBrowserBackend.DEFAULT_SESSION_KEY
