@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
@@ -13,6 +14,7 @@ import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
 import com.newoether.agora.diagnostics.StructuredDiagnostics
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
 
 /**
  * Agent artifact output: Markdown files and rendered PDF reports.
@@ -330,16 +332,60 @@ object ArtifactExporter {
     data class PdfResult(val pages: Int, val truncated: Boolean)
 
     /**
+     * Minimal document seam around [PdfDocument].
+     *
+     * Robolectric cannot create a real PdfDocument: its `nativeCreateDocument()`
+     * is unimplemented, so the very first `startPage` throws
+     * `IllegalStateException("document is closed!")` (AOSP's `throwIfClosed`
+     * checks the native handle, not a closed flag; there is no
+     * `ShadowPdfDocument`). Tests inject a fake that reproduces the AOSP
+     * contract the 100-page cap logic depends on — a finished page's canvas is
+     * unusable (on-device this surfaced as a null-canvas NPE). Production
+     * always uses [RealPdfDoc].
+     */
+    interface PdfDoc {
+        fun startPage(pageNum: Int): PdfPage
+        fun finishPage(page: PdfPage)
+        fun writeTo(out: OutputStream)
+        fun close()
+    }
+
+    /** A single PDF page. [canvas] is only valid until [PdfDoc.finishPage]. */
+    interface PdfPage {
+        val canvas: Canvas
+    }
+
+    private class RealPdfDoc : PdfDoc {
+        private val document = PdfDocument()
+        override fun startPage(pageNum: Int): PdfPage =
+            RealPdfPage(
+                document.startPage(
+                    PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create(),
+                ),
+            )
+        override fun finishPage(page: PdfPage) = document.finishPage((page as RealPdfPage).real)
+        override fun writeTo(out: OutputStream) = document.writeTo(out)
+        override fun close() = document.close()
+    }
+
+    private class RealPdfPage(val real: PdfDocument.Page) : PdfPage {
+        override val canvas: Canvas get() = real.canvas
+    }
+
+    /**
      * Render [markdown] as a paginated PDF report into [file].
      * [images] maps `![alt](src)` filenames to decoded bitmaps (resolved by the
      * caller from cache/SAF); missing keys render as a caption line instead of
-     * breaking the document. Returns the page count and cap flag.
+     * breaking the document. [documentFactory] is a test seam (see [PdfDoc]);
+     * production callers use the default real document.
+     * Returns the page count and cap flag.
      */
     fun savePdf(
         file: File,
         title: String,
         markdown: String,
         images: Map<String, Bitmap> = emptyMap(),
+        documentFactory: (() -> PdfDoc)? = null,
     ): PdfResult {
         val totalStartNanos = System.nanoTime()
         val parseStartNanos = System.nanoTime()
@@ -348,9 +394,9 @@ object ArtifactExporter {
         val blocks = parseMarkdownBlocks(title, markdown)
         val parseMs = (System.nanoTime() - parseStartNanos) / 1_000_000L
         val renderStartNanos = System.nanoTime()
-        val document = PdfDocument()
+        val document = documentFactory?.invoke() ?: RealPdfDoc()
         var pageNum = 0
-        var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, 1).create())
+        var page: PdfPage = document.startPage(1)
         pageNum = 1
         var y = MARGIN_TOP.toFloat()
         var capped = false
@@ -369,7 +415,7 @@ object ArtifactExporter {
                 return false
             }
             pageNum++
-            page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create())
+            page = document.startPage(pageNum)
             y = MARGIN_TOP.toFloat()
             return true
         }
@@ -383,7 +429,7 @@ object ArtifactExporter {
             if (y + height > PAGE_H - MARGIN_BOTTOM) return newPage()
             return true
         }
-        val currentPage: () -> PdfDocument.Page = { page }
+        val currentPage: () -> PdfPage = { page }
         try {
             for (block in blocks) {
                 if (capped) break
@@ -523,7 +569,7 @@ object ArtifactExporter {
     }
 
     private fun drawLine(
-        page: PdfDocument.Page,
+        page: PdfPage,
         line: List<Pair<String, Paint>>,
         x: Float,
         baseline: Float,
@@ -542,7 +588,7 @@ object ArtifactExporter {
     }
 
     private fun drawPara(
-        pageProvider: () -> PdfDocument.Page,
+        pageProvider: () -> PdfPage,
         paints: Paints,
         spans: List<TextSpan>,
         contentW: Int,
@@ -572,7 +618,7 @@ object ArtifactExporter {
     }
 
     private fun drawTable(
-        pageProvider: () -> PdfDocument.Page,
+        pageProvider: () -> PdfPage,
         paints: Paints,
         table: PdfBlock.Table,
         contentW: Int,
@@ -671,7 +717,7 @@ object ArtifactExporter {
         return y + 8f
     }
 
-    private fun drawFooter(page: PdfDocument.Page, paints: Paints, pageNum: Int) {
+    private fun drawFooter(page: PdfPage, paints: Paints, pageNum: Int) {
         page.canvas.drawText(
             "Page $pageNum", PAGE_W / 2f, (PAGE_H - 36).toFloat(), paints.footer,
         )
