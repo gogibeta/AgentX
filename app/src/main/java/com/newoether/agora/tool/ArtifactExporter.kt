@@ -358,20 +358,30 @@ object ArtifactExporter {
         // When capped, newPage() finishes the page but creates no new one —
         // the trailing drawFooter/finishPage must be skipped for that page.
         var pageFinished = false
-        fun newPage() {
+        fun newPage(): Boolean {
             drawFooter(page, paints, pageNum)
             document.finishPage(page)
             if (pageNum >= MAX_PDF_PAGES) {
                 capped = true
                 pageFinished = true
-                return
+                // No fresh page: every draw site must stop — the finished
+                // page's canvas is null (AOSP) and any draw would NPE.
+                return false
             }
             pageNum++
             page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create())
             y = MARGIN_TOP.toFloat()
+            return true
         }
-        fun need(height: Float) {
-            if (!capped && y + height > PAGE_H - MARGIN_BOTTOM) newPage()
+        /**
+         * Ensure [height] fits on the current page, starting a new one if
+         * needed. Returns false when no usable page exists anymore (100-page
+         * cap hit) — callers must stop drawing immediately.
+         */
+        fun need(height: Float): Boolean {
+            if (capped) return false
+            if (y + height > PAGE_H - MARGIN_BOTTOM) return newPage()
+            return true
         }
         val currentPage: () -> PdfDocument.Page = { page }
         try {
@@ -381,15 +391,16 @@ object ArtifactExporter {
                     is PdfBlock.Title -> {
                         val titleLines = layoutSpans(listOf(TextSpan(block.text)), paints, contentW)
                         for (line in titleLines) {
-                            if (capped) break
-                            need(paints.title.textSize * 1.6f)
+                            if (!need(paints.title.textSize * 1.6f)) break
                             drawLine(page, line, MARGIN_SIDE.toFloat(), y + paints.title.textSize, paints.title, paints)
                             y += paints.title.textSize * 1.6f
                         }
-                        page.canvas.drawLine(
-                            MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.rule,
-                        )
-                        y += 14f
+                        if (!capped) {
+                            page.canvas.drawLine(
+                                MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.rule,
+                            )
+                            y += 14f
+                        }
                     }
                     is PdfBlock.Heading -> {
                         val paint = when (block.level) {
@@ -399,8 +410,7 @@ object ArtifactExporter {
                         }
                         val lines = layoutSpans(listOf(TextSpan(block.text)), paints, contentW)
                         for (line in lines) {
-                            if (capped) break
-                            need(paint.textSize * 1.5f)
+                            if (!need(paint.textSize * 1.5f)) break
                             drawLine(page, line, MARGIN_SIDE.toFloat(), y + paint.textSize, paint, paints)
                             y += paint.textSize * 1.5f
                         }
@@ -417,40 +427,47 @@ object ArtifactExporter {
                             marker = marker to markerW)
                     }
                     is PdfBlock.Table -> y = drawTable(currentPage, paints, block, contentW, y,
-                        onNewPage = { newPage(); y = MARGIN_TOP.toFloat() },
+                        onNewPage = {
+                            val ok = newPage()
+                            if (ok) y = MARGIN_TOP.toFloat()
+                            ok
+                        },
                         isCapped = { capped })
                     is PdfBlock.Image -> {
                         val bitmap = images[block.key]
                         // B11: guard against 0-size bitmaps (division by zero
                         // → Infinity scale → degenerate drawBitmap).
                         if (bitmap == null || bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) {
-                            need(paints.caption.textSize * 1.5f)
-                            val note = "[image missing: ${block.alt.ifBlank { block.key }}]"
-                            page.canvas.drawText(note, MARGIN_SIDE.toFloat(), y + paints.caption.textSize, paints.caption)
-                            y += paints.caption.textSize * 1.8f
+                            if (need(paints.caption.textSize * 1.5f)) {
+                                val note = "[image missing: ${block.alt.ifBlank { block.key }}]"
+                                page.canvas.drawText(note, MARGIN_SIDE.toFloat(), y + paints.caption.textSize, paints.caption)
+                                y += paints.caption.textSize * 1.8f
+                            }
                         } else {
                             val scale = (contentW.toFloat() / bitmap.width)
                                 .coerceAtMost((PAGE_H - MARGIN_TOP - MARGIN_BOTTOM - 40) / bitmap.height.toFloat())
                                 .coerceAtMost(1f)
                             val w = bitmap.width * scale
                             val h = bitmap.height * scale
-                            need(h + paints.caption.textSize * 2.2f)
-                            val left = MARGIN_SIDE + (contentW - w) / 2
-                            val dst = android.graphics.RectF(left, y, left + w, y + h)
-                            page.canvas.drawBitmap(bitmap, null, dst, Paint().apply { isAntiAlias = true; isFilterBitmap = true })
-                            y += h + 4f
-                            val caption = block.alt.ifBlank { block.key }
-                            page.canvas.drawText(caption, PAGE_W / 2f, y + paints.caption.textSize, paints.captionCentered)
-                            y += paints.caption.textSize * 2.2f
+                            if (need(h + paints.caption.textSize * 2.2f)) {
+                                val left = MARGIN_SIDE + (contentW - w) / 2
+                                val dst = android.graphics.RectF(left, y, left + w, y + h)
+                                page.canvas.drawBitmap(bitmap, null, dst, Paint().apply { isAntiAlias = true; isFilterBitmap = true })
+                                y += h + 4f
+                                val caption = block.alt.ifBlank { block.key }
+                                page.canvas.drawText(caption, PAGE_W / 2f, y + paints.caption.textSize, paints.captionCentered)
+                                y += paints.caption.textSize * 2.2f
+                            }
                         }
                     }
                     PdfBlock.Divider -> {
-                        need(18f)
-                        y += 6f
-                        page.canvas.drawLine(
-                            MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.grid,
-                        )
-                        y += 12f
+                        if (need(18f)) {
+                            y += 6f
+                            page.canvas.drawLine(
+                                MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.grid,
+                            )
+                            y += 12f
+                        }
                     }
                     PdfBlock.Gap -> y += 6f
                 }
@@ -531,7 +548,7 @@ object ArtifactExporter {
         contentW: Int,
         indent: Float,
         startY: Float,
-        onNeed: (Float) -> Unit,
+        onNeed: (Float) -> Boolean,
         isCapped: () -> Boolean,
         marker: Pair<String, Float>? = null,
     ): Float {
@@ -539,7 +556,9 @@ object ArtifactExporter {
         val lines = layoutSpans(spans, paints, contentW)
         for ((index, line) in lines.withIndex()) {
             if (isCapped()) break
-            onNeed(paints.body.textSize * 1.5f)
+            // Stop drawing when the page cap was hit mid-paragraph: the
+            // finished page's canvas is null and any draw would NPE.
+            if (!onNeed(paints.body.textSize * 1.5f)) break
             if (marker != null && index == 0) {
                 pageProvider().canvas.drawText(
                     marker.first, MARGIN_SIDE.toFloat() + indent - marker.second - 6f,
@@ -558,7 +577,7 @@ object ArtifactExporter {
         table: PdfBlock.Table,
         contentW: Int,
         startY: Float,
-        onNewPage: () -> Unit,
+        onNewPage: () -> Boolean,
         isCapped: () -> Boolean,
     ): Float {
         var y = startY
@@ -584,7 +603,9 @@ object ArtifactExporter {
             }
             h += 8f
             if (y + h > PAGE_H - MARGIN_BOTTOM) {
-                onNewPage()
+                // No fresh page (100-page cap): bail instead of drawing on
+                // the finished page whose canvas is null.
+                if (!onNewPage()) return y
                 y = MARGIN_TOP.toFloat()
             }
             val page = pageProvider()
@@ -610,10 +631,13 @@ object ArtifactExporter {
         }
         fun drawRow(cells: List<String>, paint: Paint, fill: Paint?, height: Float) {
             if (y + height > PAGE_H - MARGIN_BOTTOM) {
-                onNewPage()
+                // Cap hit mid-table: stop this row instead of drawing on the
+                // finished page (null canvas → NPE) or re-finishing it.
+                if (!onNewPage()) return
                 y = MARGIN_TOP.toFloat()
                 // Repeat the header on the new page.
                 y = drawHeaderRow(y)
+                if (isCapped()) return
             }
             val page = pageProvider()
             fill?.let {

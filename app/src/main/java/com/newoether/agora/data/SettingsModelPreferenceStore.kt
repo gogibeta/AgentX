@@ -135,7 +135,7 @@ internal class SettingsModelPreferenceStore(
     }
 
     val apiKeys: Flow<List<ApiKeyEntry>> = dataStore.data.map { pref ->
-        val jsonStr = com.newoether.agora.util.SecretCrypto.decrypt(pref[API_KEYS_JSON] ?: "[]")
+        val jsonStr = com.newoether.agora.util.SecretCrypto.decrypt(pref[API_KEYS_JSON] ?: "[]", "model_api_keys")
         try { json.decodeFromString<List<ApiKeyEntry>>(jsonStr) } catch (e: Exception) { emptyList() }
     }
 
@@ -498,7 +498,7 @@ internal class SettingsModelPreferenceStore(
         dataStore.edit { prefs ->
             val rawKeys = prefs[API_KEYS_JSON] ?: return@edit
             val decrypted = runCatching {
-                com.newoether.agora.util.SecretCrypto.decrypt(rawKeys)
+                com.newoether.agora.util.SecretCrypto.decrypt(rawKeys, "model_api_keys_migrate")
             }.getOrDefault(rawKeys)
             val keys = runCatching {
                 json.decodeFromString<List<ApiKeyEntry>>(decrypted)

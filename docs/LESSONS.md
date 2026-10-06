@@ -168,3 +168,20 @@
 - Fast browser loop (2026-10-03): click/fill/key/scroll now embed a fresh
   page snapshot in their own result — the agent never needs a separate
   browser_snapshot after acting, halving tool roundtrips.
+- PDF null-canvas NPE after page cap (2026-10-06): `pdf_render` crashed on
+  long markdown with "Attempt to invoke virtual method 'void
+  android.graphics.Canvas.drawText..' on a null object reference". AOSP
+  `PdfDocument.Page.getCanvas()` returns null after `finishPage()` ("@return
+  The canvas if the page is not finished, null otherwise"). The 100-page cap
+  path finished the page but created no new one, and Title/Heading/Para/
+  Table/Image/Divider branches kept drawing on it — the `if (capped) break`
+  checks sat at loop tops while `need()`/`onNewPage()` could hit the cap
+  mid-iteration. Fix: `need()`/`newPage()`/`onNewPage()` return Boolean and
+  every draw site stops when false. Rule: any "stop" flag set inside a helper
+  must be re-checked after the helper returns, not just at loop tops.
+- Tool docs must state EVERY limit (2026-10-06): `save_artifact`'s description
+  advertised 50 MB (the `source_path` limit) but `content` is capped at 1 MB,
+  so the agent only discovered the real limit from a `source_too_large`
+  rejection mid-task. Fix: the description now states both limits up front.
+  Rule: when one tool has different limits per parameter, document each at
+  the parameter AND in the top-level description.

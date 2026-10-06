@@ -57,7 +57,7 @@ interface JevKeyCrypto {
     companion object {
         val Default: JevKeyCrypto = object : JevKeyCrypto {
             override fun encrypt(plaintext: String) = SecretCrypto.encrypt(plaintext)
-            override fun decrypt(stored: String) = SecretCrypto.decrypt(stored)
+            override fun decrypt(stored: String) = SecretCrypto.decrypt(stored, "jev_keys")
         }
         val Identity: JevKeyCrypto = object : JevKeyCrypto {
             override fun encrypt(plaintext: String) = plaintext

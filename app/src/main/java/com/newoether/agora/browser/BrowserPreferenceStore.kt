@@ -77,7 +77,7 @@ class BrowserPreferenceStore(
 
     /** Decrypted client token. Blank = not set. Never log this value. */
     val tunnelClientToken: StateFlow<String> = store.data
-        .map { raw -> if (raw[BROWSER_TUNNEL_TOKEN].isNullOrBlank()) "" else SecretCrypto.decrypt(raw[BROWSER_TUNNEL_TOKEN]!!) }
+        .map { raw -> if (raw[BROWSER_TUNNEL_TOKEN].isNullOrBlank()) "" else SecretCrypto.decrypt(raw[BROWSER_TUNNEL_TOKEN]!!, "browser_tunnel_token") }
         .stateIn(scope, SharingStarted.Eagerly, "")
 
     val tunnelValidation: StateFlow<TunnelValidation> = store.data

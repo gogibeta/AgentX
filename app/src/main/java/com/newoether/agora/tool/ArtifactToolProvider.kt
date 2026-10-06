@@ -52,13 +52,16 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     "If you already built the file yourself in the sandbox (e.g. a PDF generated " +
                     "with a Python library and saved to the shared folder), pass its file name as " +
                     "`source_path` instead of `content` and it will be registered as-is. " +
+                    "SIZE LIMITS: `content` is capped at 1,000,000 bytes (1 MB) — passing " +
+                    "more fails with source_too_large. For anything bigger, write the file " +
+                    "in the sandbox and use `source_path` (up to 50 MB). " +
                     "Files go to the user's Agent workspace folder when set, else app storage. " +
                     "The result reports format, sizeBytes and saved_to so you can confirm delivery.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "title" to ToolProperty("string", "Report title (also used for the file name)."),
                         "format" to ToolProperty("string", "File format: 'md' for Markdown, 'pdf' for a rendered PDF report. Ignored when source_path is set (format comes from the file)."),
-                        "content" to ToolProperty("string", "Full Markdown content of the report. Not needed when source_path is set."),
+                        "content" to ToolProperty("string", "Full Markdown content of the report. Max 1,000,000 bytes (1 MB) — larger content fails with source_too_large; build the file in the sandbox and use source_path instead. Not needed when source_path is set."),
                         "filename" to ToolProperty("string", "Optional explicit file name (must end in .md or .pdf)."),
                         "source_path" to ToolProperty(
                             "string",
