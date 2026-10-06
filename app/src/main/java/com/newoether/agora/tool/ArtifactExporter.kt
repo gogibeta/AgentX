@@ -299,8 +299,14 @@ object ArtifactExporter {
                         while (end <= word.length &&
                             paint.measureText(word.substring(start, end)) <= maxWidthPx
                         ) end++
-                        // end overshot by one (or hit word end)
-                        if (end <= word.length) end--
+                        // end is one past the last fitting prefix in both exit
+                        // cases: overshoot, or the final remainder fit and the
+                        // loop ran past word end. Always step back — the old
+                        // `if (end <= word.length)` guard skipped it in the
+                        // second case and substring(start, word.length + 1)
+                        // then threw StringIndexOutOfBoundsException (any long
+                        // URL/token crashed pdf_render).
+                        end--
                         if (end <= start) end = start + 1 // single char wider than column
                         words.add(word.substring(start, end) to paint)
                         start = end

@@ -117,9 +117,15 @@ class ArtifactExporterCapPathTest {
 
     @Test
     fun mediumDoc_rendersFully() {
+        // 100 bullets, not 800: under Robolectric NATIVE graphics on CI,
+        // Paint.measureText inflates ~70x+ (every char wider than the
+        // column -> one line per character -> ~15 lines/bullet), so 800
+        // bullets hit the 100-page cap on CI while rendering ~24 pages
+        // with real font metrics. 100 bullets stays under the cap even in
+        // the worst case (15 lines x 17.25px x 100 -> ~36 pages).
         val md = buildString {
             appendLine("# Report")
-            repeat(800) { i -> appendLine("- bullet number $i") }
+            repeat(100) { i -> appendLine("- bullet number $i") }
         }
         val (_, result) = render("Medium", md)
         assertTrue("medium doc should not hit the cap", !result.truncated)

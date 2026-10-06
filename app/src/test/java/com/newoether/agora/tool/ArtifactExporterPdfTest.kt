@@ -48,4 +48,22 @@ class ArtifactExporterPdfTest {
         )
         assertTrue(lines.size == 1)
     }
+
+    @Test
+    fun layoutSpans_overlongWordWithFittingRemainder_doesNotThrow() {
+        // Regression: the char-break loop stepped `end` back only when
+        // `end <= word.length`. When a word wider than the column had a
+        // final remainder that fit, the inner loop ran past word end and
+        // substring(start, word.length + 1) threw
+        // StringIndexOutOfBoundsException — any long URL/token crashed
+        // pdf_render. Metrics-independent: only checks no-throw + text
+        // preservation, so it holds under CI's inflated native metrics too.
+        val paints = ArtifactExporter.Paints()
+        val longWord = "a".repeat(200)
+        val lines = ArtifactExporter.layoutSpans(
+            listOf(ArtifactExporter.TextSpan("see $longWord end")), paints, 200,
+        )
+        val text = lines.flatten().joinToString("") { it.first }
+        assertTrue(text.contains(longWord))
+    }
 }
