@@ -185,3 +185,14 @@
   rejection mid-task. Fix: the description now states both limits up front.
   Rule: when one tool has different limits per parameter, document each at
   the parameter AND in the top-level description.
+- Alpine sandbox repo + retry discipline (2026-10-06): the in-app sandbox
+  ships with ONLY the main apk repo enabled — `py3-pillow`, `py3-pip`,
+  `py3-reportlab` all report "no such package" until the community repo is
+  added (`echo community >> /etc/apk/repositories`, one line). The agent
+  retried the same failing `apk add` ~10 times without reading the error;
+  "no such package" is a repo/config problem, never a network one, so
+  retrying was pointless. Also: there is no curl, no pip/pip3/python3 -m pip
+  at all (only `apk` works), BusyBox grep has no `-P` flag, and installing
+  `poppler-utils` silently PURGES python3 (apk dependency conflict) —
+  reinstall python + reportlab afterwards. Rule: read the error text before
+  the second attempt, and never retry a deterministic config error.

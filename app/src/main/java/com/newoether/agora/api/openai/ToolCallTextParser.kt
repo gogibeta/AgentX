@@ -632,7 +632,10 @@ internal class OpenAiResponsesEventRouter(
             ?: event.outputIndex?.let(callsByOutputIndex::get)
 
     private fun validateSequence(event: OpenAiResponseStreamEvent): String? {
-        val sequence = event.sequenceNumber ?: return "missing sequence_number"
+        // sequence_number is optional: many Responses-compatible proxies
+        // (custom workers) omit it. Only enforce ordering when present;
+        // never fail a stream for a missing sequence number.
+        val sequence = event.sequenceNumber ?: return null
         val previous = lastSequenceNumber
         if (previous != null && sequence <= previous) return "non-increasing sequence_number"
         lastSequenceNumber = sequence
