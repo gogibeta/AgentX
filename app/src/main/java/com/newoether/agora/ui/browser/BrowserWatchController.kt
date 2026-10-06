@@ -92,6 +92,17 @@ interface BrowserWatchController {
      * AI is doing.
      */
     val actionCursor: StateFlow<Pair<Double, Double>?>
+
+    /** All tab ids with a live session for the visible chat, sorted. */
+    val tabs: StateFlow<List<String>>
+    /** The currently active tab id for the visible chat. */
+    val activeTabId: StateFlow<String>
+    /** Open a new tab for the visible chat and switch to it. */
+    fun onNewTab()
+    /** Switch the visible chat's browser to an existing tab. */
+    fun onSwitchTab(tabId: String)
+    /** Close a tab of the visible chat. */
+    fun onCloseTab(tabId: String)
 }
 
 /**

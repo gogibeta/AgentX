@@ -694,6 +694,8 @@
     <string name="browser_approval_title">Browser approval needed</string>
     <string name="browser_approval_approve_once">Approve once</string>
     <string name="browser_hide">Hide</string>
+    <string name="browser_new_tab">New tab</string>
+    <string name="browser_close_tab">Close tab</string>
     <string name="browser_show">Show browser</string>
     <string name="browser_fullscreen">Full screen</string>
     <string name="browser_fullscreen_exit">Exit full screen</string>

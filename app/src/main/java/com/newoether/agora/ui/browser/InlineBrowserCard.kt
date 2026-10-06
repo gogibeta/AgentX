@@ -135,6 +135,9 @@ private fun InlineBrowserCardContent(controller: BrowserWatchController) {
                 )
             }
             Spacer(Modifier.height(8.dp))
+            // Tab strip: the user can open/switch/close tabs; the agent's
+            // browser_tab tool and parallel run_task runs use the same tabs.
+            BrowserTabStrip(controller = controller)
             // Compact live thumbnail — the narration carries the story.
             BrowserFrame(
                 frame = frame,

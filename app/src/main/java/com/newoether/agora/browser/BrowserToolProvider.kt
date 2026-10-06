@@ -150,6 +150,7 @@ class BrowserToolProvider(
                     "goal" to ToolProperty("string", "What to achieve in the browser, e.g. \"find the GitHub status page\"."),
                     "type_text" to ToolProperty("string", "Text to type if a field needs filling (e.g. the search query). Optional."),
                     "max_steps" to ToolProperty("integer", "Max engine actions (default 20, max 40)."),
+                    "tab" to ToolProperty("string", "Run on this tab id (see browser_tab list). Omit for the active tab. Use a fresh tab id (e.g. via browser_tab new) to run two tasks in parallel without interfering."),
                 ),
                 listOf("goal"),
             ),

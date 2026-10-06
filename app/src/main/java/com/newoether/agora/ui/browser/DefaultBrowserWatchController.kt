@@ -107,7 +107,36 @@ class DefaultBrowserWatchController(
     private val _panelHidden = MutableStateFlow(false)
     override val panelHidden: StateFlow<Boolean> = _panelHidden.asStateFlow()
 
+    private val _tabs = MutableStateFlow<List<String>>(emptyList())
+    override val tabs: StateFlow<List<String>> = _tabs.asStateFlow()
+
+    private val _activeTabId = MutableStateFlow("1")
+    override val activeTabId: StateFlow<String> = _activeTabId.asStateFlow()
+
     private var frameJob: Job? = null
+
+    /** Refresh the tab strip from the registry for the visible chat. */
+    private fun refreshTabs() {
+        val convId = activeConversationId.value
+        _tabs.value = registry.listTabs(convId)
+        _activeTabId.value = registry.activeTab(convId)
+    }
+
+    override fun onNewTab() {
+        registry.newTab(activeConversationId.value)
+        refreshTabs()
+    }
+
+    override fun onSwitchTab(tabId: String) {
+        if (registry.switchTab(activeConversationId.value, tabId)) refreshTabs()
+    }
+
+    override fun onCloseTab(tabId: String) {
+        scope.launch(Dispatchers.Default) {
+            registry.closeTab(activeConversationId.value, tabId)
+            refreshTabs()
+        }
+    }
 
     init {
         // Visibility follows the session registry (ground truth), filtered to
@@ -137,6 +166,7 @@ class DefaultBrowserWatchController(
                         return@collect
                     }
                     _sessionActive.value = true
+                    refreshTabs()
                     val last = events.lastOrNull {
                         it.category == StructuredDiagnosticCategory.BROWSER.wireName &&
                             (conversationId == null || it.sessionId == conversationId)

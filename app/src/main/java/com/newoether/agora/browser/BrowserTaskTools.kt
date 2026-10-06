@@ -57,6 +57,10 @@ object BrowserTaskTools {
      * browser with one Jev/Drex decision per action instead of one main-model
      * round-trip per click. Fail-open: engine_unavailable/engine_error means
      * the agent should fall back to the manual browser_* tools.
+     *
+     * Parallel tasks: pass "tab" to bind the task to a specific tab session.
+     * Each tab is an independent browser session (own CDP client, own page),
+     * so two run_task calls on different tabs run truly concurrently.
      */
     suspend fun runTask(
         registry: BrowserSessionRegistry,
@@ -68,7 +72,11 @@ object BrowserTaskTools {
             ?: return Outcome("run_task", Shared.errorJson("browser_run_task", "no_goal", ""))
         val typeText = Shared.argStr(a, "type_text").orEmpty()
         val maxSteps = Shared.argInt(a, "max_steps", JevBrowserEngine.DEFAULT_MAX_STEPS)
-        val session = registry.get(ctx.conversationId)
+        val tabId = Shared.argStr(a, "tab")?.takeIf { it.isNotBlank() }
+        // Tab-bound session: a fresh tab (via browser_tab new) gives the task
+        // its own page + CDP client, so parallel tasks never interleave.
+        val session = if (tabId != null) registry.getTab(ctx.conversationId, tabId)
+        else registry.get(ctx.conversationId)
         session.diagnosticContext = ctx
         val result = JevBrowserEngine.runTask(goal, typeText, maxSteps, session, ctx)
         val isError = result.status == "engine_error"
@@ -82,6 +90,7 @@ object BrowserTaskTools {
                 put("steps", buildJsonArray { result.steps.forEach { add(it) } })
                 put("final_url", result.finalUrl)
                 put("final_snapshot", result.finalSnapshot)
+                if (tabId != null) put("tab", tabId)
                 if (result.detail.isNotBlank()) put("detail", result.detail)
             }.toString(),
             mapOf(

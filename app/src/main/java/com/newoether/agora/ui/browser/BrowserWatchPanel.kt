@@ -521,16 +521,24 @@ internal fun BrowserFrame(
                 nonNullLiveView
             }
         }
-        AndroidView(
-            // The same live engine view is reparented between the panel and
-            // the fullscreen dialog. Detach defensively: compose may create
-            // this AndroidView before the dialog's holder is disposed (or vice
-            // versa), and addView() on an already-parented view crashes the
-            // app with "The specified child already has a parent".
-            factory = frameFactory,
+        Box(
             modifier = modifier.then(frameModifier)
                 .clip(RoundedCornerShape(12.dp)),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            AndroidView(
+                // The same live engine view is reparented between the panel and
+                // the fullscreen dialog. Detach defensively: compose may create
+                // this AndroidView before the dialog's holder is disposed (or vice
+                // versa), and addView() on an already-parented view crashes the
+                // app with "The specified child already has a parent".
+                factory = frameFactory,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // AI action cursor on the live view too: the ring+dot overlay
+            // draws above the WebView so the user always sees the agent act.
+            ActionCursorOverlay(actionCursor = actionCursor)
+        }
         return
     }
     val bitmap = remember(frame) {
@@ -579,32 +587,40 @@ internal fun BrowserFrame(
         }
         // AI action cursor: a ring + dot at the last action point so the
         // user can see what the agent is doing.
-        if (actionCursor != null) {
-            val cursorColor = MaterialTheme.colorScheme.primary
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.TopStart,
-            ) {
-                androidx.compose.foundation.Canvas(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    val cx = (actionCursor.first.toFloat() * size.width)
-                        .coerceIn(0f, size.width)
-                    val cy = (actionCursor.second.toFloat() * size.height)
-                        .coerceIn(0f, size.height)
-                    drawCircle(
-                        color = cursorColor,
-                        radius = 22f,
-                        center = androidx.compose.ui.geometry.Offset(cx, cy),
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f),
-                    )
-                    drawCircle(
-                        color = cursorColor,
-                        radius = 6f,
-                        center = androidx.compose.ui.geometry.Offset(cx, cy),
-                    )
-                }
-            }
+        ActionCursorOverlay(actionCursor = actionCursor)
+    }
+}
+
+/**
+ * Ring + dot overlay marking the agent's last action point (viewport
+ * fractions 0..1). Drawn above live WebViews and screenshots alike.
+ */
+@Composable
+private fun ActionCursorOverlay(actionCursor: Pair<Double, Double>?) {
+    if (actionCursor == null) return
+    val cursorColor = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopStart,
+    ) {
+        androidx.compose.foundation.Canvas(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            val cx = (actionCursor.first.toFloat() * size.width)
+                .coerceIn(0f, size.width)
+            val cy = (actionCursor.second.toFloat() * size.height)
+                .coerceIn(0f, size.height)
+            drawCircle(
+                color = cursorColor,
+                radius = 22f,
+                center = androidx.compose.ui.geometry.Offset(cx, cy),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f),
+            )
+            drawCircle(
+                color = cursorColor,
+                radius = 6f,
+                center = androidx.compose.ui.geometry.Offset(cx, cy),
+            )
         }
     }
 }
