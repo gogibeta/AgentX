@@ -168,7 +168,10 @@ internal fun List<OpenAiMessage>.toResponsesInput(
             providerName != null &&
             message.responseOutputItemProvider == providerName
         ) {
-            message.responseOutputItems.orEmpty()
+            // Heal rows persisted before continuation items were sanitized at capture:
+            // drop duplicate/content-less message items and keep function calls last so a
+            // quirky relay can never again brick the chat with "interrupts pending tool results".
+            sanitizeResponseContinuationItems(message.responseOutputItems.orEmpty())
         } else {
             emptyList()
         }

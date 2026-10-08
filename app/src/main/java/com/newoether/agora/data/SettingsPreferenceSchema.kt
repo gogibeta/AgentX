@@ -18,6 +18,8 @@ internal val SYSTEM_PROMPTS_JSON = stringPreferencesKey("system_prompts_json")
 internal val ACTIVE_SYSTEM_PROMPT_ID = stringPreferencesKey("active_system_prompt_id")
 internal val MODEL_ALIASES_JSON = stringPreferencesKey("model_aliases_json")
 internal val MODEL_PROVIDER_NAMES_JSON = stringPreferencesKey("model_provider_names_json")
+/** Per-model context-window overrides, keyed by canonical "Provider:model" id. Absent = use global. */
+internal val MODEL_CONTEXT_WINDOWS_JSON = stringPreferencesKey("model_context_windows_json")
 internal val CONTEXT_TOKEN_BUDGET = stringPreferencesKey("context_token_budget")
 /** Legacy logical-message window, retained only as a migration source. */
 internal val MAX_CONTEXT_WINDOW = stringPreferencesKey("max_context_window")
@@ -74,6 +76,9 @@ internal val AGENT_MODE = stringPreferencesKey("agent_mode")
 internal val AGENT_WORKSPACE_URI = stringPreferencesKey("agent_workspace_uri")
 internal val AGENT_MODELS_JSON = stringPreferencesKey("agent_models_json")
 internal val AGENT_ENV_JSON = stringPreferencesKey("agent_env_json")
+/** v2.4 auto-compact: drop low-value tool outputs from the model projection. */
+internal val AGENT_AUTO_COMPACT_ENABLED = booleanPreferencesKey("agent_auto_compact_enabled")
+internal val AGENT_AUTO_COMPACT_INTERVAL_TURNS = intPreferencesKey("agent_auto_compact_interval_turns")
 internal val IMAGE_GEN_ENABLED = booleanPreferencesKey("image_gen_enabled")
 // Selected image model as "Provider:modelId"; provider creds are reused (no separate key/url).
 internal val IMAGE_GEN_MODEL = stringPreferencesKey("image_gen_model")

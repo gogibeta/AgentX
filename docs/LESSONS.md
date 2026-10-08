@@ -63,3 +63,158 @@
 - `ask_models` swallowed provider failures as opaque "provider_error"; it now
   returns the real (truncated) provider message, and accepts a per-call
   `models` array to ask specific models for one verification pass.
+- CDP "all backends give cdp error" (2026-10-02): the page *session* died
+  while the *socket* stayed alive (renderer crash, tab closed, tunnel-runner
+  restart/DO uplink swap, WebView recreated). `ensureConnected()` only checked
+  the socket, so every later `invoke()` failed forever with a bare
+  `cdp_error(-32000)`/`-32001` — and `BrowserToolProvider.errorCode()` truncated
+  even the message away, so the agent saw only the numeric code. Fix:
+  `CdpClient.invoke()` now detects session-invalid signatures, re-attaches
+  (or recreates the page target) and retries once; errors carry
+  `cdp_error(code):method: message` plus backend tag, and tool errors include
+  full `message` + actionable `hint`. Never truncate a diagnostic error to a
+  bare code again — the code alone is undebuggable.
+- `BrowserSession` now records WHY each backend connect failed
+  (`lastConnectFailure()`); `not_connected` tool errors surface that reason
+  instead of an empty message. Always thread connect-failure reasons to the
+  caller — "not connected" with no cause wastes a full debug round-trip.
+- CDP stale-socket race (2026-10-02): `WebSocketListener.onClosed` fired for a
+  PREVIOUS socket after `connectLocked()` had already installed its
+  replacement; `handleSocketGone()` nulled the live socket and failed all of
+  its pending calls. Fix: pass the firing `WebSocket` into the handler and act
+  only on identity match (`socket !== gone → ignore`). Any socket-death
+  handler must identify WHICH socket died.
+- CDP page recreation vs reattach (2026-10-02): `reattachLocked()` returned a
+  bare Boolean for both "re-attached to the same target" and "target gone,
+  page recreated" — but only the latter invalidates cached DOM node ids.
+  Returning `ReattachResult { REATTACHED, RECREATED, FAILED }` and firing
+  `onPageRecreated()` lets `BrowserSession` drop `snapshotRefs`, so the next
+  click/fill fails fast with "take a new snapshot" instead of a mystery
+  node-not-found. Never conflate "reconnected" with "same page".
+- `FileLog.tailLines()` read the rotated file first and stopped when the
+  limit filled, so a long previous-session log crowded out the current
+  session's newest lines. Fix: aggregate rotated → current → queued, then keep
+  only the newest `maxLines` overall.
+- Tunnel failure messages must be host-only: the stored tunnel URL may carry a
+  user-pasted `?token=` query param — never interpolate the raw URL into a
+  reason that reaches logs or tool results.
+- WebView target-scoped CDP sessions (2026-10-03): `connectWebView()` opens a
+  target-level WebSocket (`/devtools/page/<id>`) where the connection IS the
+  page session — no `Target.attachToTarget`, no session id. But `CdpClient`
+  kept the stale `targetId`/`sessionId` from the previously used backend, so
+  every command went out with a dead session id and failed
+  `cdp_error(-32001): Session with given id not found`; the self-healing
+  reattach then failed too because `Target.*` is invalid on a target-scoped
+  connection. Fix: `CdpClient.clearPageSession()` called right after the
+  WebView connect. Rule: whenever you connect to a target-scoped endpoint,
+  explicitly drop inherited page-session state — never assume a fresh
+  `CdpClient` — and never run the browser-level reattach path against it.
+- GeckoView `WebExtension.InstallException.code == -1` is the generic/unknown
+  install failure, and `GeckoRuntime.create()` throwing a bare
+  `IllegalStateException("Failed to initialize GeckoRuntime")` is not
+  diagnosable. Fix: preflight now logs the cause chain and the full stack, so
+  the next log bundle says WHY (ABI, omni.ja, profile dir). Never log only an
+  exception's `toString()` when the cause is the actual diagnostic.
+- Watch-frame polling stops after 5 consecutive failures but restarts on the
+  next browser tool event; a degraded tunnel runner (long-lived GitHub runner,
+  >30s screenshot latency) therefore looks like "no live view". The timeout
+  is the symptom — check runner health before blaming the app.
+- Compose AndroidView double-parent crash (2026-10-03): the browser watch
+  panel and the fullscreen dialog both hosted the SAME live WebView/GeckoView
+  instance via `AndroidView(factory = { liveView })`. When fullscreen toggled,
+  the dialog's holder was created before the panel's holder was disposed (or
+  vice versa) and `addView()` threw "The specified child already has a parent",
+  crashing the app. Fix: EVERY factory that returns a shared view must
+  defensively `(liveView.parent as? ViewGroup)?.removeView(liveView)` before
+  returning it — on both sides, since disposal/creation ordering is not
+  guaranteed. Never assume the other holder released the view first.
+- Missing tool, not a broken tool (2026-10-03): the in-app agent could not
+  fetch an X account's tweets because only `social_resolve`/`social_search`
+  existed — the code hint told it to use the worker's
+  `/ai/2/profile/{handle}/statuses` route but no tool called it, so the agent
+  fell back to login-walled direct fetches. Fix: added `social_timeline`.
+  When a hint references a capability, the tool that performs it must exist.
+- Stale "removed" claims (2026-10-03): the social client refused X search
+  locally as `search_not_supported` ("shut off upstream"), but the worker's
+  refreshed llms.txt documents X search as RELAY-SERVED again
+  (`/ai/2/search?q=&feed=`). The refusal was never re-verified after the
+  worker update. Rule: when the worker's llms.txt changes, re-check every
+  local refusal against the live route — call it and let the worker answer
+  (200 vs 404 envelope) instead of refusing on stale knowledge. Verified
+  live: timeline params (count/with_replies/cursor) work; search 404s are
+  honest upstream-empty answers.
+- New tool for a hinted capability (2026-10-03): `social_timeline` existed
+  but took no params while llms.txt documents count/cursor/with_replies/
+  since/lang. A tool that hides documented params forces the agent into
+  worse fallbacks. When adding a tool around a documented API, expose ALL
+  documented params from day one.
+- Forced rotation kills the browser (2026-10-03): the fullscreen browser
+  dialog forced `SCREEN_ORIENTATION_LANDSCAPE`; on devices without
+  `configChanges` handling this destroys and recreates the activity
+  mid-task, killing the WebView/CDP session (seen in logs as
+  activity destroyed→created at 17:33:42 mid-Wordle). Fix: never force
+  orientation for the browser popup — use a desktop user agent + wide
+  viewport so sites serve desktop layout in any orientation.
+- Success JSON must carry ok:true (2026-10-03): `browser_snapshot`,
+  `browser_takeover`, and `browser_download_status` omitted `"ok": true`,
+  so `diagnosticOutcome()` logged EVERY success as `error:unknown` — the
+  audit trail looked like the browser was constantly failing. Rule: every
+  tool's success JSON carries `"ok": true`; the diagnostic derive trusts it.
+- One browser per chat (2026-10-03): a single global BrowserSession meant
+  two chats fought over one page. Fix: BrowserSessionRegistry keyed by
+  conversationId; the WebView backend owns one WebView per session
+  (target resolved by before/after /json/list diff under a mutex); the
+  watch panel filters diagnostic events by conversation id.
+- Fast browser loop (2026-10-03): click/fill/key/scroll now embed a fresh
+  page snapshot in their own result — the agent never needs a separate
+  browser_snapshot after acting, halving tool roundtrips.
+- PDF null-canvas NPE after page cap (2026-10-06): `pdf_render` crashed on
+  long markdown with "Attempt to invoke virtual method 'void
+  android.graphics.Canvas.drawText..' on a null object reference". AOSP
+  `PdfDocument.Page.getCanvas()` returns null after `finishPage()` ("@return
+  The canvas if the page is not finished, null otherwise"). The 100-page cap
+  path finished the page but created no new one, and Title/Heading/Para/
+  Table/Image/Divider branches kept drawing on it — the `if (capped) break`
+  checks sat at loop tops while `need()`/`onNewPage()` could hit the cap
+  mid-iteration. Fix: `need()`/`newPage()`/`onNewPage()` return Boolean and
+  every draw site stops when false. Rule: any "stop" flag set inside a helper
+  must be re-checked after the helper returns, not just at loop tops.
+- Tool docs must state EVERY limit (2026-10-06): `save_artifact`'s description
+  advertised 50 MB (the `source_path` limit) but `content` is capped at 1 MB,
+  so the agent only discovered the real limit from a `source_too_large`
+  rejection mid-task. Fix: the description now states both limits up front.
+  Rule: when one tool has different limits per parameter, document each at
+  the parameter AND in the top-level description.
+- Alpine sandbox repo + retry discipline (2026-10-06): the in-app sandbox
+  ships with ONLY the main apk repo enabled — `py3-pillow`, `py3-pip`,
+  `py3-reportlab` all report "no such package" until the community repo is
+  added (`echo community >> /etc/apk/repositories`, one line). The agent
+  retried the same failing `apk add` ~10 times without reading the error;
+  "no such package" is a repo/config problem, never a network one, so
+  retrying was pointless. Also: there is no curl, no pip/pip3/python3 -m pip
+  at all (only `apk` works), BusyBox grep has no `-P` flag, and installing
+  `poppler-utils` silently PURGES python3 (apk dependency conflict) —
+  reinstall python + reportlab afterwards. Rule: read the error text before
+  the second attempt, and never retry a deterministic config error.
+- Responses continuation replay must be sanitized (2026-10-09): the Nara router
+  re-emits the assistant `message` item once per text block, so retained
+  continuation items read `[message, function_call, message, function_call]`;
+  replaying that order put a message after pending function calls and the
+  fail-closed validator rejected EVERY later request with "input[4] interrupts
+  pending tool results", permanently bricking the chat for that provider
+  (agnes follow-up failed, then nemotron x4 failed on first request, same
+  chat). Separately, some relays omit `content` from
+  `response.output_item.done` message items, tripping "input[N] content is
+  empty" (gemini-3.5-flash). Fix: `sanitizeResponseContinuationItems` (dedupe
+  by type+id, drop content-less messages, keep function_call items last),
+  applied at capture in `ToolCallTextParser.completeResponse` (with content
+  recovery from streamed deltas) and defensively at replay in
+  `toResponsesInput` so already-persisted bad rows heal. Rule: never replay
+  raw provider items verbatim into the next request; normalize order and
+  completeness first, because one quirky relay can otherwise brick a chat.
+- Never retry deterministic model errors (2026-10-09): justworker 503
+  `model_not_found` ("No available channel for model claude-opus-4-8") was
+  retried 6 times with key rotation. `ProviderRetryPolicy.shouldRetryHttp`
+  now fails fast on deterministic signals (model_not_found, no available
+  channel, model not available); transient 429/5xx still retry. Rule: match
+  the error body before the status code when deciding to retry.

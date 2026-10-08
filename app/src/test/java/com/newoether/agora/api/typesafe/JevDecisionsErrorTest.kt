@@ -49,6 +49,7 @@ class JevDecisionsErrorTest {
         assertTrue(JevDecisions.describeError(JevDecisions.JevError.Api(403, "x")).contains("403"))
         assertTrue(JevDecisions.describeError(JevDecisions.JevError.Api(404, "x")).contains("base URL"))
         assertTrue(JevDecisions.describeError(JevDecisions.JevError.Api(429, "x")).contains("rate-limited"))
+        assertTrue(JevDecisions.describeError(JevDecisions.JevError.Api(402, "x")).contains("out of credit"))
         assertTrue(JevDecisions.describeError(JevDecisions.JevError.Api(503, "x")).contains("server error"))
         assertTrue(JevDecisions.describeError(JevDecisions.JevError.Network("dns down")).contains("network error"))
         assertTrue(JevDecisions.describeError(JevDecisions.JevError.BadResponse).contains("bad response"))

@@ -2,7 +2,9 @@ package com.newoether.agora.data
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,6 +50,28 @@ class SettingsAgentPreferenceStore(
     val agentEnv: StateFlow<Map<String, String>> = store.data
         .map { decodeAgentEnv(it[AGENT_ENV_JSON], json) }
         .stateIn(scope, SharingStarted.Eagerly, emptyMap())
+
+    /**
+     * v2.4 auto-compact master switch. Default ON: every [autoCompactIntervalTurns]
+     * tool turns the engine asks Jev to drop low-value tool outputs from the model's
+     * view (Room history is never touched). Visible notice on every compaction.
+     */
+    val autoCompactEnabled: StateFlow<Boolean> = store.data
+        .map { it[AGENT_AUTO_COMPACT_ENABLED] ?: true }
+        .stateIn(scope, SharingStarted.Eagerly, true)
+
+    /** Tool turns between auto-compact checkpoints (default 25). */
+    val autoCompactIntervalTurns: StateFlow<Int> = store.data
+        .map { (it[AGENT_AUTO_COMPACT_INTERVAL_TURNS] ?: 25).coerceIn(5, 100) }
+        .stateIn(scope, SharingStarted.Eagerly, 25)
+
+    fun setAutoCompactEnabled(enabled: Boolean) = scope.launch {
+        store.edit { it[AGENT_AUTO_COMPACT_ENABLED] = enabled }
+    }
+
+    fun setAutoCompactIntervalTurns(turns: Int) = scope.launch {
+        store.edit { it[AGENT_AUTO_COMPACT_INTERVAL_TURNS] = turns.coerceIn(5, 100) }
+    }
 
     fun setAgentMode(mode: String) = scope.launch {
         store.edit { it[AGENT_MODE] = normalizeAgentMode(mode) }

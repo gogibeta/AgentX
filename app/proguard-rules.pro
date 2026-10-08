@@ -42,3 +42,8 @@
 -keep class com.newoether.agora.screenshot.ScreenshotFixture { *; }# Ktor server: JVM-only debug detection (DevelopmentMode), absent on Android.
 -dontwarn java.lang.management.ManagementFactory
 -dontwarn java.lang.management.RuntimeMXBean
+
+# Diagnostics: keep Throwable subclass names readable in release builds.
+# Without this, R8 obfuscates exception class names (e.g. CdpException -> "ja1")
+# and every log/diagnostic that uses javaClass.simpleName becomes noise (III.1).
+-keepnames class * extends java.lang.Throwable

@@ -40,7 +40,9 @@ import kotlin.random.Random
 object TypeSafeClient {
     const val DEFAULT_BASE_URL = "https://api.typesafe.ai"
     const val DEFAULT_MODEL = "jev-latest"
-    private const val REQUEST_TIMEOUT_MS = 10_000L
+    /** Default per-attempt HTTP timeout. Drex calls should pass 60_000L. */
+    const val DEFAULT_TIMEOUT_MS = 10_000L
+    private const val REQUEST_TIMEOUT_MS = DEFAULT_TIMEOUT_MS
     private const val MAX_RETRIES = 2
     private const val INITIAL_BACKOFF_MS = 500L
     private const val MAX_BACKOFF_MS = 5_000L
@@ -147,13 +149,17 @@ object TypeSafeClient {
         mapOf("Authorization" to "Bearer $apiKey")
 
     /** `GET {base}/v1/models` — model/alias names available to this key. */
-    suspend fun listModels(apiKey: String, baseUrl: String?): List<String> =
+    suspend fun listModels(
+        apiKey: String,
+        baseUrl: String?,
+        timeoutMs: Long = REQUEST_TIMEOUT_MS,
+    ): List<String> =
         withContext(Dispatchers.IO) {
             val url = "${canonicalBaseUrl(baseUrl)}/v1/models"
             val response = HttpClient.fetchModelsResponse(
                 url,
                 authHeaders(apiKey),
-                callTimeoutMillis = REQUEST_TIMEOUT_MS,
+                callTimeoutMillis = timeoutMs,
             )
             if (!response.isSuccessful) {
                 throw JevApiException(
@@ -183,6 +189,11 @@ object TypeSafeClient {
     /**
      * `POST {base}/v1/systemone` — answer [questions] about [state] with [model].
      * Never throws for low confidence: thresholds belong to the caller.
+     *
+     * [timeoutMs] is per attempt. Drex's docs warn the model can take up to ~55s
+     * under load — pass 60s for Drex, keep the 10s default for TypeSafe Jev.
+     * Wire-compatible with Drex (https://drex.nace.ai): same endpoint, same
+     * question types, same answer shape.
      */
     suspend fun decide(
         apiKey: String,
@@ -190,6 +201,7 @@ object TypeSafeClient {
         model: String = DEFAULT_MODEL,
         state: JsonElement,
         questions: Map<String, JevQuestion>,
+        timeoutMs: Long = REQUEST_TIMEOUT_MS,
     ): JevDecision {
         require(questions.isNotEmpty()) { "questions must have at least one entry" }
         val url = "${canonicalBaseUrl(baseUrl)}/v1/systemone"
@@ -200,7 +212,7 @@ object TypeSafeClient {
                 questions.forEach { (key, q) -> put(key, q.toJson()) }
             }
         }.toString()
-        val (status, responseBody) = postWithRetry(url, body, authHeaders(apiKey))
+        val (status, responseBody) = postWithRetry(url, body, authHeaders(apiKey), timeoutMs)
         return parseDecision(status, responseBody, questions)
     }
 
@@ -208,6 +220,7 @@ object TypeSafeClient {
         url: String,
         body: String,
         headers: Map<String, String>,
+        timeoutMs: Long,
     ): Pair<Int, String> = withContext(Dispatchers.IO) {
         var attempt = 0
         var lastFailure: Exception? = null
@@ -223,7 +236,7 @@ object TypeSafeClient {
                     url,
                     body,
                     attemptHeaders,
-                    callTimeoutMillis = REQUEST_TIMEOUT_MS,
+                    callTimeoutMillis = timeoutMs,
                 )
                 if (response.isSuccessful) return@withContext response.code to response.body
                 if (response.code !in retryableStatuses) {

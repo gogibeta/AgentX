@@ -31,9 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.newoether.agora.R
 import com.newoether.agora.TopLevelPresentation
 import com.newoether.agora.api.DebugProvider
 import com.newoether.agora.data.forDisplay
@@ -42,8 +40,8 @@ import com.newoether.agora.util.gradientBlur
 import com.newoether.agora.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
 import com.newoether.agora.ui.chat.bottombar.ChatBottomBar
 import com.newoether.agora.ui.chat.bottombar.LoopStatusBackdrop
+import com.newoether.agora.ui.browser.ChatBrowserWatchRestoreFab
 import com.newoether.agora.ui.chat.interaction.ChatUserInteractionBar
-import com.newoether.agora.ui.browser.ChatBrowserWatchCard
 import com.newoether.agora.ui.components.AnimatedBlobBackground
 import com.newoether.agora.ui.components.clearFocusOnTap
 import com.newoether.agora.ui.common.LocalAgentXHaptics
@@ -155,6 +153,7 @@ fun ChatApp(
         selectedModel = selectedModel,
         customProviders = customProviders,
     )
+    val projectFolderScope = rememberProjectFolderScope(viewModel, conversationControls.settingsOwnerId)
     val contextProjectionKey = rememberContextProjectionInvalidationKey(
         viewModel,
         listOf(
@@ -611,12 +610,13 @@ fun ChatApp(
                                 contentPadding = PaddingValues(
                                     start = 8.dp,
                                     end = 8.dp,
-                                    top = 140.dp,
+                                    top = topBarH + 8.dp, // top bar overlays the list (Scaffold innerPadding unused), so pad by its full height — otherwise first messages hide behind it
                                     bottom = bottomBarHeight + shareSelectionBarSpace + 8.dp
                                 )
                             )
-                            // Live browser watch panel: collapsible card, visible only during an active session.
-                            ChatBrowserWatchCard()
+                            // Browser card is now INLINE in the message list
+                            // (Muse-style) — no more top overlay eating the chat.
+                            ChatBrowserWatchRestoreFab(topPadding = topBarH + 12.dp) // below the overlay top bar, or a hidden panel can never be restored
                             }
                         } else if (targetShowLaunch) {
                             ChatWelcomeContent(
@@ -736,13 +736,13 @@ fun ChatApp(
                         // The model row owns its selection tick. Repeating it here produced the
                         // previous double buzz for one physical tap.
                         onModelSelect = { viewModel.setActiveModel(it) },
-                        agentMode = viewModel.settings.agentSettings.agentMode.collectAsState().value,
-                        onAgentModeChange = { viewModel.settings.agentSettings.setAgentMode(it) },
+                        agentMode = projectFolderScope.agentMode,
+                        onAgentModeChange = projectFolderScope.requestModeChange,
+                        projectFolder = projectFolderScope.activeFolder,
+                        onProjectFolderClick = projectFolderScope.openFolderPicker,
                         onAllMediaClick = { urls, idx -> onMediaClick(urls, idx) },
                         onFileContentClick = { name, content -> viewModel.mediaPreview.showFile(name, content) },
-                        modifier = Modifier,
-                        textFieldState = textFieldState,
-                        composerState = composer,
+                        modifier = Modifier, textFieldState = textFieldState, composerState = composer,
                         focusRequester = inputFocusRequester,
                         onInputFocusChanged = { focused ->
                             scrollCoordinator.setComposerInputFocused(focused)

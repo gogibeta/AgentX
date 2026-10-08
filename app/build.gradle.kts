@@ -22,7 +22,7 @@ android {
     // on JDK 17+ its TLS server needs reflective access to java.net (InetAddress.holder).
     testOptions.unitTests.all { it.jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED") }
     compileSdk {
-        version = release(36)
+        version = release(37) { minorApiLevel = 1 }
     }
 
     ndkVersion = "28.2.13676358"
@@ -31,8 +31,8 @@ android {
         applicationId = "com.newoether.agora"
         minSdk = 26
         targetSdk = 36
-        versionCode = 32
-        versionName = "2.2.0"
+        versionCode = 39
+        versionName = "2.4.0-beta20"
 
 
         ndk {

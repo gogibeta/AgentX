@@ -21,7 +21,7 @@ object ContextBudget {
     /**
      * Values up to 100 are legacy logical-message windows from pre-token-budget builds. Convert
      * them once at read/use boundaries so old settings remain useful instead of becoming a
-     * nonsensical 20-token context.
+     * nonsensical 20-token context. Null/zero/negative means "unset" and falls back to default.
      */
     fun normalize(value: Int?): Int {
         if (value == null || value <= 0) return DEFAULT_TOKENS

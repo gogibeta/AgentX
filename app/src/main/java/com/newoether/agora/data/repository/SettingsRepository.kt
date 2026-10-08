@@ -112,6 +112,7 @@ class SettingsRepository(
     val customModels: StateFlow<Set<String>> = hot(settingsManager.customModels, emptySet())
     val enabledModels: StateFlow<Set<String>> = hot(settingsManager.enabledModels, emptySet())
     val modelAliases: StateFlow<Map<String, String>> = hot(settingsManager.modelAliases, emptyMap())
+    val modelContextWindows: StateFlow<Map<String, Int>> = hot(settingsManager.modelContextWindows, emptyMap())
     val modelProviderNames: StateFlow<Map<String, Boolean>> = hot(settingsManager.modelProviderNames, emptyMap())
     val apiKeys: StateFlow<List<ApiKeyEntry>> = hot(settingsManager.apiKeys, emptyList())
     val activeApiKeyIds: StateFlow<Map<String, String>> = hot(settingsManager.activeApiKeyIds, emptyMap())
@@ -270,9 +271,7 @@ class SettingsRepository(
     // former `SettingsDelegate`; logic is byte-for-byte equivalent.
 
     // Model selection
-    fun setSelectedModel(model: String) {
-        scope.launch { settingsManager.saveSelectedModel(model) }
-    }
+    fun setSelectedModel(model: String) = scope.launch { settingsManager.saveSelectedModel(model) }
 
     fun setEnabledModels(models: Set<String>) {
         scope.launch {
@@ -283,11 +282,10 @@ class SettingsRepository(
         }
     }
 
-    fun updateModelAlias(model: String, alias: String, showProviderName: Boolean? = null) {
-        scope.launch {
-            settingsManager.updateModelAlias(model, alias, showProviderName)
-        }
-    }
+    fun updateModelAlias(model: String, alias: String, showProviderName: Boolean? = null) =
+        scope.launch { settingsManager.updateModelAlias(model, alias, showProviderName) }
+
+    fun saveModelContextWindow(model: String, tokens: Int?) = scope.launch { runCatching { settingsManager.saveModelContextWindow(model, tokens) } }
 
     fun addCustomModel(provider: String, modelName: String, alias: String = "", showProviderName: Boolean = true) {
         val normalizedProvider = stableProviderReference(provider)
@@ -509,6 +507,7 @@ class SettingsRepository(
                 enabledModels.value.filter { !it.startsWith("$providerId:") }.toSet(),
             )
             settingsManager.removeModelAliasesForProvider(providerId)
+            settingsManager.removeModelContextWindowsForProvider(providerId)
             settingsManager.saveProviderBaseUrl(name, "")
             settingsManager.saveApiKeys(apiKeys.value.filter { it.provider != name })
             settingsManager.setActiveApiKeyId(name, null)

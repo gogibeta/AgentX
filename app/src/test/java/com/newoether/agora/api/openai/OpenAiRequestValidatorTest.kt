@@ -348,6 +348,95 @@ class OpenAiRequestValidatorTest {
         request.requireValidWireFormat("OpenAI")
     }
 
+    @Test
+    fun responsesContinuationHealsInterleavedDuplicateMessage() {
+        // The Nara router emits the assistant message item once per text block, so retained
+        // items can read [message, function_call, message, function_call]. Replaying that
+        // order used to fail every later request with
+        // "input[4] interrupts pending tool results", permanently bricking the chat.
+        val message = { text: String ->
+            Json.parseToJsonElement(
+                """{"id":"msg_1","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"$text","annotations":[]}]}""",
+            ).jsonObject
+        }
+        fun call(id: String, callId: String) = responseItem(
+            OpenAiResponseOutputItem(
+                id = id,
+                type = "function_call",
+                callId = callId,
+                name = "lookup",
+                arguments = "{}",
+            ),
+        )
+        val input = listOf(
+            user("start"),
+            assistantToolCall("call_1").copy(
+                toolCalls = listOf(
+                    OpenAiRequestToolCall(
+                        id = "call_1",
+                        function = OpenAiRequestFunction(name = "lookup", arguments = "{}"),
+                    ),
+                    OpenAiRequestToolCall(
+                        id = "call_2",
+                        function = OpenAiRequestFunction(name = "lookup", arguments = "{}"),
+                    ),
+                ),
+                responseOutputItems = listOf(
+                    message("first"),
+                    call("fc_1", "call_1"),
+                    message("second"),
+                    call("fc_2", "call_2"),
+                ),
+                responseOutputItemProvider = "Nara",
+            ),
+            toolResult("call_1"),
+            toolResult("call_2"),
+        ).toResponsesInput(providerName = "Nara")
+
+        OpenAiResponsesRequest(model = "test", input = input).requireValidWireFormat("Nara")
+        assertEquals(
+            listOf(
+                "message", "message", "function_call", "function_call",
+                "function_call_output", "function_call_output",
+            ),
+            input.map { it["type"]?.jsonPrimitive?.content },
+        )
+    }
+
+    @Test
+    fun responsesContinuationDropsContentLessReplayedMessage() {
+        // Some relays omit `content` from the retained message item (text arrived via deltas
+        // only). The bare item used to fail the next request with "input[N] content is empty".
+        val bareMessage = Json.parseToJsonElement(
+            """{"id":"msg_1","type":"message","role":"assistant","status":"completed"}""",
+        ).jsonObject
+        val input = listOf(
+            user("start"),
+            assistantToolCall("call_1").copy(
+                responseOutputItems = listOf(
+                    bareMessage,
+                    responseItem(
+                        OpenAiResponseOutputItem(
+                            id = "fc_1",
+                            type = "function_call",
+                            callId = "call_1",
+                            name = "lookup",
+                            arguments = "{}",
+                        ),
+                    ),
+                ),
+                responseOutputItemProvider = "Nara",
+            ),
+            toolResult("call_1"),
+        ).toResponsesInput(providerName = "Nara")
+
+        OpenAiResponsesRequest(model = "test", input = input).requireValidWireFormat("Nara")
+        assertEquals(
+            listOf("message", "function_call", "function_call_output"),
+            input.map { it["type"]?.jsonPrimitive?.content },
+        )
+    }
+
     private fun validRequest() = OpenAiChatRequest(
         model = "gpt-test",
         messages = listOf(

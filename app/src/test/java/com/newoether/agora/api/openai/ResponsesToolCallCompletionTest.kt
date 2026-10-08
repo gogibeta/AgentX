@@ -5,6 +5,8 @@ import com.newoether.agora.api.OpenAiResponseOutputItem
 import com.newoether.agora.api.StreamEvent
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -314,6 +316,193 @@ internal class ResponsesToolCallCompletionTest : ResponsesEventFixture() {
             batch.calls.first().responseOutputItems.map {
                 it["id"]?.jsonPrimitive?.content
             },
+        )
+    }
+
+    @Test
+    fun retainedMessageItemRecoversContentFromTextDeltas() {
+        // Some relays omit `content` from `response.output_item.done` for message items;
+        // the text arrived via deltas only. The retained item must recover it so the next
+        // request does not fail validation with "content is empty".
+        val router = responsesRouter()
+        val message = OpenAiResponseOutputItem(id = "msg_1", type = "message")
+        router.route(
+            responseEvent(
+                "response.output_item.added",
+                1,
+                outputIndex = 0,
+                item = message,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_text.delta",
+                2,
+                delta = "hello ",
+                outputIndex = 0,
+                itemId = "msg_1",
+                contentIndex = 0,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_text.delta",
+                3,
+                delta = "world",
+                outputIndex = 0,
+                itemId = "msg_1",
+                contentIndex = 0,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.done",
+                4,
+                outputIndex = 0,
+                item = message,
+            ),
+        )
+        val callItem = responseCallItem("fc_1", "call_1", "lookup", "{}")
+        router.route(
+            responseEvent(
+                "response.output_item.added",
+                5,
+                outputIndex = 1,
+                item = callItem,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.done",
+                6,
+                outputIndex = 1,
+                item = callItem,
+            ),
+        )
+
+        val call = router.route(
+            responseEvent(
+                "response.completed",
+                7,
+                response = OpenAiResponseEnvelope(status = "completed"),
+            ),
+        ).filterIsInstance<StreamEvent.ToolCallRequest>().single()
+
+        val items = call.responseOutputItems
+        assertEquals(
+            listOf("message", "function_call"),
+            items.map { it["type"]?.jsonPrimitive?.content },
+        )
+        val content = items[0]["content"]?.jsonArray
+        assertEquals(1, content?.size)
+        assertEquals(
+            "hello world",
+            content?.single()?.jsonObject?.get("text")?.jsonPrimitive?.content,
+        )
+    }
+
+    @Test
+    fun interleavedDuplicateMessageItemsAreDedupedAndOrdered() {
+        // The Nara router emits the assistant message item once per text block, interleaved
+        // between function calls: [message, function_call, message, function_call]. The
+        // retained items must collapse to [message, function_call, function_call] or the next
+        // request fails with "interrupts pending tool results".
+        val router = responsesRouter()
+        val message = OpenAiResponseOutputItem(id = "msg_1", type = "message")
+        router.route(
+            responseEvent(
+                "response.output_item.added",
+                1,
+                outputIndex = 0,
+                item = message,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_text.delta",
+                2,
+                delta = "hi",
+                outputIndex = 0,
+                itemId = "msg_1",
+                contentIndex = 0,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.done",
+                3,
+                outputIndex = 0,
+                item = message,
+            ),
+        )
+        val first = responseCallItem("fc_1", "call_1", "lookup", "{}")
+        router.route(
+            responseEvent(
+                "response.output_item.added",
+                4,
+                outputIndex = 1,
+                item = first,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.done",
+                5,
+                outputIndex = 1,
+                item = first,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.added",
+                6,
+                outputIndex = 2,
+                item = message,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.done",
+                7,
+                outputIndex = 2,
+                item = message,
+            ),
+        )
+        val second = responseCallItem("fc_2", "call_2", "lookup", "{}")
+        router.route(
+            responseEvent(
+                "response.output_item.added",
+                8,
+                outputIndex = 3,
+                item = second,
+            ),
+        )
+        router.route(
+            responseEvent(
+                "response.output_item.done",
+                9,
+                outputIndex = 3,
+                item = second,
+            ),
+        )
+
+        val batch = router.route(
+            responseEvent(
+                "response.completed",
+                10,
+                response = OpenAiResponseEnvelope(status = "completed"),
+            ),
+        ).filterIsInstance<StreamEvent.ToolCallsRequest>().single()
+
+        assertEquals(listOf("call_1", "call_2"), batch.calls.map { it.id })
+        val items = batch.calls.first().responseOutputItems
+        assertEquals(
+            listOf("message", "function_call", "function_call"),
+            items.map { it["type"]?.jsonPrimitive?.content },
+        )
+        assertEquals(
+            listOf("msg_1", "fc_1", "fc_2"),
+            items.map { it["id"]?.jsonPrimitive?.content },
         )
     }
 }
