@@ -577,6 +577,28 @@ internal class OpenAiResponsesEventRouter(
         return emptyList()
     }
 
+    /**
+     * Some relays omit `content` from `response.output_item.done` message items (their text
+     * arrived via deltas only). Recover it from the accumulated output-text parts for that
+     * output item so the retained item stays replayable; when no text was streamed the item
+     * is left alone and the continuation sanitizer drops it.
+     */
+    private fun fillMessageContent(outputIndex: Int, item: JsonObject): JsonObject {
+        if ((item["type"] as? JsonPrimitive)?.contentOrNull != "message") return item
+        if (item.responseMessageText() != null) return item
+        val itemId = (item["id"] as? JsonPrimitive)?.contentOrNull
+        val text = outputTextParts.values
+            .filter { part ->
+                part.key.outputIndex == outputIndex ||
+                    (itemId != null && part.key.itemId == itemId)
+            }
+            .sortedWith(compareBy({ it.key.contentIndex ?: 0 }, { it.globalStart }))
+            .joinToString("") { it.text.toString() }
+            .takeIf { it.isNotBlank() }
+            ?: return item
+        return item.withResponseMessageText(text)
+    }
+
     private fun completeResponse(event: OpenAiResponseStreamEvent): List<StreamEvent> {
         if (toolCallInFlight) return fail(event.type, "response completed with an open function call")
         if (openHostedOutputIndexes.isNotEmpty()) {
@@ -588,10 +610,14 @@ internal class OpenAiResponsesEventRouter(
         }
         sawTerminalMarker = true
         stopReason = "completed"
-        val continuationItems = responseItemsByOutputIndex
-            .toSortedMap()
-            .values
-            .toList()
+        // Relays vary: the Nara router re-emits the assistant message item between function
+        // calls, and some relays omit `content` from message items entirely. Sanitize the
+        // retained items so the next request's fail-closed validation can never trip on them.
+        val continuationItems = sanitizeResponseContinuationItems(
+            responseItemsByOutputIndex.toSortedMap().map { (index, item) ->
+                fillMessageContent(index, item)
+            },
+        )
         val calls = completedCallsByOutputIndex
             .toSortedMap()
             .values
