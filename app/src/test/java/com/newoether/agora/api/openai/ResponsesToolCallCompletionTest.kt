@@ -5,6 +5,8 @@ import com.newoether.agora.api.OpenAiResponseOutputItem
 import com.newoether.agora.api.StreamEvent
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
