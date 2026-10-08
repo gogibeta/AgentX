@@ -196,3 +196,25 @@
   `poppler-utils` silently PURGES python3 (apk dependency conflict) —
   reinstall python + reportlab afterwards. Rule: read the error text before
   the second attempt, and never retry a deterministic config error.
+- Responses continuation replay must be sanitized (2026-10-09): the Nara router
+  re-emits the assistant `message` item once per text block, so retained
+  continuation items read `[message, function_call, message, function_call]`;
+  replaying that order put a message after pending function calls and the
+  fail-closed validator rejected EVERY later request with "input[4] interrupts
+  pending tool results", permanently bricking the chat for that provider
+  (agnes follow-up failed, then nemotron x4 failed on first request, same
+  chat). Separately, some relays omit `content` from
+  `response.output_item.done` message items, tripping "input[N] content is
+  empty" (gemini-3.5-flash). Fix: `sanitizeResponseContinuationItems` (dedupe
+  by type+id, drop content-less messages, keep function_call items last),
+  applied at capture in `ToolCallTextParser.completeResponse` (with content
+  recovery from streamed deltas) and defensively at replay in
+  `toResponsesInput` so already-persisted bad rows heal. Rule: never replay
+  raw provider items verbatim into the next request; normalize order and
+  completeness first, because one quirky relay can otherwise brick a chat.
+- Never retry deterministic model errors (2026-10-09): justworker 503
+  `model_not_found` ("No available channel for model claude-opus-4-8") was
+  retried 6 times with key rotation. `ProviderRetryPolicy.shouldRetryHttp`
+  now fails fast on deterministic signals (model_not_found, no available
+  channel, model not available); transient 429/5xx still retry. Rule: match
+  the error body before the status code when deciding to retry.
