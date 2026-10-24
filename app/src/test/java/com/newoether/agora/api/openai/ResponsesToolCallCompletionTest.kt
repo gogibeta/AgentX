@@ -14,7 +14,12 @@ import org.junit.Test
 
 internal class ResponsesToolCallCompletionTest : ResponsesEventFixture() {
     @Test
-    fun responsesReasoningOutputItemIsRetainedUntilCompletedCallRelease() {
+    fun responsesReasoningOutputItemIsDroppedFromContinuation() {
+        // Reasoning items must never reach a continuation request: Responses-compatible
+        // relays (proven live against discovery-api.intern-ai.org.cn, 2026-10-25) reject a
+        // replayed reasoning item with HTTP 400, bricking every turn after a tool call.
+        // The reasoning item is still routed through the stream (thinking stays visible),
+        // it is just dropped from the retained continuation items; the call itself survives.
         val router = responsesRouter()
         val reasoning = OpenAiResponseOutputItem(
             id = "rs_1",
@@ -74,11 +79,13 @@ internal class ResponsesToolCallCompletionTest : ResponsesEventFixture() {
         ).filterIsInstance<StreamEvent.ToolCallRequest>().single()
 
         assertEquals(
-            listOf(responseItem(reasoning), responseItem(callItem)),
+            listOf(responseItem(callItem)),
             call.responseOutputItems,
         )
         assertTrue(router.route(responseEvent("response.created", 6)).single() is StreamEvent.Error)
     }
+
+
 
     @Test
     fun responsesFinalArgumentsSnapshotOverridesEquivalentStreamFormatting() {

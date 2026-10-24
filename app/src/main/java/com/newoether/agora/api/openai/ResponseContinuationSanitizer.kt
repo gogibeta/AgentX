@@ -22,12 +22,25 @@ import kotlinx.serialization.json.putJsonArray
  * - Content-less messages: other relays omit `content` from `response.output_item.done`
  *   (the text arrived via deltas only). Replaying the bare item trips the validator's
  *   "input[N] content is empty".
+ * - Reasoning items: Responses-compatible relays in the wild (proven live against
+ *   discovery-api.intern-ai.org.cn for Atria-Dawn-Preview and kimi-k2.6, 2026-10-25)
+ *   validate `input` against message/function_call/function_call_output only and reject
+ *   a replayed `reasoning` item with HTTP 400 `upstream_request_rejected` (176 validation
+ *   errors, starting at the reasoning item: `reasoning_text` is not `input_text`/`input_image`
+ *   and `reasoning` is not `message`). The first turn works (messages only); every turn
+ *   after a tool call then fails forever, and switching models in the same chat does not
+ *   help because the poisoned reasoning item is part of the shared history. Reasoning is
+ *   regenerable model-internal thinking, not user content, so it is safe to omit: the
+ *   model re-thinks on the next turn, while function calls and their outputs (the items
+ *   a continuation actually needs) are kept verbatim.
  *
- * The repair is conservative: drop exact duplicates by (type, id), drop `message` items that
- * carry no text (their text already lives in the assistant history row when it is non-blank),
- * and stable-partition `function_call` items after every other item so provider item order can
- * never again interrupt pending calls. Reasoning items (encrypted_content) and hosted tool
- * calls are preserved untouched.
+ * The repair is conservative: drop `reasoning` items outright, drop exact duplicates by
+ * (type, id), drop `message` items that carry no text (their text already lives in the
+ * assistant history row when it is non-blank), and stable-partition `function_call` items
+ * after every other item so provider item order can never again interrupt pending calls.
+ * Hosted tool calls are preserved untouched. Because this sanitizer runs both at capture
+ * (ToolCallTextParser.completeResponse) and at replay (toResponsesInput), chats persisted
+ * before this fix heal on the next message without deleting history.
  */
 internal fun sanitizeResponseContinuationItems(items: List<JsonObject>): List<JsonObject> {
     val seen = mutableSetOf<String>()
@@ -35,6 +48,10 @@ internal fun sanitizeResponseContinuationItems(items: List<JsonObject>): List<Js
     val calls = mutableListOf<JsonObject>()
     for (item in items) {
         val type = (item["type"] as? JsonPrimitive)?.contentOrNull
+        // Reasoning items are never replayed: relays reject them (see KDoc above) and the
+        // model regenerates its thinking on the next turn. Drop before dedupe so a reasoning
+        // item can never consume an id slot or poison a continuation.
+        if (type == "reasoning") continue
         // Drop blank messages before dedupe so a content-less duplicate never consumes the id slot.
         if (type == "message" && item.responseMessageText() == null) continue
         val id = (item["id"] as? JsonPrimitive)?.contentOrNull

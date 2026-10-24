@@ -51,12 +51,14 @@ class GenerationToolRoundBuilderTest {
             base64Files = Base64FileRegistry(),
         ).toResponsesInput(providerName = "OpenAI")
 
+        // Reasoning items are dropped from continuations: relays reject them (see
+        // ResponseContinuationSanitizer), so the replayed input is only the function
+        // call and its output. The model regenerates its thinking on the next turn.
         assertEquals(
-            listOf("reasoning", "function_call", "function_call_output"),
+            listOf("function_call", "function_call_output"),
             input.map { it["type"]?.jsonPrimitive?.content },
         )
-        assertEquals("opaque", input[0]["encrypted_content"]?.jsonPrimitive?.content)
-        assertEquals("done", input[2]["output"]?.jsonPrimitive?.content)
+        assertEquals("done", input[1]["output"]?.jsonPrimitive?.content)
         assertTrue(
             round.entities[1].toolCallJson.orEmpty().contains("responseOutputItems").not(),
         )

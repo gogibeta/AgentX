@@ -226,6 +226,9 @@ class OpenAiRequestValidatorTest {
 
     @Test
     fun responsesContinuationReplaysCompleteProviderOutputWithoutDuplicatingCalls() {
+        // Reasoning items are dropped from continuations: relays reject them (see
+        // responsesContinuationDropsAtriaReasoningItems), and the model regenerates its
+        // thinking. Function calls and their outputs are still replayed verbatim.
         val reasoning = responseItem(
             OpenAiResponseOutputItem(
                 id = "rs_1",
@@ -255,12 +258,59 @@ class OpenAiRequestValidatorTest {
 
         request.requireValidWireFormat("OpenAI")
         assertEquals(
-            listOf("message", "reasoning", "function_call", "function_call_output"),
+            listOf("message", "function_call", "function_call_output"),
             input.map { it["type"]?.jsonPrimitive?.content },
         )
-        assertEquals("opaque-reasoning-state", input[1]["encrypted_content"]?.jsonPrimitive?.content)
-        assertEquals("fc_1", input[2]["id"]?.jsonPrimitive?.content)
-        assertEquals("call_1", input[2]["call_id"]?.jsonPrimitive?.content)
+        assertEquals("fc_1", input[1]["id"]?.jsonPrimitive?.content)
+        assertEquals("call_1", input[1]["call_id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun responsesContinuationDropsAtriaReasoningItems() {
+        // Exact wire shape from the 2026-10-25 Atria diagnostics: the second turn of a
+        // glm-5.3 / Atria-Dawn-Preview / kimi-k2.6 chat replayed a reasoning item with a
+        // reasoning_text content part, and discovery-api.intern-ai.org.cn rejected it with
+        // HTTP 400 upstream_request_rejected (176 validation errors). The same shape with
+        // the reasoning item removed was verified live to return 200 for the other models.
+        // This also heals chats persisted before the fix: replay-time sanitization drops
+        // the stored reasoning item instead of sending it again.
+        val reasoning = responseItem(
+            OpenAiResponseInputItem(
+                type = "reasoning",
+                id = "rs_atria",
+                content = listOf(
+                    OpenAiResponseInputContent(
+                        type = "reasoning_text",
+                        text = "User wants a greeting.",
+                    ),
+                ),
+            ),
+        )
+        val functionCall = responseItem(
+            OpenAiResponseOutputItem(
+                id = "fc_1",
+                type = "function_call",
+                callId = "call_1",
+                name = "lookup",
+                arguments = "{}",
+            ),
+        )
+        val input = listOf(
+            user("start"),
+            assistantToolCall("call_1").copy(
+                responseOutputItems = listOf(reasoning, functionCall),
+                responseOutputItemProvider = "OpenAI",
+            ),
+            toolResult("call_1"),
+        ).toResponsesInput(providerName = "OpenAI")
+        val request = OpenAiResponsesRequest(model = "gpt-test", input = input)
+
+        request.requireValidWireFormat("OpenAI")
+        assertEquals(
+            listOf("message", "function_call", "function_call_output"),
+            input.map { it["type"]?.jsonPrimitive?.content },
+        )
+        assertTrue(input.none { it["type"]?.jsonPrimitive?.content == "reasoning" })
     }
 
     @Test
