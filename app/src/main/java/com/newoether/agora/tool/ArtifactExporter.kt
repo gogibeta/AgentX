@@ -4,13 +4,17 @@ import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.newoether.agora.diagnostics.StructuredDiagnosticCategory
+import com.newoether.agora.diagnostics.StructuredDiagnostics
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
 
 /**
  * Agent artifact output: Markdown files and rendered PDF reports.
@@ -169,7 +173,7 @@ object ArtifactExporter {
                 trim == "---" || trim == "***" || trim == "___" -> {
                     blocks.add(PdfBlock.Divider); i++
                 }
-                trim.startsWith("|") && i + 1 < lines.size && TABLE_SEP.matches(lines[i + 1]) -> {
+                ('|' in trim) && i + 1 < lines.size && TABLE_SEP.matches(lines[i + 1].trim()) -> {
                     val header = splitTableRow(trim)
                     val rows = ArrayList<List<String>>()
                     i += 2
@@ -177,17 +181,16 @@ object ArtifactExporter {
                         rows.add(splitTableRow(lines[i].trim()))
                         i++
                     }
-                    if (rows.isNotEmpty()) blocks.add(PdfBlock.Table(header, rows))
+                    // Render header-only tables too (B7) — a header with no
+                    // rows is still content, not nothing.
+                    blocks.add(PdfBlock.Table(header, rows))
                 }
                 trim.startsWith("- ") || trim.startsWith("* ") -> {
                     blocks.add(PdfBlock.Bullet(parseSpans(trim.substring(2).trim()))); i++
                 }
                 Regex("""^\d+[.)]\s""").containsMatchIn(trim) -> {
                     val number = trim.takeWhile { it.isDigit() }.toIntOrNull()
-                    val content = trim.substringAfter(' ').let {
-                        // "1. text" -> drop "1." already consumed via takeWhile+dot?
-                        trim.replaceFirst(Regex("""^\d+[.)]\s*"""), "")
-                    }
+                    val content = trim.replaceFirst(Regex("""^\d+[.)]\s*"""), "")
                     blocks.add(PdfBlock.Bullet(parseSpans(content), number)); i++
                 }
                 IMAGE_REF.containsMatchIn(trim) && trim.startsWith("![") -> {
@@ -254,6 +257,12 @@ object ArtifactExporter {
         val caption = Paint().apply {
             typeface = Typeface.DEFAULT; textSize = 9.5f; color = MUTED; isAntiAlias = true
         }
+        // Dedicated centered caption paint (B10): never mutate the shared
+        // caption's textAlign — exception-unsafe.
+        val captionCentered = Paint().apply {
+            typeface = Typeface.DEFAULT; textSize = 9.5f; color = MUTED; isAntiAlias = true
+            textAlign = Paint.Align.CENTER
+        }
         val footer = Paint().apply {
             typeface = Typeface.DEFAULT; textSize = 9f; color = MUTED; isAntiAlias = true
             textAlign = Paint.Align.CENTER
@@ -269,7 +278,9 @@ object ArtifactExporter {
         else -> paints.body
     }
 
-    /** Greedy word wrap preserving per-span paints. */
+    /** Greedy word wrap preserving per-span paints. Overlong single words
+     * (URLs, tokens) are broken at character level so they never overflow
+     * the right margin. */
     internal fun layoutSpans(
         spans: List<TextSpan>,
         paints: Paints,
@@ -279,7 +290,30 @@ object ArtifactExporter {
         for (span in spans) {
             val paint = paintFor(span, paints)
             for (word in span.text.split(' ')) {
-                if (word.isNotEmpty()) words.add(word to paint)
+                if (word.isEmpty()) continue
+                // Break words wider than the column into fitting chunks.
+                if (paint.measureText(word) > maxWidthPx) {
+                    var start = 0
+                    while (start < word.length) {
+                        var end = start + 1
+                        while (end <= word.length &&
+                            paint.measureText(word.substring(start, end)) <= maxWidthPx
+                        ) end++
+                        // end is one past the last fitting prefix in both exit
+                        // cases: overshoot, or the final remainder fit and the
+                        // loop ran past word end. Always step back — the old
+                        // `if (end <= word.length)` guard skipped it in the
+                        // second case and substring(start, word.length + 1)
+                        // then threw StringIndexOutOfBoundsException (any long
+                        // URL/token crashed pdf_render).
+                        end--
+                        if (end <= start) end = start + 1 // single char wider than column
+                        words.add(word.substring(start, end) to paint)
+                        start = end
+                    }
+                } else {
+                    words.add(word to paint)
+                }
             }
         }
         val lines = ArrayList<List<Pair<String, Paint>>>()
@@ -300,54 +334,125 @@ object ArtifactExporter {
         return lines
     }
 
+    /** Result of [savePdf]: page count + whether the 100-page cap truncated output. */
+    data class PdfResult(val pages: Int, val truncated: Boolean)
+
+    /**
+     * Minimal document seam around [PdfDocument].
+     *
+     * Robolectric cannot create a real PdfDocument: its `nativeCreateDocument()`
+     * is unimplemented, so the very first `startPage` throws
+     * `IllegalStateException("document is closed!")` (AOSP's `throwIfClosed`
+     * checks the native handle, not a closed flag; there is no
+     * `ShadowPdfDocument`). Tests inject a fake that reproduces the AOSP
+     * contract the 100-page cap logic depends on — a finished page's canvas is
+     * unusable (on-device this surfaced as a null-canvas NPE). Production
+     * always uses [RealPdfDoc].
+     */
+    interface PdfDoc {
+        fun startPage(pageNum: Int): PdfPage
+        fun finishPage(page: PdfPage)
+        fun writeTo(out: OutputStream)
+        fun close()
+    }
+
+    /** A single PDF page. [canvas] is only valid until [PdfDoc.finishPage]. */
+    interface PdfPage {
+        val canvas: Canvas
+    }
+
+    private class RealPdfDoc : PdfDoc {
+        private val document = PdfDocument()
+        override fun startPage(pageNum: Int): PdfPage =
+            RealPdfPage(
+                document.startPage(
+                    PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create(),
+                ),
+            )
+        override fun finishPage(page: PdfPage) = document.finishPage((page as RealPdfPage).real)
+        override fun writeTo(out: OutputStream) = document.writeTo(out)
+        override fun close() = document.close()
+    }
+
+    private class RealPdfPage(val real: PdfDocument.Page) : PdfPage {
+        override val canvas: Canvas get() = real.canvas
+    }
+
     /**
      * Render [markdown] as a paginated PDF report into [file].
      * [images] maps `![alt](src)` filenames to decoded bitmaps (resolved by the
      * caller from cache/SAF); missing keys render as a caption line instead of
-     * breaking the document. Returns the page count.
+     * breaking the document. [documentFactory] is a test seam (see [PdfDoc]);
+     * production callers use the default real document.
+     * Returns the page count and cap flag.
      */
     fun savePdf(
         file: File,
         title: String,
         markdown: String,
         images: Map<String, Bitmap> = emptyMap(),
-    ): Int {
+        documentFactory: (() -> PdfDoc)? = null,
+    ): PdfResult {
+        val totalStartNanos = System.nanoTime()
+        val parseStartNanos = System.nanoTime()
         val paints = Paints()
         val contentW = PAGE_W - 2 * MARGIN_SIDE
         val blocks = parseMarkdownBlocks(title, markdown)
-        val document = PdfDocument()
+        val parseMs = (System.nanoTime() - parseStartNanos) / 1_000_000L
+        val renderStartNanos = System.nanoTime()
+        val document = documentFactory?.invoke() ?: RealPdfDoc()
         var pageNum = 0
-        var page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, 1).create())
+        var page: PdfPage = document.startPage(1)
         pageNum = 1
         var y = MARGIN_TOP.toFloat()
         var capped = false
-        fun newPage() {
+        // Tracks whether the current `page` was already finished (cap path).
+        // When capped, newPage() finishes the page but creates no new one —
+        // the trailing drawFooter/finishPage must be skipped for that page.
+        var pageFinished = false
+        fun newPage(): Boolean {
             drawFooter(page, paints, pageNum)
             document.finishPage(page)
             if (pageNum >= MAX_PDF_PAGES) {
                 capped = true
-                return
+                pageFinished = true
+                // No fresh page: every draw site must stop — the finished
+                // page's canvas is null (AOSP) and any draw would NPE.
+                return false
             }
             pageNum++
-            page = document.startPage(PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, pageNum).create())
+            page = document.startPage(pageNum)
             y = MARGIN_TOP.toFloat()
+            return true
         }
-        fun need(height: Float) {
-            if (!capped && y + height > PAGE_H - MARGIN_BOTTOM) newPage()
+        /**
+         * Ensure [height] fits on the current page, starting a new one if
+         * needed. Returns false when no usable page exists anymore (100-page
+         * cap hit) — callers must stop drawing immediately.
+         */
+        fun need(height: Float): Boolean {
+            if (capped) return false
+            if (y + height > PAGE_H - MARGIN_BOTTOM) return newPage()
+            return true
         }
-        val currentPage: () -> PdfDocument.Page = { page }
+        val currentPage: () -> PdfPage = { page }
         try {
             for (block in blocks) {
                 if (capped) break
                 when (block) {
                     is PdfBlock.Title -> {
-                        need(paints.title.textSize * 1.6f + 14f)
-                        page.canvas.drawText(block.text, MARGIN_SIDE.toFloat(), y + paints.title.textSize, paints.title)
-                        y += paints.title.textSize * 1.6f
-                        page.canvas.drawLine(
-                            MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.rule,
-                        )
-                        y += 14f
+                        val titleLines = layoutSpans(listOf(TextSpan(block.text)), paints, contentW)
+                        for (line in titleLines) {
+                            if (!need(paints.title.textSize * 1.6f)) break
+                            drawLine(page, line, MARGIN_SIDE.toFloat(), y + paints.title.textSize, paints.title, paints)
+                            y += paints.title.textSize * 1.6f
+                        }
+                        if (!capped) {
+                            page.canvas.drawLine(
+                                MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.rule,
+                            )
+                            y += 14f
+                        }
                     }
                     is PdfBlock.Heading -> {
                         val paint = when (block.level) {
@@ -357,8 +462,7 @@ object ArtifactExporter {
                         }
                         val lines = layoutSpans(listOf(TextSpan(block.text)), paints, contentW)
                         for (line in lines) {
-                            if (capped) break
-                            need(paint.textSize * 1.5f)
+                            if (!need(paint.textSize * 1.5f)) break
                             drawLine(page, line, MARGIN_SIDE.toFloat(), y + paint.textSize, paint, paints)
                             y += paint.textSize * 1.5f
                         }
@@ -375,54 +479,103 @@ object ArtifactExporter {
                             marker = marker to markerW)
                     }
                     is PdfBlock.Table -> y = drawTable(currentPage, paints, block, contentW, y,
-                        onNewPage = { newPage(); y = MARGIN_TOP.toFloat() },
+                        onNewPage = {
+                            val ok = newPage()
+                            if (ok) y = MARGIN_TOP.toFloat()
+                            ok
+                        },
                         isCapped = { capped })
                     is PdfBlock.Image -> {
                         val bitmap = images[block.key]
-                        if (bitmap == null || bitmap.isRecycled) {
-                            need(paints.caption.textSize * 1.5f)
-                            val note = "[image missing: ${block.alt.ifBlank { block.key }}]"
-                            page.canvas.drawText(note, MARGIN_SIDE.toFloat(), y + paints.caption.textSize, paints.caption)
-                            y += paints.caption.textSize * 1.8f
+                        // B11: guard against 0-size bitmaps (division by zero
+                        // → Infinity scale → degenerate drawBitmap).
+                        if (bitmap == null || bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) {
+                            if (need(paints.caption.textSize * 1.5f)) {
+                                val note = "[image missing: ${block.alt.ifBlank { block.key }}]"
+                                page.canvas.drawText(note, MARGIN_SIDE.toFloat(), y + paints.caption.textSize, paints.caption)
+                                y += paints.caption.textSize * 1.8f
+                            }
                         } else {
                             val scale = (contentW.toFloat() / bitmap.width)
                                 .coerceAtMost((PAGE_H - MARGIN_TOP - MARGIN_BOTTOM - 40) / bitmap.height.toFloat())
                                 .coerceAtMost(1f)
                             val w = bitmap.width * scale
                             val h = bitmap.height * scale
-                            need(h + paints.caption.textSize * 2.2f)
-                            val left = MARGIN_SIDE + (contentW - w) / 2
-                            val dst = android.graphics.RectF(left, y, left + w, y + h)
-                            page.canvas.drawBitmap(bitmap, null, dst, Paint().apply { isAntiAlias = true; isFilterBitmap = true })
-                            y += h + 4f
-                            val caption = block.alt.ifBlank { block.key }
-                            page.canvas.drawText(caption, PAGE_W / 2f, y + paints.caption.textSize, paints.caption.apply { textAlign = Paint.Align.CENTER })
-                            paints.caption.textAlign = Paint.Align.LEFT
-                            y += paints.caption.textSize * 2.2f
+                            if (need(h + paints.caption.textSize * 2.2f)) {
+                                val left = MARGIN_SIDE + (contentW - w) / 2
+                                val dst = android.graphics.RectF(left, y, left + w, y + h)
+                                page.canvas.drawBitmap(bitmap, null, dst, Paint().apply { isAntiAlias = true; isFilterBitmap = true })
+                                y += h + 4f
+                                val caption = block.alt.ifBlank { block.key }
+                                page.canvas.drawText(caption, PAGE_W / 2f, y + paints.caption.textSize, paints.captionCentered)
+                                y += paints.caption.textSize * 2.2f
+                            }
                         }
                     }
                     PdfBlock.Divider -> {
-                        need(18f)
-                        y += 6f
-                        page.canvas.drawLine(
-                            MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.grid,
-                        )
-                        y += 12f
+                        if (need(18f)) {
+                            y += 6f
+                            page.canvas.drawLine(
+                                MARGIN_SIDE.toFloat(), y, (PAGE_W - MARGIN_SIDE).toFloat(), y, paints.grid,
+                            )
+                            y += 12f
+                        }
                     }
                     PdfBlock.Gap -> y += 6f
                 }
             }
-            drawFooter(page, paints, pageNum)
-            document.finishPage(page)
+            // Skip the trailing footer/finish when the cap path already
+            // finished the current page (B1: double finishPage on a stale page).
+            if (!pageFinished) {
+                drawFooter(page, paints, pageNum)
+                document.finishPage(page)
+            }
+            val renderMs = (System.nanoTime() - renderStartNanos) / 1_000_000L
+            val writeStartNanos = System.nanoTime()
+            // B12: ensure parent dirs exist (saveMarkdown does this; savePdf didn't).
+            file.parentFile?.mkdirs()
             FileOutputStream(file).use { document.writeTo(it) }
-            return pageNum
+            val writeMs = (System.nanoTime() - writeStartNanos) / 1_000_000L
+            // Structured PDF timing diagnostics: phase durations and sizes only —
+            // never the markdown content, title, or image data.
+            StructuredDiagnostics.emit(
+                category = StructuredDiagnosticCategory.TOOL,
+                name = "pdf_render",
+                outcome = "ok",
+                durationMs = (System.nanoTime() - totalStartNanos) / 1_000_000L,
+                detail = mapOf(
+                    "parse_ms" to parseMs.toString(),
+                    "render_ms" to renderMs.toString(),
+                    "write_ms" to writeMs.toString(),
+                    "pages" to pageNum.toString(),
+                    "blocks" to blocks.size.toString(),
+                    "markdown_bytes" to markdown.toByteArray().size.toString(),
+                    "images" to images.size.toString(),
+                    "capped" to capped.toString(),
+                ),
+            )
+            return PdfResult(pageNum, capped)
+        } catch (e: Exception) {
+            StructuredDiagnostics.emit(
+                category = StructuredDiagnosticCategory.TOOL,
+                name = "pdf_render",
+                outcome = "error",
+                durationMs = (System.nanoTime() - totalStartNanos) / 1_000_000L,
+                detail = mapOf(
+                    "error" to (e::class.simpleName ?: "Exception"),
+                    "blocks" to blocks.size.toString(),
+                    "markdown_bytes" to markdown.toByteArray().size.toString(),
+                    "images" to images.size.toString(),
+                ),
+            )
+            throw e
         } finally {
             document.close()
         }
     }
 
     private fun drawLine(
-        page: PdfDocument.Page,
+        page: PdfPage,
         line: List<Pair<String, Paint>>,
         x: Float,
         baseline: Float,
@@ -441,13 +594,13 @@ object ArtifactExporter {
     }
 
     private fun drawPara(
-        pageProvider: () -> PdfDocument.Page,
+        pageProvider: () -> PdfPage,
         paints: Paints,
         spans: List<TextSpan>,
         contentW: Int,
         indent: Float,
         startY: Float,
-        onNeed: (Float) -> Unit,
+        onNeed: (Float) -> Boolean,
         isCapped: () -> Boolean,
         marker: Pair<String, Float>? = null,
     ): Float {
@@ -455,7 +608,9 @@ object ArtifactExporter {
         val lines = layoutSpans(spans, paints, contentW)
         for ((index, line) in lines.withIndex()) {
             if (isCapped()) break
-            onNeed(paints.body.textSize * 1.5f)
+            // Stop drawing when the page cap was hit mid-paragraph: the
+            // finished page's canvas is null and any draw would NPE.
+            if (!onNeed(paints.body.textSize * 1.5f)) break
             if (marker != null && index == 0) {
                 pageProvider().canvas.drawText(
                     marker.first, MARGIN_SIDE.toFloat() + indent - marker.second - 6f,
@@ -469,12 +624,12 @@ object ArtifactExporter {
     }
 
     private fun drawTable(
-        pageProvider: () -> PdfDocument.Page,
+        pageProvider: () -> PdfPage,
         paints: Paints,
         table: PdfBlock.Table,
         contentW: Int,
         startY: Float,
-        onNewPage: () -> Unit,
+        onNewPage: () -> Boolean,
         isCapped: () -> Boolean,
     ): Float {
         var y = startY
@@ -500,7 +655,9 @@ object ArtifactExporter {
             }
             h += 8f
             if (y + h > PAGE_H - MARGIN_BOTTOM) {
-                onNewPage()
+                // No fresh page (100-page cap): bail instead of drawing on
+                // the finished page whose canvas is null.
+                if (!onNewPage()) return y
                 y = MARGIN_TOP.toFloat()
             }
             val page = pageProvider()
@@ -526,10 +683,13 @@ object ArtifactExporter {
         }
         fun drawRow(cells: List<String>, paint: Paint, fill: Paint?, height: Float) {
             if (y + height > PAGE_H - MARGIN_BOTTOM) {
-                onNewPage()
+                // Cap hit mid-table: stop this row instead of drawing on the
+                // finished page (null canvas → NPE) or re-finishing it.
+                if (!onNewPage()) return
                 y = MARGIN_TOP.toFloat()
                 // Repeat the header on the new page.
                 y = drawHeaderRow(y)
+                if (isCapped()) return
             }
             val page = pageProvider()
             fill?.let {
@@ -563,7 +723,7 @@ object ArtifactExporter {
         return y + 8f
     }
 
-    private fun drawFooter(page: PdfDocument.Page, paints: Paints, pageNum: Int) {
+    private fun drawFooter(page: PdfPage, paints: Paints, pageNum: Int) {
         page.canvas.drawText(
             "Page $pageNum", PAGE_W / 2f, (PAGE_H - 36).toFloat(), paints.footer,
         )

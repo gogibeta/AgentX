@@ -148,4 +148,81 @@ class DefaultSystemPromptTest {
         assertTrue(assistantTemplate.beforePrompt.isEmpty())
         assertTrue(assistantTemplate.afterPrompt.isEmpty())
     }
+
+    @Test
+    fun unmodifiedAgoraLegacyDefaultIsMigratedToAgentX() {
+        val legacy = DefaultSystemPrompt.agoraLegacyDefaultForMigration()
+            .copy(id = "agora-legacy-id")
+        val migrated = migrateUnmodifiedBuiltInDefault(
+            prompts = listOf(legacy),
+            locale = Locale.ENGLISH,
+        ).single()
+        val current = DefaultSystemPrompt.create(Locale.ENGLISH)
+
+        assertEquals("agora-legacy-id", migrated.id)
+        assertEquals(
+            current.resolvedSystemItems.map { it.type to it.value },
+            migrated.resolvedSystemItems.map { it.type to it.value },
+        )
+        val compiled = PredefinedVariables.compile(migrated.resolvedSystemItems, emptyMap(), emptyMap())
+        assertTrue(compiled.contains("You are a helpful assistant in AgentX."))
+        assertFalse(compiled.contains("Agora"))
+    }
+
+    @Test
+    fun unmodifiedAgoraLegacyPreviousIsMigratedToAgentX() {
+        val legacy = DefaultSystemPrompt.agoraLegacyPreviousForMigration()
+            .copy(id = "agora-legacy-previous-id")
+        val migrated = migrateUnmodifiedBuiltInDefault(
+            prompts = listOf(legacy),
+            locale = Locale.ENGLISH,
+        ).single()
+        val currentSystem = DefaultSystemPrompt.create(Locale.ENGLISH)
+            .resolvedSystemItems.map { it.type to it.value }
+
+        assertEquals("agora-legacy-previous-id", migrated.id)
+        assertEquals(
+            currentSystem,
+            migrated.resolvedSystemItems.map { it.type to it.value },
+        )
+    }
+
+    @Test
+    fun agoraLegacyContentBasedPromptIsMigrated() {
+        val legacy = SystemPromptEntry(
+            id = "agora-content-id",
+            title = "Default",
+            content = "You are a helpful assistant in Agora.\nBe nice.",
+        )
+        val migrated = migrateUnmodifiedBuiltInDefault(
+            prompts = listOf(legacy),
+            locale = Locale.ENGLISH,
+        ).single()
+        val currentSystem = DefaultSystemPrompt.create(Locale.ENGLISH)
+            .resolvedSystemItems.map { it.type to it.value }
+
+        assertEquals("agora-content-id", migrated.id)
+        assertEquals(
+            currentSystem,
+            migrated.resolvedSystemItems.map { it.type to it.value },
+        )
+    }
+
+    @Test
+    fun modifiedAgoraLegacyPromptIsNotMigrated() {
+        val legacy = DefaultSystemPrompt.agoraLegacyDefaultForMigration()
+        val modified = legacy.copy(
+            systemItems = legacy.systemItems + PromptTemplateItem(
+                type = PromptItemType.CUSTOM,
+                value = "my custom instruction",
+            ),
+        )
+        assertEquals(
+            listOf(modified),
+            migrateUnmodifiedBuiltInDefault(
+                prompts = listOf(modified),
+                locale = Locale.ENGLISH,
+            ),
+        )
+    }
 }

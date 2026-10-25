@@ -484,6 +484,65 @@ class SettingsModelPreferenceStoreTest {
             )
         }
 
+    @Test
+    fun modelContextWindowsSaveRemoveAndSurviveRestart() = runTest {
+        val dataStore = InMemoryPreferencesDataStore()
+        val store = SettingsModelPreferenceStore(dataStore, testJson)
+        assertTrue(store.modelContextWindows.first().isEmpty())
+        store.saveModelContextWindow("OpenAI:gpt-4", 131_072)
+        store.saveModelContextWindow("Anthropic:claude", 65_536)
+        assertEquals(
+            mapOf("OpenAI:gpt-4" to 131_072, "Anthropic:claude" to 65_536),
+            store.modelContextWindows.first(),
+        )
+        store.saveModelContextWindow("OpenAI:gpt-4", null)
+        assertEquals(mapOf("Anthropic:claude" to 65_536), store.modelContextWindows.first())
+        val restarted = SettingsModelPreferenceStore(dataStore, testJson)
+        assertEquals(mapOf("Anthropic:claude" to 65_536), restarted.modelContextWindows.first())
+    }
+
+    @Test
+    fun modelContextWindowFollowsRenameAndDropsOnDelete() = runTest {
+        val store = SettingsModelPreferenceStore(InMemoryPreferencesDataStore(), testJson)
+        store.addCustomModel("Gateway:old", "Alias")
+        store.saveModelContextWindow("Gateway:old", 32_768)
+        store.saveModelContextWindow("Other:keep", 8_192)
+        // Same-id update leaves the window untouched.
+        store.replaceCustomModel("Gateway:old", "Gateway:old", "Renamed")
+        assertEquals(32_768, store.modelContextWindows.first()["Gateway:old"])
+        // Rename carries the window to the new id.
+        store.replaceCustomModel("Gateway:old", "Gateway:new", "")
+        assertEquals(
+            mapOf("Gateway:new" to 32_768, "Other:keep" to 8_192),
+            store.modelContextWindows.first(),
+        )
+        // Delete drops the window.
+        store.replaceCustomModel("Gateway:new", null, "")
+        assertEquals(mapOf("Other:keep" to 8_192), store.modelContextWindows.first())
+    }
+
+    @Test
+    fun modelContextWindowRenameNeverOverwritesFreshNewIdEntry() = runTest {
+        // The edit dialog writes the new value under the new id; the rename hook must
+        // not clobber it when the DataStore edits land in either order.
+        val store = SettingsModelPreferenceStore(InMemoryPreferencesDataStore(), testJson)
+        store.addCustomModel("Gateway:old", "Alias")
+        store.saveModelContextWindow("Gateway:old", 32_768)
+        store.saveModelContextWindow("Gateway:new", 131_072)
+        store.replaceCustomModel("Gateway:old", "Gateway:new", "")
+        assertEquals(131_072, store.modelContextWindows.first()["Gateway:new"])
+    }
+
+    @Test
+    fun removeModelContextWindowsForProviderOnlyRemovesThatProvider() = runTest {
+        val store = SettingsModelPreferenceStore(InMemoryPreferencesDataStore(), testJson)
+        store.saveModelContextWindow("Gateway:a", 32_768)
+        store.saveModelContextWindow("Gateway:b", 65_536)
+        store.saveModelContextWindow("Other:c", 8_192)
+        store.removeModelContextWindowsForProvider("Gateway")
+        assertEquals(mapOf("Other:c" to 8_192), store.modelContextWindows.first())
+    }
+
     private class InMemoryPreferencesDataStore(
         initial: Preferences = emptyPreferences(),
     ) : DataStore<Preferences> {

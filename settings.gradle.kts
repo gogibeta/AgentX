@@ -18,6 +18,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
+        // GeckoView (Mozilla's engine) for the GECKOVIEW browser backend.
+        maven { url = uri("https://maven.mozilla.org/maven2/") }
     }
 }
 

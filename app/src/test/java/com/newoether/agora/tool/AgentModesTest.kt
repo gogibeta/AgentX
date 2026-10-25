@@ -214,7 +214,8 @@ class AgentModesTest {
 
     @Test
     fun ensembleTool_modelsParam_overridesPreset() {
-        val asked = mutableListOf<String>()
+        // Thread-safe: the fan-out is concurrent, so both coroutines append here.
+        val asked = java.util.concurrent.CopyOnWriteArrayList<String>()
         val fake: LlmProvider = mockk()
         every { fake.generateResponse(any(), any()) } answers {
             asked.add(secondArg<ProviderConfig>().modelId)

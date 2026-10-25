@@ -183,6 +183,12 @@ data class ConversationSettings(
     val webSearchEnabled: Boolean? = null,
     val shellEnabled: Boolean? = null,
     val lowContextModeEnabled: Boolean? = null,
+    /**
+     * Agent project-folder scopes, keyed by agent mode ("plan"/"build").
+     * Each value is a normalized absolute sandbox path under /mnt/shared.
+     * Per-conversation so every chat remembers its own project folders.
+     */
+    val agentProjectFolders: Map<String, String>? = null,
 ) {
     fun isAllNull() = contextWindow == null && temperature == null && maxTokens == null && topP == null
         && frequencyPenalty == null && presencePenalty == null
@@ -191,5 +197,5 @@ data class ConversationSettings(
         && thinkingLevel == null && thinkingBudgetEnabled == null && thinkingBudgetTokens == null
         && openAiServiceTierEnabled == null && openAiServiceTier == null
         && webSearchEnabled == null && shellEnabled == null
-        && lowContextModeEnabled == null
+        && lowContextModeEnabled == null && agentProjectFolders == null
 }

@@ -201,24 +201,32 @@ class MemoryToolProvider(
                 }
             }
 
-            "create_memory_file" -> memoryManager.createFile(
-                arg("name"),
-                arg("content"),
-                arg("description")
-            )
+            "create_memory_file" -> {
+                // A committed proposal mentions its proposal_id: track acceptance.
+                MemoryProposalTracker.markAcceptedInText(arg("content"))
+                memoryManager.createFile(
+                    arg("name"),
+                    arg("content"),
+                    arg("description")
+                )
+            }
 
             "edit_memory_file" -> {
                 val fileName = arg("name")
                 when (arg("operation").trim().lowercase()) {
-                    "replace" -> memoryManager.editFile(
-                        name = fileName,
-                        content = arg("content"),
-                    )
+                    "replace" -> {
+                        MemoryProposalTracker.markAcceptedInText(arg("content"))
+                        memoryManager.editFile(
+                            name = fileName,
+                            content = arg("content"),
+                        )
+                    }
                     "patch" -> {
                         val oldString = arg("old_string")
                         if (oldString.isEmpty()) {
                             "Error: patch requires a non-empty old_string."
                         } else {
+                            MemoryProposalTracker.markAcceptedInText(arg("new_string"))
                             memoryManager.editFile(
                                 name = fileName,
                                 oldString = oldString,

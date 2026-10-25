@@ -42,21 +42,37 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     "Use this when the user asks for a file, report, PDF, or document. " +
                     "Markdown supports headings, bold, bullets, numbered lists, tables and " +
                     "`![caption](filename)` images (download them first with fetch_image). " +
+                    "RENDERER LIMITS: format 'pdf' renders Markdown with the app's built-in " +
+                    "renderer (simple layouts only — no embedded HTML/CSS, no complex tables). " +
+                    "There is NO built-in PowerPoint renderer: to deliver a .pptx, build it " +
+                    "yourself in the sandbox with python-pptx (pure Python, no numpy/matplotlib " +
+                    "needed; if pip refuses, use a venv), save it to the shared folder, then " +
+                    "register it with source_path. The same source_path flow works for any " +
+                    "prebuilt file (PDFs from reportlab, spreadsheets, etc.). " +
                     "If you already built the file yourself in the sandbox (e.g. a PDF generated " +
                     "with a Python library and saved to the shared folder), pass its file name as " +
                     "`source_path` instead of `content` and it will be registered as-is. " +
-                    "Files go to the user's Agent workspace folder when set, else app storage.",
+                    "SIZE LIMITS: `content` is capped at 1,000,000 bytes (1 MB) — passing " +
+                    "more fails with source_too_large. For anything bigger, write the file " +
+                    "in the sandbox and use `source_path` (up to 50 MB). " +
+                    "Files go to the user's Agent workspace folder when set, else app storage. " +
+                    "The result reports format, sizeBytes and saved_to so you can confirm delivery.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "title" to ToolProperty("string", "Report title (also used for the file name)."),
                         "format" to ToolProperty("string", "File format: 'md' for Markdown, 'pdf' for a rendered PDF report. Ignored when source_path is set (format comes from the file)."),
-                        "content" to ToolProperty("string", "Full Markdown content of the report. Not needed when source_path is set."),
+                        "content" to ToolProperty("string", "Full Markdown content of the report. Max 1,000,000 bytes (1 MB) — larger content fails with source_too_large; build the file in the sandbox and use source_path instead. Not needed when source_path is set."),
                         "filename" to ToolProperty("string", "Optional explicit file name (must end in .md or .pdf)."),
                         "source_path" to ToolProperty(
                             "string",
                             "Optional file name of an already-built file in the agent workspace " +
-                                "(e.g. 'report.pdf') to register as-is instead of rendering from " +
-                                "content. Use this for PDFs you generated yourself in the sandbox.",
+                                "(e.g. 'report.pdf', 'slides.pptx') to register as-is instead of " +
+                                "rendering from content. Use this for PPTX files you generated " +
+                                "yourself in the sandbox (python-pptx) and for PDFs that need " +
+                                "layouts the built-in renderer cannot do. HARD LIMIT: the file " +
+                                "must be under 50,000,000 bytes (50 MB) or registration fails " +
+                                "with source_too_large — compress images (JPEG q70-75) and " +
+                                "downscale before building; check size with ls -l first.",
                         ),
                     ),
                     required = listOf("title"),
@@ -67,7 +83,10 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                 description = "Download an image from the web into the artifact workspace so it " +
                     "can be embedded in notes and PDFs via `![caption](filename)`. Verifies " +
                     "the file really decodes as an image (width, height reported); failures " +
-                    "come back as errors — retry with another URL instead of referencing it.",
+                    "come back as errors — retry with another URL instead of referencing it. " +
+                    "HARD LIMIT: images over ~1 MB are rejected — for large source images " +
+                    "(Wikipedia originals are often 4-5 MB), use execute_shell_command with " +
+                    "curl to download, then downscale/compress (JPEG q70-75) before embedding.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "url" to ToolProperty("string", "Direct image URL (png/jpg/webp)."),
@@ -111,18 +130,25 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
             )
             val ext = format
             val fileName = (str("filename")?.takeIf {
-                it.lowercase().endsWith(".$ext") && !it.contains("..") && !it.contains("/")
+                it.lowercase().endsWith(".$ext") && !it.contains("..") && !it.contains("/") &&
+                    it.length <= ArtifactExporter.MAX_FILENAME_LENGTH
             } ?: ArtifactExporter.sanitizeFileName(title, ext))
 
             val bytes: ByteArray
             val mime: String
+            var pdfPages = 0
+            var pdfTruncated = false
             if (format == "pdf") {
                 val tmp = File.createTempFile("agentx_artifact", ".pdf", app.cacheDir)
                 try {
                     val images = resolvePdfImages(content, ctx)
-                    ArtifactExporter.savePdf(tmp, title, content, images)
+                    val pdfResult = ArtifactExporter.savePdf(tmp, title, content, images)
                     images.values.forEach { if (!it.isRecycled) it.recycle() }
                     bytes = tmp.readBytes()
+                    // B13: surface page count + cap flag so the agent knows
+                    // when a report was truncated at 100 pages.
+                    pdfPages = pdfResult.pages
+                    pdfTruncated = pdfResult.truncated
                 } finally {
                     tmp.delete()
                 }
@@ -149,6 +175,11 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("sizeBytes", bytes.size)
                     put("saved_to", "workspace")
                     put("uri", docUri)
+                    if (format == "pdf") {
+                        put("render", "builtin")
+                        put("pages", pdfPages)
+                        if (pdfTruncated) put("truncated", true)
+                    }
                 }.toString()
             }
             val dir = File(app.filesDir, "artifacts").also { if (!it.exists()) it.mkdirs() }
@@ -161,6 +192,11 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                 put("sizeBytes", bytes.size)
                 put("saved_to", "app storage (pick an Agent workspace folder in Settings to choose where files go)")
                 put("path", File(dir, fileName).absolutePath)
+                if (format == "pdf") {
+                    put("render", "builtin")
+                    put("pages", pdfPages)
+                    if (pdfTruncated) put("truncated", true)
+                }
             }.toString()
         } catch (e: Exception) {
             errorJson("write_error", e.message.orEmpty())
@@ -211,6 +247,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("saved_to", "workspace")
                     put("uri", docUri)
                     put("source", "source_path")
+                    put("render", "prebuilt")
                 }.toString()
             } else {
                 buildJsonObject {
@@ -220,6 +257,7 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
                     put("sizeBytes", bytes.size)
                     put("saved_to", "app storage (pick an Agent workspace folder in Settings to choose where files go)")
                     put("source", "source_path")
+                    put("render", "prebuilt")
                 }.toString()
             }
         } catch (e: IllegalArgumentException) {
@@ -282,6 +320,9 @@ class ArtifactToolProvider(private val app: Application) : ToolProvider {
         "html", "htm" -> "text/html"
         "json" -> "application/json"
         "csv" -> "text/csv"
+        "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else -> "application/octet-stream"
     }
 

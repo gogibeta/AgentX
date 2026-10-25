@@ -58,6 +58,8 @@ import com.newoether.agora.ui.chat.message.MessageSegmentDetailHost
 import com.newoether.agora.ui.chat.message.REGENERATION_ABORT_RESTORE_DURATION_MS
 import com.newoether.agora.ui.chat.message.REGENERATION_EXIT_DURATION_MS
 import com.newoether.agora.ui.chat.message.SegmentAppearanceRegistry
+import com.newoether.agora.ui.browser.InlineBrowserCard
+import com.newoether.agora.ui.browser.LocalBrowserWatchController
 import com.newoether.agora.ui.motion.LocalAgentXMotionPolicy
 import com.newoether.agora.viewmodel.BranchReplacementTransitionRequest
 import kotlinx.coroutines.Job
@@ -763,6 +765,17 @@ internal fun MessageList(
             // A stable physical-end target, deliberately separate from the streaming-tail
             // indicator. Reaching this item and exhausting canScrollForward means the actual
             // LazyColumn maximum extent has been reached.
+            //
+            // Muse-style inline browser card: lives INSIDE the message flow
+            // (not as a top overlay), so the chat stays fully usable while the
+            // browser works. Tapping the card opens the fullscreen dialog.
+            item(key = "inline_browser_card") {
+                val browserController = LocalBrowserWatchController.current
+                androidx.compose.runtime.LaunchedEffect(browserController, conversationId) {
+                    browserController?.activeConversationId?.value = conversationId
+                }
+                InlineBrowserCard(controller = browserController)
+            }
             item(key = AbsoluteBottomSentinelKey) {
                 Spacer(Modifier.fillMaxWidth().height(1.dp))
             }

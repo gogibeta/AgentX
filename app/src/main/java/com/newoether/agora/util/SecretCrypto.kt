@@ -70,7 +70,7 @@ object SecretCrypto {
         }
     }
 
-    fun decrypt(stored: String): String {
+    fun decrypt(stored: String, tag: String = "secret"): String {
         if (!stored.startsWith(PREFIX)) return stored // legacy plaintext — pass through
         return try {
             val combined = Base64.decode(stored.substring(PREFIX.length), Base64.NO_WRAP)
@@ -81,7 +81,9 @@ object SecretCrypto {
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_BITS, iv))
             String(cipher.doFinal(ct), Charsets.UTF_8)
         } catch (e: Exception) {
-            DebugLog.e(TAG, "decrypt failed", e)
+            // Tag identifies WHICH secret failed (never the value) so
+            // diagnostics can pinpoint stale/corrupt entries.
+            DebugLog.e(TAG, "decrypt failed for $tag", e)
             ""
         }
     }

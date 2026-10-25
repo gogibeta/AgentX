@@ -219,6 +219,11 @@ class TaskExecutionEngine(
      * default for task executions). Leave null to resolve the prompt the way the
      * foreground chat does (conversation's prompt id, falling back to the active one).
      */
+    /** Stop any in-flight generation for [conversationId] before its temp conversation is deleted. */
+    suspend fun stopChildGeneration(conversationId: String) {
+        generationRegistry.get(conversationId)?.stop()
+    }
+
     suspend fun runOnce(
         conversationId: String,
         userText: String,
@@ -227,6 +232,16 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean = false,
         precondition: suspend () -> Boolean = { true },
         requestKind: String = "task",
+        /**
+         * Restricted tool allow-list for `delegate_task` child runs. Non-null marks
+         * this run as a child: tools are filtered centrally, memory tools are hidden,
+         * and user prompts are disabled (single-writer shared memory, no recursion).
+         */
+        toolAllowList: Set<String>? = null,
+        /** Project-folder scope inherited from the parent for `delegate_task` child runs. */
+        childProjectFolder: String? = null,
+        /** Hard tool-round cap for `delegate_task` child runs (0 = uncapped). */
+        maxToolRounds: Int = 0,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -240,6 +255,9 @@ class TaskExecutionEngine(
                     foregroundServiceManagedExternally = foregroundServiceManagedExternally,
                     precondition = precondition,
                     requestKind = requestKind,
+                    toolAllowList = toolAllowList,
+                    childProjectFolder = childProjectFolder,
+                    maxToolRounds = maxToolRounds,
                 )
             }
         }
@@ -281,6 +299,9 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean,
         precondition: suspend () -> Boolean,
         requestKind: String,
+        toolAllowList: Set<String>? = null,
+        childProjectFolder: String? = null,
+        maxToolRounds: Int = 0,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -367,7 +388,11 @@ class TaskExecutionEngine(
                 // not recursively create more tasks/loops without a user in the loop.
                 automationToolsEnabled = false,
                 foregroundServiceManagedExternally = foregroundServiceManagedExternally,
-            )
+            ).let { base ->
+                if (toolAllowList != null) {
+                    base.forChildRun(toolAllowList, childProjectFolder, maxToolRounds)
+                } else base
+            }
             val generationSnapshot = captured.copy(
                 context = taskContext,
                 automaticCompact = captured.automaticCompact.copy(

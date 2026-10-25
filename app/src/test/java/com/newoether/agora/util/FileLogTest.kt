@@ -67,4 +67,28 @@ class FileLogTest {
         assertTrue("exactly one log line for the event", matching.size == 1)
         assertTrue("no raw newline inside the line", !matching.first().contains('\n'))
     }
+
+    @Test
+    fun tailLines_prefersNewestLinesAcrossRotatedAndCurrent() {
+        val file = logFile()
+        waitForFlush() // let the SESSION start line land in session.log
+        val dir = file.parentFile!!
+        // Previous session: 10 old lines in the rotated file.
+        File(dir, "session.1.log").writeText((0 until 10).joinToString("\n") { "rotated-$it" })
+        // Current session: 5 newer lines appended after the SESSION header.
+        file.appendText("\n" + (0 until 5).joinToString("\n") { "current-$it" })
+
+        // Asking for fewer lines than the rotated file holds must still return
+        // the NEWEST lines overall (the old code returned only rotated lines).
+        val tail = FileLog.tailLines(4)
+        assertTrue(
+            "newest current lines win over rotated ones, got: $tail",
+            tail == listOf("current-1", "current-2", "current-3", "current-4"),
+        )
+
+        // Wide window: oldest-first across rotated -> current.
+        val wide = FileLog.tailLines(100)
+        assertTrue("rotated lines come first", wide.indexOf("rotated-0") < wide.indexOf("current-0"))
+        assertTrue("current lines come last", wide.takeLast(5) == (0 until 5).map { "current-$it" })
+    }
 }

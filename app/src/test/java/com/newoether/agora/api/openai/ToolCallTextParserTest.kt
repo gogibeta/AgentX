@@ -482,11 +482,18 @@ internal class ToolCallTextParserTest : ResponsesEventFixture() {
     }
 
     @Test
-    fun responsesRequiresIncreasingSequenceAndRejectsTerminalMismatchOrLateEvent() {
+    fun responsesToleratesMissingSequenceRequiresIncreasingSequenceAndRejectsTerminalMismatchOrLateEvent() {
+        // sequence_number is optional (custom Responses-compatible proxies omit it):
+        // a missing value must be accepted, ordering enforced only when present.
         val missing = responsesRouter()
         assertEquals(
-            1,
+            0,
             missing.route(OpenAiResponseStreamEvent(type = "response.created"))
+                .filterIsInstance<StreamEvent.Error>().size,
+        )
+        assertEquals(
+            0,
+            missing.route(responseEvent("response.in_progress", 1))
                 .filterIsInstance<StreamEvent.Error>().size,
         )
 

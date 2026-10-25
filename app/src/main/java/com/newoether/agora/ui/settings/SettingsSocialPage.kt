@@ -210,14 +210,12 @@ private suspend fun runSocialValidation(
         )
     }
     store.clearValidation()
-    val result = FxEmbedClient.validate(baseUrl, userAgent)
-    if (result == null) {
-        SocialValidateState.Failed(
-            "No version answered at /ai/version or /version. Check the URL and that the worker is deployed.",
-        )
-    } else {
-        store.recordValidation(result.version, result.bareRealm)
-        SocialValidateState.Ok(result.version, result.bareRealm)
+    when (val result = FxEmbedClient.validateDetailed(baseUrl, userAgent)) {
+        is FxEmbedClient.ValidateDetailed.Failed -> SocialValidateState.Failed(result.reason)
+        is FxEmbedClient.ValidateDetailed.Ok -> {
+            store.recordValidation(result.version, result.bareRealm)
+            SocialValidateState.Ok(result.version, result.bareRealm)
+        }
     }
 }
 

@@ -198,6 +198,21 @@ object StructuredDiagnostics {
         mutableEvents.value = emptyList()
     }
 
+    /**
+     * Manual reset from Settings: clear the in-memory event ring and truncate
+     * the JSONL file so browser diagnostics start fresh (e.g. right after an
+     * app update). The writer keeps appending new events afterwards.
+     */
+    fun clearAll() {
+        mutableEvents.value = emptyList()
+        runCatching { eventsFile.get()?.writeText("", Charsets.UTF_8) }
+        emit(
+            category = StructuredDiagnosticCategory.BROWSER,
+            name = "diagnostics_reset",
+            outcome = "ok",
+        )
+    }
+
     /** Path of the JSONL event file, or null before [initialize]. */
     internal fun eventsFilePath(): File? = eventsFile.get()
 

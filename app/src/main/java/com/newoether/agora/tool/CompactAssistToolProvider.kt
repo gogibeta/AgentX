@@ -41,7 +41,9 @@ class CompactAssistToolProvider : ToolProvider {
                 name = "prune_context",
                 description = "Shrink a large blob (tool output, history chunk, search dump) by asking Jev " +
                     "whether each item is still needed for the task. Kept items come back VERBATIM; " +
-                    "dropped ones are gone. Use before continuing when context is getting long.",
+                    "dropped ones are gone from the RETURNED TEXT ONLY — this does not remove " +
+                    "anything from the conversation history, so the context counter will not " +
+                    "change. Use before continuing when context is getting long.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "task" to ToolProperty("string", "What the remaining work needs (one line). Items are judged against this."),
@@ -94,6 +96,8 @@ class CompactAssistToolProvider : ToolProvider {
                 model = ctx.jevModel,
                 query = "Still needed for: $task",
                 documents = items.map { it.second },
+                timeoutMs = ctx.decisionTimeoutMs,
+                maxStateChars = ctx.decisionMaxStateChars,
             )
             // §6.1 structured `llm` event for the Jev prune decision. Only counts
             // and the outcome are recorded — never the task or item text.
@@ -104,6 +108,7 @@ class CompactAssistToolProvider : ToolProvider {
                     outcome = outcome,
                     durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L,
                     detail = buildMap {
+                        put("decision_provider", ctx.decisionProvider)
                         put("model", ctx.jevModel)
                         put(
                             "key_fingerprint",
@@ -123,7 +128,7 @@ class CompactAssistToolProvider : ToolProvider {
                 emitJevPrune("error")
                 return@withContext errorJson(
                     "jev_unavailable",
-                    JevDecisions.describeError(jevError),
+                    JevDecisions.describeError(jevError) + " [provider: ${ctx.decisionProvider}, model: ${ctx.jevModel}]",
                 )
             }
 

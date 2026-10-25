@@ -1,0 +1,1 @@
+{"background":{"scripts":["background.js"]},"content_scripts":[{"all_frames":false,"js":["agent-bridge.js"],"matches":["<all_urls>"],"run_at":"document_idle"}],"description":"Fast element-table observation + action bridge for the AgentX agent loop.","manifest_version":2,"name":"AgentX Bridge","permissions":["<all_urls>","tabs"],"version":"1.0"}

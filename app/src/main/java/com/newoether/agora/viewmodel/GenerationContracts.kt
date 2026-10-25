@@ -104,6 +104,13 @@ data class GenerationContext(
     val agentMode: String = "off",
     /** Persisted SAF tree URI for agent artifact output. Empty = unset (cacheDir fallback). */
     val agentWorkspaceUri: String = "",
+    /**
+     * Active agent project-folder scope for this generation: a normalized absolute
+     * sandbox path under /mnt/shared, resolved per conversation and agent mode.
+     * Empty = no scope (chat mode, or scope not yet chosen — tools fail closed).
+     * Local file tools and the shell default workdir are confined to this folder.
+     */
+    val agentProjectFolder: String = "",
     /** Ensemble models "Provider:modelId" in preference order (max 5). Empty = single model. */
     val agentModels: List<String> = emptyList(),
     /** TypeSafe key for Jev decisions (routing/re-rank/guardrails). Empty = Jev disabled. */
@@ -111,6 +118,12 @@ data class GenerationContext(
     val typeSafeBaseUrl: String? = null,
     /** Jev model name (e.g. "jev-latest"). Set from Jev settings; no provider picker. */
     val jevModel: String = "jev-latest",
+    /** Active decision provider: "jev" (TypeSafe) or "drex" (Drex by Nace AI). */
+    val decisionProvider: String = "jev",
+    /** Per-attempt HTTP timeout for decision calls (Drex: 60s, Jev: 10s). */
+    val decisionTimeoutMs: Long = 10_000L,
+    /** Per-document state char budget (Drex 6000 vs Jev 1500 — 131k vs 32k tokens). */
+    val decisionMaxStateChars: Int = 1500,
     /** Master Jev toggle from Settings → Jev. Jev features only run when true. */
     val jevEnabled: Boolean = false,
     /** Master Social toggle from Settings → Social. Tools only run when true AND a worker URL is set. */
@@ -123,6 +136,26 @@ data class GenerationContext(
     val appVersion: String = "?",
     /** Agent environment variables (name -> secret), exported into shell commands. */
     val agentEnv: Map<String, String> = emptyMap(),
+    /**
+     * Restricted tool allow-list for child runs (`delegate_task` subagents).
+     * Null = no restriction. Enforced centrally in [GenerationToolExecutor]:
+     * only tools whose function name is in this set are offered to the model.
+     */
+    val toolAllowList: Set<String>? = null,
+    /**
+     * Hard cap on tool rounds for this generation (0 = uncapped). Set for
+     * `delegate_task` child runs from their `max_turns`; the engine stops the
+     * tool loop when the cap is reached instead of trusting the model's
+     * cooperation.
+     */
+    val maxToolRounds: Int = 0,
+    /**
+     * v2.4 auto-compact: after every [autoCompactIntervalTurns] tool turns the engine
+     * asks Jev to drop low-value tool outputs from the model projection.
+     * Room history is never touched; only active when Jev is enabled/configured.
+     */
+    val autoCompactEnabled: Boolean = true,
+    val autoCompactIntervalTurns: Int = 25,
 )
 
 /** Frozen automatic-Compact policy and provider access captured with one generation. */

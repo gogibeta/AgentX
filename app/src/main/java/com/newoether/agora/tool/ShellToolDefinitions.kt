@@ -51,13 +51,13 @@ internal object ShellToolDefinitions {
             }
             add(ToolDefinition(function = ToolFunction(
                 name = "execute_shell_command",
-                description = "Execute a shell command with a 64KB UTF-8 command limit, a 32KB UTF-8 workdir limit, and at most 1MB of retained foreground output. Set background=true for a durable Conch job that survives client disconnects. The user's agent environment variables (see list_env) are exported first, so reference them for authenticated API calls. Secret values are redacted as [REDACTED_SECRET] in the output you receive — this is expected and confirms the protection is working; never ask the user to reveal them. The local sandbox is Alpine Linux: run `apk update` before `apk add` (the package index may be stale), and note there is NO C compiler — numpy/matplotlib/scipy can never build from source, so prefer pure-Python packages (`apk add py3-pillow`) or pip wheels, and avoid build tools entirely.",
+                description = "Execute a shell command with a 64KB UTF-8 command limit, a 32KB UTF-8 workdir limit, and at most 1MB of retained foreground output. Set background=true for a durable Conch job that survives client disconnects. The user's agent environment variables (see list_env) are exported first, so reference them for authenticated API calls. Secret values are redacted as [REDACTED_SECRET] in the output you receive — this is expected and confirms the protection is working; never ask the user to reveal them. The local sandbox is Alpine Linux: run `apk update` before `apk add` (the package index may be stale), and note there is NO C compiler — numpy/matplotlib/scipy can never build from source, so prefer pure-Python packages (`apk add py3-pillow`) or pip wheels, and avoid build tools entirely. SHARED FOLDER: /mnt/shared is the folder the app can read — write every file meant for the user (documents, PDFs, slides) there, then register it with save_artifact source_path using just the file name. Never deliver from /home/agora; the app cannot see it.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "command" to ToolProperty("string", "The shell command to execute (64KB UTF-8 maximum)."),
                         "server" to ToolProperty("string", serverPropDesc),
                         "timeout_ms" to ToolProperty("integer", "Required. Foreground wait budget in milliseconds (hard ceiling 295000ms inside the tool call). On Conch, a command still running at that point continues as the same durable job and returns its job_id; it is never killed or restarted. With background=true this instead bounds the durable job's runtime (up to Conch policy)."),
-                        "workdir" to ToolProperty("string", "Working directory (optional, 32KB UTF-8 maximum)."),
+                        "workdir" to ToolProperty("string", "Working directory (optional, 32KB UTF-8 maximum). In agent plan/build mode a blank workdir defaults to the active project folder on the local sandbox."),
                         "background" to ToolProperty("boolean", "Start a durable background job on Conch and return its job_id immediately (optional, default false)."),
                     ),
                     required = shellRequiredParams
@@ -131,7 +131,7 @@ internal object ShellToolDefinitions {
         val fileTools = listOf(
             ToolDefinition(function = ToolFunction(
                 name = "file_read",
-                description = "Read a bounded file slice from a shell server or local sandbox. Returns valid JSON with content, line and byte counts, offset, limit, and an explicit truncated flag.",
+                description = "Read a bounded file slice from a shell server or local sandbox. Returns valid JSON with content, line and byte counts, offset, limit, and an explicit truncated flag. In agent plan/build mode the local sandbox is scoped to the active project folder: paths must stay inside it.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "path" to ToolProperty("string", "Absolute path to the file."),
@@ -170,7 +170,7 @@ internal object ShellToolDefinitions {
             )),
             ToolDefinition(function = ToolFunction(
                 name = "file_glob",
-                description = "List up to 1000 files on a shell server or local sandbox matching a glob pattern. Returns an explicit truncated flag.",
+                description = "List up to 1000 files on a shell server or local sandbox matching a glob pattern. Returns an explicit truncated flag. In agent plan/build mode a blank path searches the active project folder (local sandbox); explicit paths must stay inside it.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "pattern" to ToolProperty("string", "Glob pattern matched against file names (e.g. '*.go', '*.md')."),
@@ -183,7 +183,7 @@ internal object ShellToolDefinitions {
             )),
             ToolDefinition(function = ToolFunction(
                 name = "file_grep",
-                description = "Search for up to 500 regex matches in files on a shell server or local sandbox. Returns an explicit truncated flag.",
+                description = "Search for up to 500 regex matches in files on a shell server or local sandbox. Returns an explicit truncated flag. In agent plan/build mode a blank path searches the active project folder (local sandbox); explicit paths must stay inside it.",
                 parameters = ToolParameters(
                     properties = mapOf(
                         "pattern" to ToolProperty("string", "Regular expression pattern to search for."),

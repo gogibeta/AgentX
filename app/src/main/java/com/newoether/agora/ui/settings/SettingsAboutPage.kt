@@ -202,7 +202,7 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             SettingsGroup(title = stringResource(R.string.about_links), items = listOf({
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.about_website)) },
-                    supportingContent = { Text("agentx.newoether.com") },
+                    supportingContent = { Text("agentxdocs.pages.dev") },
                     leadingContent = { Icon(Icons.Default.Language, contentDescription = null) },
                     trailingContent = {
                         Icon(
@@ -211,7 +211,21 @@ fun SettingsAboutPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.size(18.dp),
                         )
                     },
-                    modifier = Modifier.clickable { openUrl("https://github.com/gogibeta/AgentX") }
+                    modifier = Modifier.clickable { openUrl("https://agentxdocs.pages.dev") }
+                )
+            }, {
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.documentation), modifier = Modifier.padding(vertical = 6.dp)) },
+                    supportingContent = { Text("Setup guides: providers, browser, social & more") },
+                    leadingContent = { Icon(Icons.Default.MenuBook, contentDescription = null) },
+                    trailingContent = {
+                        Icon(
+                            Icons.Default.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    modifier = Modifier.clickable { openUrl("https://agentxdocs.pages.dev") }
                 )
             }, {
                 SettingsItem(

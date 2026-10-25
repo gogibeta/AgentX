@@ -41,7 +41,6 @@ internal suspend fun acquireGenerationForegroundLease(
     if (managedExternally) return false
     return acquire()
 }
-
 class GenerationManager(
     private val app: Application,
     private val conversations: com.newoether.agora.data.repository.ConversationRepository,
@@ -51,6 +50,7 @@ class GenerationManager(
     private val sandboxFactory: com.newoether.agora.sandbox.SandboxManagerFactory? = null,
     additionalToolProviders: List<ToolProvider> = emptyList(),
     private val customProviders: () -> List<CustomProviderConfig> = { emptyList() },
+    val autoCompactCheckpoint: AutoCompactCheckpoint = AutoCompactCheckpoint(), // ChatRuntime wires onCompacted
 ) {
     var onMessagePersisted: ((messageId: String, text: String) -> Unit)? = null
     /** User-confirmation gate for remote shell mutations. Set by the ViewModel.
@@ -140,7 +140,6 @@ class GenerationManager(
                 ) &&
             !config.lowContextModeEnabled &&
             toolExecutor.definitions(context).isNotEmpty()
-
     internal suspend fun resolvedFixedContextTokenCost(
         config: GenerationConfig,
         context: GenerationContext,
@@ -537,11 +536,11 @@ class GenerationManager(
                 publishStreamUpdate()
             }
 
-            // Multi-tool loop
             var toolRound = 0
             toolPath = currentPath
 
-            while (toolCallDataList.isNotEmpty() && output.currentStatus != MessageStatus.ERROR && currentCoroutineContext().isActive) {
+            while (toolCallDataList.isNotEmpty() && output.currentStatus != MessageStatus.ERROR && currentCoroutineContext().isActive &&
+                (ctx.maxToolRounds <= 0 || toolRound < ctx.maxToolRounds)) { // hard max_turns cap
                 toolRound++
                 val roundToolList = roundToolSegments.toList()
                 roundToolSegments.clear()
@@ -613,6 +612,7 @@ class GenerationManager(
 
                 uiUpdateGate.reset()
 
+                toolPath = autoCompactCheckpoint.maybeCompact(toolPath, ctx, toolRound)
                 val apiToolPath = if (providerConfig.requestResolver != null) {
                     toolPath
                 } else {

@@ -121,6 +121,7 @@ private fun BrowserSettingsContent(
 ) {
     val dataController = LocalBrowserDataController.current
     val watchController = LocalBrowserWatchController.current
+    val engineManager = com.newoether.agora.ui.browser.LocalBrowserEngineManager.current
     val browserEnabled by store.browserEnabled.collectAsState()
     val backendMode by store.backendMode.collectAsState()
     val tunnelUrl by store.tunnelUrl.collectAsState()
@@ -196,6 +197,17 @@ private fun BrowserSettingsContent(
         // The tunnel group is always visible (not only in TUNNEL mode): the mode
         // dropdown refuses to switch to TUNNEL while the URL is blank, so hiding
         // the fields behind the mode made the URL impossible to enter.
+        com.newoether.agora.ui.browser.BrowserEngineSection(
+            manager = engineManager,
+            activeMode = backendMode,
+            onSelectMode = { mode ->
+                if (mode == BrowserBackendMode.TUNNEL && tunnelUrl.isBlank()) {
+                    viewModel.emitSnackbar(noUrlMessage)
+                } else {
+                    engineManager?.setActive(mode) ?: store.setBackendMode(mode)
+                }
+            },
+        )
         SettingsGroup(title = stringResource(R.string.browser_tunnel_group), items = buildList {
                 add {
                     SettingsIconContent(icon = Icons.Default.Link) {
@@ -280,6 +292,13 @@ private fun BrowserSettingsContent(
                             validatedAt = validatedAt,
                         )
                     }
+                }
+                // Live diagnostics log: the USB-logcat signal (CDP/browser
+                // entries now carry backend + method + full error), including
+                // the previous session's rotated log, readable and copyable
+                // in an AI-friendly one-line-per-event format.
+                add {
+                    BrowserLiveLogCard()
                 }
             })
 
@@ -372,8 +391,10 @@ private fun BackendModeDropdown(
     ) {
         OutlinedTextField(
             value = stringResource(
-                if (current == BrowserBackendMode.LOCAL) R.string.browser_backend_local
-                else R.string.browser_backend_tunnel,
+                when (current) {
+                    BrowserBackendMode.TUNNEL -> R.string.browser_backend_tunnel
+                    BrowserBackendMode.WEBVIEW -> R.string.browser_backend_webview
+                },
             ),
             onValueChange = {},
             readOnly = true,
@@ -392,25 +413,6 @@ private fun BackendModeDropdown(
                 text = {
                     Column {
                         Text(
-                            stringResource(R.string.browser_backend_local),
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                        )
-                        Text(
-                            stringResource(R.string.browser_backend_local_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                onClick = {
-                    expanded = false
-                    onSelect(BrowserBackendMode.LOCAL)
-                },
-            )
-            AgentXDropdownMenuItem(
-                text = {
-                    Column {
-                        Text(
                             stringResource(R.string.browser_backend_tunnel),
                             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                         )
@@ -424,6 +426,25 @@ private fun BackendModeDropdown(
                 onClick = {
                     expanded = false
                     onSelect(BrowserBackendMode.TUNNEL)
+                },
+            )
+            AgentXDropdownMenuItem(
+                text = {
+                    Column {
+                        Text(
+                            stringResource(R.string.browser_backend_webview),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                        )
+                        Text(
+                            stringResource(R.string.browser_backend_webview_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onSelect(BrowserBackendMode.WEBVIEW)
                 },
             )
         }

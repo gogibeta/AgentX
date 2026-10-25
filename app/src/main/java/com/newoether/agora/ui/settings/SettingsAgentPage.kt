@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.tool.takeWorkspaceGrant
+import com.newoether.agora.ui.components.ProjectFolderPickerDialog
+import com.newoether.agora.ui.chat.canonicalSettingsOwnerId
 import com.newoether.agora.ui.components.optionClickable
 import com.newoether.agora.util.Constants
 import com.newoether.agora.viewmodel.ChatViewModel
@@ -46,6 +48,25 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     var showModelDialog by remember { mutableStateOf(false) }
     var showEnvDialog by remember { mutableStateOf(false) }
+    // Plan/build needs a project folder per conversation. Settings has no picker of
+    // its own, so when one is chosen here we prompt for the current conversation's
+    // folder (if any); otherwise the chat UI prompts on next use and tools fail
+    // closed until then.
+    val conversationSettingsMap by viewModel.settings.conversationSettings.collectAsState()
+    val currentConversationId by viewModel.currentConversationId.collectAsState()
+    val isNewChatMode by viewModel.isNewChatMode.collectAsState()
+    val settingsOwnerId = canonicalSettingsOwnerId(currentConversationId.takeUnless { isNewChatMode })
+    var folderPrompt by remember { mutableStateOf<String?>(null) }
+    // Direct folder change (bypasses the mode switch): null until a mode is picked.
+    var folderChangeMode by remember { mutableStateOf<String?>(null) }
+    fun selectAgentMode(key: String) {
+        val existing = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(key)
+        if ((key == "plan" || key == "build") && existing.isNullOrBlank()) {
+            folderPrompt = key
+        } else {
+            viewModel.settings.agentSettings.setAgentMode(key)
+        }
+    }
 
     val workspacePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -62,6 +83,8 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         Triple("build", R.string.agent_mode_build, R.string.agent_mode_build_desc),
     )
     val jevConfigured by viewModel.settings.jevSettings.jevConfigured.collectAsState()
+    val autoCompactEnabled by viewModel.settings.agentSettings.autoCompactEnabled.collectAsState()
+    val autoCompactInterval by viewModel.settings.agentSettings.autoCompactIntervalTurns.collectAsState()
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_agent),
@@ -81,10 +104,42 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         leadingContent = {
                             RadioButton(
                                 selected = agentMode == key,
-                                onClick = { viewModel.settings.agentSettings.setAgentMode(key) },
+                                onClick = { selectAgentMode(key) },
                             )
                         },
-                        modifier = Modifier.optionClickable { viewModel.settings.agentSettings.setAgentMode(key) },
+                        modifier = Modifier.optionClickable { selectAgentMode(key) },
+                    )
+                }
+            })
+
+            SettingsGroup(title = stringResource(R.string.project_folder_title), items = listOf("plan", "build").map { mode ->
+                {
+                    val folder = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(mode).orEmpty()
+                    SettingsItem(
+                        headlineContent = {
+                            Text(
+                                stringResource(
+                                    if (mode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+                                ),
+                                fontWeight = FontWeight.Normal,
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                if (folder.isBlank()) stringResource(R.string.project_folder_not_set)
+                                else folder,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        leadingContent = {
+                            Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingContent = {
+                            TextButton(onClick = { folderChangeMode = mode }) {
+                                Text(stringResource(R.string.project_folder_change))
+                            }
+                        },
+                        modifier = Modifier.optionClickable { folderChangeMode = mode },
                     )
                 }
             })
@@ -161,6 +216,58 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     },
                 )
             })
+
+            SettingsGroup(
+                title = stringResource(R.string.agent_autocompact_title),
+                items = buildList {
+                    add {
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(R.string.agent_autocompact_enable)) },
+                            supportingContent = {
+                                Text(stringResource(R.string.agent_autocompact_enable_desc, autoCompactInterval))
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = autoCompactEnabled,
+                                    onCheckedChange = {
+                                        viewModel.settings.agentSettings.setAutoCompactEnabled(it)
+                                    },
+                                )
+                            },
+                            modifier = Modifier.optionClickable {
+                                viewModel.settings.agentSettings.setAutoCompactEnabled(!autoCompactEnabled)
+                            },
+                        )
+                    }
+                    if (autoCompactEnabled) {
+                        add {
+                            SettingsItem(
+                                headlineContent = { Text(stringResource(R.string.agent_autocompact_interval)) },
+                            )
+                        }
+                        listOf(15, 25, 50).forEach { turns ->
+                            add {
+                                SettingsItem(
+                                    headlineContent = {
+                                        Text(stringResource(R.string.agent_autocompact_interval_turns, turns))
+                                    },
+                                    leadingContent = {
+                                        RadioButton(
+                                            selected = autoCompactInterval == turns,
+                                            onClick = {
+                                                viewModel.settings.agentSettings.setAutoCompactIntervalTurns(turns)
+                                            },
+                                        )
+                                    },
+                                    modifier = Modifier.optionClickable {
+                                        viewModel.settings.agentSettings.setAutoCompactIntervalTurns(turns)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                },
+            )
 
             SettingsGroup(
                 title = stringResource(R.string.agent_env_title),                items = buildList {
@@ -327,6 +434,40 @@ fun SettingsAgentPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                     Text(stringResource(R.string.provider_cancel))
                 }
             },
+        )
+    }
+
+    folderPrompt?.let { pendingMode ->
+        ProjectFolderPickerDialog(
+            modeLabel = stringResource(
+                if (pendingMode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+            ),
+            initialFolder = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(pendingMode).orEmpty(),
+            onConfirm = { folder ->
+                viewModel.updateConversationSetting(settingsOwnerId) {
+                    it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (pendingMode to folder))
+                }
+                viewModel.settings.agentSettings.setAgentMode(pendingMode)
+                folderPrompt = null
+            },
+            onDismiss = { folderPrompt = null },
+        )
+    }
+
+    // Direct folder change: updates the stored folder without switching modes.
+    folderChangeMode?.let { changeMode ->
+        ProjectFolderPickerDialog(
+            modeLabel = stringResource(
+                if (changeMode == "plan") R.string.agent_mode_plan else R.string.agent_mode_build,
+            ),
+            initialFolder = conversationSettingsMap[settingsOwnerId]?.agentProjectFolders?.get(changeMode).orEmpty(),
+            onConfirm = { folder ->
+                viewModel.updateConversationSetting(settingsOwnerId) {
+                    it.copy(agentProjectFolders = it.agentProjectFolders.orEmpty() + (changeMode to folder))
+                }
+                folderChangeMode = null
+            },
+            onDismiss = { folderChangeMode = null },
         )
     }
 }

@@ -233,7 +233,9 @@ class WebSearchToolProvider : ToolProvider {
                         baseUrl = ctx.typeSafeBaseUrl,
                         model = ctx.jevModel,
                         query = goal,
-                        documents = listOf(clipped.take(1500)),
+                        documents = listOf(clipped.take(ctx.decisionMaxStateChars)),
+                        timeoutMs = ctx.decisionTimeoutMs,
+                        maxStateChars = ctx.decisionMaxStateChars,
                     )?.firstOrNull()
                 } catch (_: Exception) {
                     null
@@ -533,6 +535,7 @@ class WebSearchToolProvider : ToolProvider {
                 outcome = outcome,
                 durationMs = (System.nanoTime() - jevStartNanos) / 1_000_000L,
                 detail = mapOf(
+                    "decision_provider" to ctx.decisionProvider,
                     "model" to ctx.jevModel,
                     "key_fingerprint" to StructuredDiagnostics.keyFingerprint(ctx.typeSafeApiKey),
                     "docs" to hits.size.toString(),
@@ -546,6 +549,8 @@ class WebSearchToolProvider : ToolProvider {
                 model = ctx.jevModel,
                 query = query,
                 documents = hits.map { "${it.title}\n${it.snippet}" },
+                timeoutMs = ctx.decisionTimeoutMs,
+                maxStateChars = ctx.decisionMaxStateChars,
             ) ?: return null.also { emitJevRerank("no_signal") }
             if (scores.size != hits.size) return null.also { emitJevRerank("size_mismatch") }
             emitJevRerank("ok")
